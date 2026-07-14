@@ -120,12 +120,12 @@ public partial class MainWindow : WindowBase<MainWindowViewModel>
               .Subscribe(async content => await DelegateSnackMsg(content))
               .DisposeWith(disposables);
 
-            this.WhenAnyValue(v => v.ViewModel.StatusBarViewModel.RunningServerDisplay)
-              .Skip(1)
-              .DistinctUntilChanged()
-              .Where(server => !string.IsNullOrWhiteSpace(server) && server != ResUI.CheckServerSettings)
-              .ObserveOn(RxSchedulers.MainThreadScheduler)
-              .Subscribe(server => _toastService.ShowConnected(server))
+            // Switching the active profile triggers ProfilesViewModel.ReloadRequested but does
+            // not reliably emit a connection notification (the core reconnect may not reach the
+            // success path), so show the green "Connected" toast off this action directly.
+            ViewModel.ProfilesViewModel.ReloadRequested
+              .AsObservable()
+              .Subscribe(async _ => await OnActiveProfileReloaded())
               .DisposeWith(disposables);
 
             AppEvents.HasUpdateNotified
@@ -181,9 +181,40 @@ public partial class MainWindow : WindowBase<MainWindowViewModel>
             DispatcherPriority.Default);
     }
 
+    private async Task OnActiveProfileReloaded()
+    {
+        string? summary = null;
+        try
+        {
+            summary = (await ConfigHandler.GetDefaultServer(_config))?.GetSummary();
+        }
+        catch
+        {
+            // Ignore — no toast if the current server can't be resolved.
+        }
+
+        // The await may resume off the UI thread; the notification manager must be called on it.
+        Dispatcher.UIThread.Post(() => _toastService.ShowConnected(summary));
+    }
+
     private async Task DelegateSnackMsg(string content)
     {
-        _toastService.Show(content, ToastClassifier.Classify(content));
+        var type = ToastClassifier.Classify(content);
+
+        // On a successful (re)connect, CoreManager enqueues the running node's summary,
+        // formatted as "[type] remarks...", through this same channel. Those messages are
+        // not ResUI keys (classified as Info) and start with '[', so show them as a green
+        // "Connected" toast. Kept fully synchronous — no await before the show, so it stays
+        // on the UI thread the subscription observes on.
+        if (type == ToastType.Info && content.StartsWith('['))
+        {
+            _toastService.ShowConnected(content);
+        }
+        else
+        {
+            _toastService.Show(content, type);
+        }
+
         await Task.CompletedTask;
     }
 

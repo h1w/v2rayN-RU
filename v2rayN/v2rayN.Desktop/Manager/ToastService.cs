@@ -9,6 +9,9 @@ public class ToastService
 
     private readonly WindowNotificationManager? _manager;
 
+    private string? _lastConnectedSummary;
+    private DateTime _lastConnectedAt;
+
     public ToastService(TopLevel? topLevel)
     {
         if (topLevel != null)
@@ -37,6 +40,16 @@ public class ToastService
         {
             return;
         }
+
+        // Dedup: the same connect can arrive both from the profile-switch action and from the
+        // core's connection summary; suppress a repeat for the same server within a short window.
+        var now = DateTime.Now;
+        if (serverSummary == _lastConnectedSummary && (now - _lastConnectedAt).TotalSeconds < 3)
+        {
+            return;
+        }
+        _lastConnectedSummary = serverSummary;
+        _lastConnectedAt = now;
 
         _manager?.Show(new Avalonia.Controls.Notifications.Notification(ConnectedTitle, serverSummary, NotificationType.Success));
     }
