@@ -11,7 +11,7 @@ public partial class MainWindow : WindowBase<MainWindowViewModel>
 {
     private static Config _config;
     private readonly SerialDisposable _layoutBindingsDisposable = new();
-    private readonly WindowNotificationManager? _manager;
+    private readonly ToastService _toastService;
     private CheckUpdateView? _checkUpdateView;
     private BackupAndRestoreView? _backupAndRestoreView;
     private bool _blCloseByUser = false;
@@ -21,7 +21,7 @@ public partial class MainWindow : WindowBase<MainWindowViewModel>
         InitializeComponent();
 
         _config = AppManager.Instance.Config;
-        _manager = new WindowNotificationManager(TopLevel.GetTopLevel(this)) { MaxItems = 3, Position = NotificationPosition.TopRight };
+        _toastService = new ToastService(TopLevel.GetTopLevel(this));
 
         KeyDown += MainWindow_KeyDown;
         menuSettingsSetUWP.Click += MenuSettingsSetUWP_Click;
@@ -120,6 +120,21 @@ public partial class MainWindow : WindowBase<MainWindowViewModel>
               .Subscribe(async content => await DelegateSnackMsg(content))
               .DisposeWith(disposables);
 
+            this.WhenAnyValue(v => v.ViewModel.StatusBarViewModel.RunningServerDisplay)
+              .Skip(1)
+              .DistinctUntilChanged()
+              .Where(server => !string.IsNullOrWhiteSpace(server) && server != ResUI.CheckServerSettings)
+              .ObserveOn(RxSchedulers.MainThreadScheduler)
+              .Subscribe(server => _toastService.ShowConnected(server))
+              .DisposeWith(disposables);
+
+            AppEvents.HasUpdateNotified
+              .AsObservable()
+              .Where(hasUpdate => hasUpdate)
+              .ObserveOn(RxSchedulers.MainThreadScheduler)
+              .Subscribe(_ => _toastService.ShowUpdateAvailable())
+              .DisposeWith(disposables);
+
             AppEvents.AppExitRequested
               .AsObservable()
               .ObserveOn(RxSchedulers.MainThreadScheduler)
@@ -168,7 +183,7 @@ public partial class MainWindow : WindowBase<MainWindowViewModel>
 
     private async Task DelegateSnackMsg(string content)
     {
-        _manager?.Show(new Avalonia.Controls.Notifications.Notification(null, content, NotificationType.Information));
+        _toastService.Show(content, ToastClassifier.Classify(content));
         await Task.CompletedTask;
     }
 
