@@ -171,13 +171,13 @@ choose_channel() {
 }
 
 get_latest_tag_latest() {
-  curl -fsSL "https://api.github.com/repos/2dust/v2rayN/releases/latest" \
+  curl -fsSL "https://api.github.com/repos/h1w/v2rayN-RU/releases/latest" \
     | jq -re '.tag_name' \
     | sed 's/^v//'
 }
 
 get_latest_tag_prerelease() {
-  curl -fsSL "https://api.github.com/repos/2dust/v2rayN/releases?per_page=20" \
+  curl -fsSL "https://api.github.com/repos/h1w/v2rayN-RU/releases?per_page=20" \
     | jq -re 'first(.[] | select(.prerelease == true) | .tag_name)' \
     | sed 's/^v//'
 }
@@ -649,7 +649,7 @@ Package: v2rayn
 Version: ${VERSION}
 Architecture: ${deb_arch}
 Maintainer: 2dust <noreply@github.com>
-Homepage: https://github.com/2dust/v2rayN
+Homepage: https://github.com/h1w/v2rayN-RU
 Section: net
 Priority: optional
 Depends: ${final_depends}

@@ -168,13 +168,13 @@ choose_channel() {
 }
 
 get_latest_tag_latest() {
-  curl -fsSL "https://api.github.com/repos/2dust/v2rayN/releases/latest" \
+  curl -fsSL "https://api.github.com/repos/h1w/v2rayN-RU/releases/latest" \
     | jq -re '.tag_name' \
     | sed 's/^v//'
 }
 
 get_latest_tag_prerelease() {
-  curl -fsSL "https://api.github.com/repos/2dust/v2rayN/releases?per_page=20" \
+  curl -fsSL "https://api.github.com/repos/h1w/v2rayN-RU/releases?per_page=20" \
     | jq -re 'first(.[] | select(.prerelease == true) | .tag_name)' \
     | sed 's/^v//'
 }
@@ -503,8 +503,8 @@ Version:        __VERSION__
 Release:        1%{?dist}
 Summary:        v2rayN (Avalonia) GUI client for Linux
 License:        GPL-3.0-only
-URL:            https://github.com/2dust/v2rayN
-BugURL:         https://github.com/2dust/v2rayN/issues
+URL:            https://github.com/h1w/v2rayN-RU
+BugURL:         https://github.com/h1w/v2rayN-RU/issues
 ExclusiveArch:  riscv64
 Source0:        __PKGROOT__.tar.gz
 
@@ -522,7 +522,7 @@ v2rayN Linux for Red Hat Enterprise Linux
 Support vless / vmess / Trojan / http / socks / Anytls / Hysteria2 / Shadowsocks / tuic / WireGuard
 Support Red Hat Enterprise Linux / Fedora Linux / Rocky Linux / AlmaLinux / CentOS
 For more information, Please visit our website
-https://github.com/2dust/v2rayN
+https://github.com/h1w/v2rayN-RU
 
 %prep
 %setup -q -n __PKGROOT__
