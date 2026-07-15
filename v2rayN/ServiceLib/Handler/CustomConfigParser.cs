@@ -6,6 +6,12 @@ public static class CustomConfigParser
 {
     private static readonly string _tag = "CustomConfigParser";
 
+    private static readonly HashSet<string> _xrayUtility =
+        new(StringComparer.OrdinalIgnoreCase) { "freedom", "blackhole", "dns", "loopback" };
+
+    private static readonly HashSet<string> _singboxNonProxy =
+        new(StringComparer.OrdinalIgnoreCase) { "direct", "block", "dns", "selector", "urltest" };
+
     public static List<RulesItem> ParseDisplayRules(string? json, ECoreType coreType)
     {
         var result = new List<RulesItem>();
@@ -19,6 +25,47 @@ public static class CustomConfigParser
             return coreType == ECoreType.sing_box
                 ? ParseSingboxDisplayRules(root)
                 : ParseXrayDisplayRules(root);
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+            return result;
+        }
+    }
+
+    public static List<OutboundTestTarget> ParseTestableOutbounds(string? json, ECoreType coreType)
+    {
+        var result = new List<OutboundTestTarget>();
+        try
+        {
+            var root = JsonUtils.ParseJson(json);
+            var outbounds = root?["outbounds"]?.AsArray();
+            if (outbounds is null)
+            {
+                return result;
+            }
+            var order = 0;
+            foreach (var ob in outbounds)
+            {
+                if (ob is null)
+                {
+                    continue;
+                }
+                var tag = ob["tag"]?.GetValue<string>();
+                if (tag.IsNullOrEmpty())
+                {
+                    continue;
+                }
+                var kind = coreType == ECoreType.sing_box
+                    ? ob["type"]?.GetValue<string>()
+                    : ob["protocol"]?.GetValue<string>();
+                if (kind.IsNullOrEmpty() || !IsTestableKind(kind, coreType))
+                {
+                    continue;
+                }
+                result.Add(new OutboundTestTarget(tag, order++, Array.Empty<string>()));
+            }
+            return result;
         }
         catch (Exception ex)
         {
@@ -214,5 +261,12 @@ public static class CustomConfigParser
         {
             target.Add(prefix + s);
         }
+    }
+
+    private static bool IsTestableKind(string kind, ECoreType coreType)
+    {
+        return coreType == ECoreType.sing_box
+            ? !_singboxNonProxy.Contains(kind)
+            : !_xrayUtility.Contains(kind);
     }
 }

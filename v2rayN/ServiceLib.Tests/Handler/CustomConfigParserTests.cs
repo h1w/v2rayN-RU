@@ -77,4 +77,21 @@ public class CustomConfigParserTests
         rules[2].Network.Should().Be("tcp");
         rules[2].Protocol.Should().Contain("tls");
     }
+
+    [Fact]
+    public void ParseTestableOutbounds_Xray_excludes_utility_keeps_order()
+    {
+        var targets = CustomConfigParser.ParseTestableOutbounds(XrayJson, ECoreType.Xray);
+        targets.Should().ContainSingle();
+        targets[0].Tag.Should().Be("proxy");
+        targets[0].Order.Should().Be(0);
+    }
+
+    [Fact]
+    public void ParseTestableOutbounds_Singbox_excludes_utility_and_group()
+    {
+        var targets = CustomConfigParser.ParseTestableOutbounds(SingboxJson, ECoreType.sing_box);
+        targets.Should().ContainSingle();
+        targets[0].Tag.Should().Be("proxy");   // direct + selector excluded
+    }
 }
