@@ -35,6 +35,8 @@ public partial class RoutingRuleSettingWindow
             this.BindCommand(ViewModel, vm => vm.ImportRulesFromFileCmd, v => v.menuImportRulesFromFile).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.ImportRulesFromClipboardCmd, v => v.menuImportRulesFromClipboard).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.ImportRulesFromUrlCmd, v => v.menuImportRulesFromUrl).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.RuleExportToClipboardCmd, v => v.menuRuleExportToClipboard).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.RuleExportToFileCmd, v => v.menuRuleExportToFile).DisposeWith(disposables);
 
             this.BindCommand(ViewModel, vm => vm.RuleAddCmd, v => v.menuRuleAdd2).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.RuleRemoveCmd, v => v.menuRuleRemove).DisposeWith(disposables);
@@ -69,6 +71,16 @@ public partial class RoutingRuleSettingWindow
             ViewModel.BrowseRulesFileInteraction.RegisterHandler(interaction =>
             {
                 if (UI.OpenFileDialog(out var fileName, "Rules|*.json|All|*.*") != true)
+                {
+                    interaction.SetOutput(null);
+                    return;
+                }
+                interaction.SetOutput(fileName);
+            }).DisposeWith(disposables);
+
+            ViewModel.SaveRulesFileInteraction.RegisterHandler(interaction =>
+            {
+                if (UI.SaveFileDialog(out var fileName, "Rules|*.json|All|*.*") != true)
                 {
                     interaction.SetOutput(null);
                     return;
