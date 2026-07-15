@@ -227,6 +227,7 @@
                                 <DataTemplate>
                                     <CheckBox
                                         HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
                                         IsChecked="{Binding Enabled}"
                                         IsEnabled="{Binding IsEditable}" />
                                 </DataTemplate>
