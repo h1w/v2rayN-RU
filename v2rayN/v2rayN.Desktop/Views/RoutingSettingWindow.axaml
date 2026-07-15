@@ -20,6 +20,10 @@
         <Menu Margin="{StaticResource Margin4}" DockPanel.Dock="Top">
             <MenuItem x:Name="menuRoutingAdvancedAdd2" Header="{x:Static resx:ResUI.menuRoutingAdvancedAdd}" />
             <MenuItem x:Name="menuRoutingAdvancedImportRules2" Header="{x:Static resx:ResUI.menuRoutingAdvancedImportRules}" />
+            <MenuItem x:Name="menuRoutingAdvancedImportFromFile2" Header="{x:Static resx:ResUI.menuRoutingAdvancedImportFromFile}" />
+            <MenuItem x:Name="menuRoutingAdvancedImportFromClipboard2" Header="{x:Static resx:ResUI.menuRoutingAdvancedImportFromClipboard}" />
+            <MenuItem x:Name="menuRoutingAdvancedExportToClipboard2" Header="{x:Static resx:ResUI.menuRoutingAdvancedExportToClipboard}" />
+            <MenuItem x:Name="menuRoutingAdvancedExportToFile2" Header="{x:Static resx:ResUI.menuRoutingAdvancedExportToFile}" />
         </Menu>
 
         <Grid
@@ -97,6 +101,11 @@
                                 InputGesture="Enter" />
                             <Separator />
                             <MenuItem x:Name="menuRoutingAdvancedImportRules" Header="{x:Static resx:ResUI.menuRoutingAdvancedImportRules}" />
+                            <Separator />
+                            <MenuItem x:Name="menuRoutingAdvancedExportToClipboard" Header="{x:Static resx:ResUI.menuRoutingAdvancedExportToClipboard}" />
+                            <MenuItem x:Name="menuRoutingAdvancedExportToFile" Header="{x:Static resx:ResUI.menuRoutingAdvancedExportToFile}" />
+                            <MenuItem x:Name="menuRoutingAdvancedImportFromFile" Header="{x:Static resx:ResUI.menuRoutingAdvancedImportFromFile}" />
+                            <MenuItem x:Name="menuRoutingAdvancedImportFromClipboard" Header="{x:Static resx:ResUI.menuRoutingAdvancedImportFromClipboard}" />
                         </ContextMenu>
                     </DataGrid.ContextMenu>
 
