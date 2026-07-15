@@ -1860,4 +1860,13 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
   <data name="TbToastConnected" xml:space="preserve">
     <value>Connected</value>
   </data>
+  <data name="CustomTestBestDelayResult" xml:space="preserve">
+    <value>Best delay: {0} ms ({1})</value>
+  </data>
+  <data name="CustomTestSpeedResult" xml:space="preserve">
+    <value>Speed: {0} ({1})</value>
+  </data>
+  <data name="CustomTestAllFailed" xml:space="preserve">
+    <value>All outbounds failed</value>
+  </data>
 </root>

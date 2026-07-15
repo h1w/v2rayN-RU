@@ -5282,5 +5282,23 @@ namespace ServiceLib.Resx {
                 return ResourceManager.GetString("UpgradeAppNotExistTip", resourceCulture);
             }
         }
+
+        public static string CustomTestBestDelayResult {
+            get {
+                return ResourceManager.GetString("CustomTestBestDelayResult", resourceCulture);
+            }
+        }
+
+        public static string CustomTestSpeedResult {
+            get {
+                return ResourceManager.GetString("CustomTestSpeedResult", resourceCulture);
+            }
+        }
+
+        public static string CustomTestAllFailed {
+            get {
+                return ResourceManager.GetString("CustomTestAllFailed", resourceCulture);
+            }
+        }
     }
 }
