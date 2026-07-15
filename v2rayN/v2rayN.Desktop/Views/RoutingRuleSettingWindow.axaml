@@ -182,6 +182,7 @@
                     Background="Transparent"
                     BorderThickness="1"
                     CanUserResizeColumns="True"
+                    DragDrop.AllowDrop="True"
                     GridLinesVisibility="All"
                     HeadersVisibility="Column"
                     IsReadOnly="True"
@@ -221,10 +222,16 @@
                         </ContextMenu>
                     </DataGrid.ContextMenu>
                     <DataGrid.Columns>
-                        <DataGridCheckBoxColumn
-                            Width="60"
-                            Binding="{Binding Enabled}"
-                            Header="" />
+                        <DataGridTemplateColumn Width="60" Header="">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox
+                                        HorizontalAlignment="Center"
+                                        IsChecked="{Binding Enabled}"
+                                        IsEnabled="{Binding IsEditable}" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn
                             Width="150"
                             Binding="{Binding Remarks}"

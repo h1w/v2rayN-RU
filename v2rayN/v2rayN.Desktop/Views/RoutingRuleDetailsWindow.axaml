@@ -16,10 +16,37 @@
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d">
     <DockPanel>
+        <StackPanel
+            Margin="{StaticResource Margin4}"
+            HorizontalAlignment="Right"
+            DockPanel.Dock="Bottom"
+            Orientation="Horizontal">
+            <StackPanel
+                Width="600"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+                <CheckBox x:Name="chkAutoSort">
+                    <TextBlock Text="{x:Static resx:ResUI.TbAutoSort}" />
+                </CheckBox>
+            </StackPanel>
+            <Button
+                x:Name="btnSave"
+                Width="100"
+                Content="{x:Static resx:ResUI.TbConfirm}"
+                IsDefault="True" />
+            <Button
+                x:Name="btnCancel"
+                Width="100"
+                Margin="{StaticResource MarginLr8}"
+                Content="{x:Static resx:ResUI.TbCancel}"
+                IsCancel="True" />
+        </StackPanel>
+
+        <Grid x:Name="gridContent" RowDefinitions="Auto,*">
         <Grid
+            Grid.Row="0"
             Margin="{StaticResource Margin4}"
             ColumnDefinitions="Auto,Auto,*"
-            DockPanel.Dock="Top"
             RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
             <TextBlock
                 Grid.Row="0"
@@ -193,33 +220,10 @@
                 TextWrapping="Wrap" />
         </Grid>
 
-        <StackPanel
+        <Grid
+            Grid.Row="1"
             Margin="{StaticResource Margin4}"
-            HorizontalAlignment="Right"
-            DockPanel.Dock="Bottom"
-            Orientation="Horizontal">
-            <StackPanel
-                Width="600"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center">
-                <CheckBox x:Name="chkAutoSort">
-                    <TextBlock Text="{x:Static resx:ResUI.TbAutoSort}" />
-                </CheckBox>
-            </StackPanel>
-            <Button
-                x:Name="btnSave"
-                Width="100"
-                Content="{x:Static resx:ResUI.TbConfirm}"
-                IsDefault="True" />
-            <Button
-                x:Name="btnCancel"
-                Width="100"
-                Margin="{StaticResource MarginLr8}"
-                Content="{x:Static resx:ResUI.TbCancel}"
-                IsCancel="True" />
-        </StackPanel>
-
-        <Grid Margin="{StaticResource Margin4}" ColumnDefinitions="1*,10,1*,10,1*">
+            ColumnDefinitions="1*,10,1*,10,1*">
             <HeaderedContentControl
                 Grid.Column="0"
                 BorderBrush="Gray"
@@ -258,6 +262,7 @@
                     MinLines="10"
                     TextWrapping="Wrap" />
             </HeaderedContentControl>
+        </Grid>
         </Grid>
     </DockPanel>
 </Window>

@@ -1,3 +1,4 @@
+using Avalonia.VisualTree;
 using v2rayN.Desktop.Base;
 using v2rayN.Desktop.Common;
 
@@ -5,6 +6,9 @@ namespace v2rayN.Desktop.Views;
 
 public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingViewModel>
 {
+    private static readonly DataFormat<object> LstRulesRowFormat =
+        DataFormat.CreateInProcessFormat<object>("LstRulesRow");
+
     public RoutingRuleSettingWindow()
     {
         InitializeComponent();
@@ -17,6 +21,10 @@ public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingVie
         menuRuleSelectAll.Click += menuRuleSelectAll_Click;
         //btnBrowseCustomIcon.Click += btnBrowseCustomIcon_Click;
         btnBrowseCustomRulesetPath4Singbox.Click += btnBrowseCustomRulesetPath4Singbox_ClickAsync;
+
+        lstRules.AddHandler(PointerPressedEvent, LstRules_PointerPressed, RoutingStrategies.Bubble, true);
+        lstRules.AddHandler(DragDrop.DragOverEvent, LstRules_DragOver, RoutingStrategies.Bubble);
+        lstRules.AddHandler(DragDrop.DropEvent, LstRules_Drop, RoutingStrategies.Bubble);
 
         cmbdomainStrategy.ItemsSource = Global.DomainStrategies.AppendEmpty();
         cmbdomainStrategy4Singbox.ItemsSource = Global.DomainStrategies4Sbox;
@@ -176,4 +184,88 @@ public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingVie
     {
         ProcUtils.ProcessStart("https://github.com/2dust/v2rayCustomRoutingList/blob/master/singbox_custom_ruleset_example.json");
     }
+
+    #region Drag and Drop
+
+    private async void LstRules_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        try
+        {
+            if (e.Source is not Visual visualSource)
+            {
+                return;
+            }
+
+            var row = visualSource.FindAncestorOfType<DataGridRow>(true);
+            if (row?.DataContext is not RulesItemModel { IsEditable: true } item)
+            {
+                return;
+            }
+
+            if (e.GetCurrentPoint(row).Properties.IsLeftButtonPressed)
+            {
+                var dragData = new DataTransfer();
+                var dataItem = DataTransferItem.Create(LstRulesRowFormat, item);
+                dragData.Add(dataItem);
+                await DragDrop.DoDragDropAsync(e, dragData, DragDropEffects.Move);
+            }
+        }
+        catch
+        {
+            // Ignore
+        }
+    }
+
+    private void LstRules_DragOver(object? sender, DragEventArgs e)
+    {
+        if (!e.DataTransfer.Contains(LstRulesRowFormat))
+        {
+            e.DragEffects = DragDropEffects.None;
+            return;
+        }
+        e.DragEffects = DragDropEffects.Move;
+    }
+
+    private void LstRules_Drop(object? sender, DragEventArgs e)
+    {
+        if (!e.DataTransfer.Contains(LstRulesRowFormat))
+        {
+            return;
+        }
+        RulesItemModel? sourceItem = null;
+        foreach (var dataItem in e.DataTransfer.Items)
+        {
+            if (!dataItem.Formats.Contains(LstRulesRowFormat))
+            {
+                continue;
+            }
+            if (dataItem.TryGetRaw(LstRulesRowFormat) is not RulesItemModel model)
+            {
+                continue;
+            }
+            sourceItem = model;
+            break;
+        }
+        if (sourceItem == null)
+        {
+            return;
+        }
+        if (e.Source is not Visual visualTarget)
+        {
+            return;
+        }
+
+        var targetRow = visualTarget.FindAncestorOfType<DataGridRow>(true);
+        if (targetRow is not { DataContext: RulesItemModel targetItem })
+        {
+            return;
+        }
+        if (ReferenceEquals(sourceItem, targetItem))
+        {
+            return;
+        }
+        ViewModel?.MoveRuleByDrag(sourceItem, targetItem);
+    }
+
+    #endregion Drag and Drop
 }
