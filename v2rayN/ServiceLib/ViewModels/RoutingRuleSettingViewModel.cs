@@ -7,6 +7,7 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
     public Interaction<string, Unit> SetClipboardDataInteraction { get; } = new();
     public Interaction<Unit, string?> ReadTextFromClipboardInteraction { get; } = new();
     public Interaction<Unit, string?> BrowseRulesFileInteraction { get; } = new();
+    public Interaction<string, string?> SaveRulesFileInteraction { get; } = new();
 
     private List<RulesItem> _rules;
 
@@ -26,6 +27,8 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
     public ReactiveCommand<Unit, Unit> ImportRulesFromUrlCmd { get; }
     public ReactiveCommand<Unit, Unit> RuleRemoveCmd { get; }
     public ReactiveCommand<Unit, Unit> RuleExportSelectedCmd { get; }
+    public ReactiveCommand<Unit, Unit> RuleExportToClipboardCmd { get; }
+    public ReactiveCommand<Unit, Unit> RuleExportToFileCmd { get; }
     public ReactiveCommand<Unit, Unit> MoveTopCmd { get; }
     public ReactiveCommand<Unit, Unit> MoveUpCmd { get; }
     public ReactiveCommand<Unit, Unit> MoveDownCmd { get; }
@@ -67,6 +70,14 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
         {
             await RuleExportSelectedAsync();
         }, canEditRemove);
+        RuleExportToClipboardCmd = ReactiveCommand.CreateFromTask(async () =>
+        {
+            await RuleExportAllToClipboardAsync();
+        });
+        RuleExportToFileCmd = ReactiveCommand.CreateFromTask(async () =>
+        {
+            await RuleExportAllToFileAsync();
+        });
 
         MoveTopCmd = ReactiveCommand.CreateFromTask(async () =>
         {
@@ -179,27 +190,39 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
             return;
         }
 
-        var lst = new List<RulesItem>();
         var sources = SelectedSources ?? [SelectedSource];
-        foreach (var it in _rules)
-        {
-            if (sources.Any(t => t.Id == it?.Id))
-            {
-                var item2 = JsonUtils.DeepCopy(it);
-                item2.Id = null;
-                lst.Add(item2 ?? new());
-            }
-        }
+        var lst = _rules.Where(it => sources.Any(t => t.Id == it.Id)).ToList();
         if (lst.Count > 0)
         {
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            };
-            await SetClipboardDataInteraction.Handle(JsonUtils.Serialize(lst, options));
+            await SetClipboardDataInteraction.Handle(RoutingRuleExporter.ExportRulesToJson(lst));
         }
+    }
+
+    public async Task RuleExportAllToClipboardAsync()
+    {
+        if (_rules.Count == 0)
+        {
+            NoticeManager.Instance.Enqueue(ResUI.PleaseSelectRules);
+            return;
+        }
+        await SetClipboardDataInteraction.Handle(RoutingRuleExporter.ExportRulesToJson(_rules));
+    }
+
+    public async Task RuleExportAllToFileAsync()
+    {
+        if (_rules.Count == 0)
+        {
+            NoticeManager.Instance.Enqueue(ResUI.PleaseSelectRules);
+            return;
+        }
+        var suggested = (SelectedRouting?.Remarks.IsNullOrEmpty() == false ? SelectedRouting.Remarks : "routing_rules") + ".json";
+        var fileName = await SaveRulesFileInteraction.Handle(suggested);
+        if (fileName.IsNullOrEmpty())
+        {
+            return;
+        }
+        await File.WriteAllTextAsync(fileName, RoutingRuleExporter.ExportRulesToJson(_rules));
+        NoticeManager.Instance.SendMessageAndEnqueue(string.Format(ResUI.SaveRoutingRulesResult, fileName));
     }
 
     public async Task MoveRule(EMove eMove)

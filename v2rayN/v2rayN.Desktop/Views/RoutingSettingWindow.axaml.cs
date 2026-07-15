@@ -34,11 +34,45 @@ public partial class RoutingSettingWindow : WindowBase<RoutingSettingViewModel>
             this.BindCommand(ViewModel, vm => vm.RoutingAdvancedImportRulesCmd, v => v.menuRoutingAdvancedImportRules).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.RoutingAdvancedImportRulesCmd, v => v.menuRoutingAdvancedImportRules2).DisposeWith(disposables);
 
+            this.BindCommand(ViewModel, vm => vm.ExportRoutingToClipboardCmd, v => v.menuRoutingAdvancedExportToClipboard).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.ExportRoutingToClipboardCmd, v => v.menuRoutingAdvancedExportToClipboard2).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.ExportRoutingToFileCmd, v => v.menuRoutingAdvancedExportToFile).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.ExportRoutingToFileCmd, v => v.menuRoutingAdvancedExportToFile2).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.ImportRoutingFromFileCmd, v => v.menuRoutingAdvancedImportFromFile).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.ImportRoutingFromFileCmd, v => v.menuRoutingAdvancedImportFromFile2).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.ImportRoutingFromClipboardCmd, v => v.menuRoutingAdvancedImportFromClipboard).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.ImportRoutingFromClipboardCmd, v => v.menuRoutingAdvancedImportFromClipboard2).DisposeWith(disposables);
+
             ViewModel.ShowYesNoInteraction.RegisterHandler(async interaction =>
             {
                 var message = interaction.Input;
                 var result = await UI.ShowYesNo(message);
                 interaction.SetOutput(result == ButtonResult.Yes);
+            }).DisposeWith(disposables);
+
+            ViewModel.SetClipboardDataInteraction.RegisterHandler(async interaction =>
+            {
+                var strData = interaction.Input;
+                await AvaUtils.SetClipboardData(this, strData);
+                interaction.SetOutput(Unit.Default);
+            }).DisposeWith(disposables);
+
+            ViewModel.ReadTextFromClipboardInteraction.RegisterHandler(async interaction =>
+            {
+                var result = await AvaUtils.GetClipboardData(this);
+                interaction.SetOutput(result);
+            }).DisposeWith(disposables);
+
+            ViewModel.BrowseRoutingFileInteraction.RegisterHandler(async interaction =>
+            {
+                var fileName = await UI.OpenFileDialog(null);
+                interaction.SetOutput(fileName);
+            }).DisposeWith(disposables);
+
+            ViewModel.SaveRoutingFileInteraction.RegisterHandler(async interaction =>
+            {
+                var fileName = await UI.SaveFileDialog("json", interaction.Input);
+                interaction.SetOutput(fileName);
             }).DisposeWith(disposables);
         });
     }

@@ -35,7 +35,7 @@ internal class UI
         return true;
     }
 
-    public static bool? SaveFileDialog(out string fileName, string filter)
+    public static bool? SaveFileDialog(out string fileName, string filter, string? initialFileName = null)
     {
         fileName = string.Empty;
 
@@ -45,6 +45,10 @@ internal class UI
             FilterIndex = 2,
             RestoreDirectory = true
         };
+        if (!initialFileName.IsNullOrEmpty())
+        {
+            fileDialog.FileName = initialFileName;
+        }
         if (fileDialog.ShowDialog() != true)
         {
             return false;

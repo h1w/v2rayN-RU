@@ -64,6 +64,26 @@
                         <TextBlock Style="{StaticResource ToolbarTextBlock}" Text="{x:Static resx:ResUI.menuImportRulesFromUrl}" />
                     </StackPanel>
                 </Button>
+                <Separator />
+                <Button x:Name="menuRuleExportToClipboard">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon
+                            Margin="{StaticResource MarginRight8}"
+                            VerticalAlignment="Center"
+                            Kind="ContentCopy" />
+                        <TextBlock Style="{StaticResource ToolbarTextBlock}" Text="{x:Static resx:ResUI.menuRuleExportToClipboard}" />
+                    </StackPanel>
+                </Button>
+                <Separator />
+                <Button x:Name="menuRuleExportToFile">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon
+                            Margin="{StaticResource MarginRight8}"
+                            VerticalAlignment="Center"
+                            Kind="ContentSave" />
+                        <TextBlock Style="{StaticResource ToolbarTextBlock}" Text="{x:Static resx:ResUI.menuRuleExportToFile}" />
+                    </StackPanel>
+                </Button>
             </ToolBar>
         </ToolBarTray>
 

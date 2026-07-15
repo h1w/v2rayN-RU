@@ -49,6 +49,34 @@
                         <TextBlock Style="{StaticResource ToolbarTextBlock}" Text="{x:Static resx:ResUI.menuRoutingAdvancedImportRules}" />
                     </StackPanel>
                 </Button>
+                <Separator />
+                <Button x:Name="menuRoutingAdvancedImportFromFile2">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Margin="{StaticResource MarginRight8}" VerticalAlignment="Center" Kind="FileImport" />
+                        <TextBlock Style="{StaticResource ToolbarTextBlock}" Text="{x:Static resx:ResUI.menuRoutingAdvancedImportFromFile}" />
+                    </StackPanel>
+                </Button>
+                <Separator />
+                <Button x:Name="menuRoutingAdvancedImportFromClipboard2">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Margin="{StaticResource MarginRight8}" VerticalAlignment="Center" Kind="ClipboardArrowDown" />
+                        <TextBlock Style="{StaticResource ToolbarTextBlock}" Text="{x:Static resx:ResUI.menuRoutingAdvancedImportFromClipboard}" />
+                    </StackPanel>
+                </Button>
+                <Separator />
+                <Button x:Name="menuRoutingAdvancedExportToClipboard2">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Margin="{StaticResource MarginRight8}" VerticalAlignment="Center" Kind="ContentCopy" />
+                        <TextBlock Style="{StaticResource ToolbarTextBlock}" Text="{x:Static resx:ResUI.menuRoutingAdvancedExportToClipboard}" />
+                    </StackPanel>
+                </Button>
+                <Separator />
+                <Button x:Name="menuRoutingAdvancedExportToFile2">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Margin="{StaticResource MarginRight8}" VerticalAlignment="Center" Kind="ContentSave" />
+                        <TextBlock Style="{StaticResource ToolbarTextBlock}" Text="{x:Static resx:ResUI.menuRoutingAdvancedExportToFile}" />
+                    </StackPanel>
+                </Button>
             </ToolBar>
         </ToolBarTray>
 
@@ -141,6 +169,11 @@
                                 x:Name="menuRoutingAdvancedImportRules"
                                 Height="{StaticResource MenuItemHeight}"
                                 Header="{x:Static resx:ResUI.menuRoutingAdvancedImportRules}" />
+                            <Separator />
+                            <MenuItem x:Name="menuRoutingAdvancedExportToClipboard" Height="{StaticResource MenuItemHeight}" Header="{x:Static resx:ResUI.menuRoutingAdvancedExportToClipboard}" />
+                            <MenuItem x:Name="menuRoutingAdvancedExportToFile" Height="{StaticResource MenuItemHeight}" Header="{x:Static resx:ResUI.menuRoutingAdvancedExportToFile}" />
+                            <MenuItem x:Name="menuRoutingAdvancedImportFromFile" Height="{StaticResource MenuItemHeight}" Header="{x:Static resx:ResUI.menuRoutingAdvancedImportFromFile}" />
+                            <MenuItem x:Name="menuRoutingAdvancedImportFromClipboard" Height="{StaticResource MenuItemHeight}" Header="{x:Static resx:ResUI.menuRoutingAdvancedImportFromClipboard}" />
                         </ContextMenu>
                     </DataGrid.ContextMenu>
                     <DataGrid.Resources>

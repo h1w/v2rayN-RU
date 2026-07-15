@@ -846,6 +846,27 @@
   <data name="menuRuleExportSelected" xml:space="preserve">
     <value>Экспортировать выбранные правила в буфер обмена</value>
   </data>
+  <data name="menuRuleExportToClipboard" xml:space="preserve">
+    <value>Экспорт правил в буфер обмена</value>
+  </data>
+  <data name="menuRuleExportToFile" xml:space="preserve">
+    <value>Экспорт правил в файл</value>
+  </data>
+  <data name="menuRoutingAdvancedExportToClipboard" xml:space="preserve">
+    <value>Экспорт набора правил в буфер обмена</value>
+  </data>
+  <data name="menuRoutingAdvancedExportToFile" xml:space="preserve">
+    <value>Экспорт набора правил в файл</value>
+  </data>
+  <data name="menuRoutingAdvancedImportFromFile" xml:space="preserve">
+    <value>Импорт набора правил из файла</value>
+  </data>
+  <data name="menuRoutingAdvancedImportFromClipboard" xml:space="preserve">
+    <value>Импорт набора правил из буфера обмена</value>
+  </data>
+  <data name="SaveRoutingRulesResult" xml:space="preserve">
+    <value>Правила маршрутизации сохранены по адресу: {0}</value>
+  </data>
   <data name="menuRuleList" xml:space="preserve">
     <value>Список правил</value>
   </data>
