@@ -1355,6 +1355,15 @@ namespace ServiceLib.Resx {
                 return ResourceManager.GetString("menuNewUpdate", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Localized toast title shown on a successful connection.
+        /// </summary>
+        public static string TbToastConnected {
+            get {
+                return ResourceManager.GetString("TbToastConnected", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   查找类似 Open the storage location 的本地化字符串。

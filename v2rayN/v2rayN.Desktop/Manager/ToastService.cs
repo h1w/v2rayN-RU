@@ -5,8 +5,6 @@ namespace v2rayN.Desktop.Manager;
 
 public class ToastService
 {
-    private const string ConnectedTitle = "Подключено";
-
     private readonly WindowNotificationManager? _manager;
 
     private string? _lastConnectedSummary;
@@ -51,7 +49,7 @@ public class ToastService
         _lastConnectedSummary = serverSummary;
         _lastConnectedAt = now;
 
-        _manager?.Show(new Avalonia.Controls.Notifications.Notification(ConnectedTitle, serverSummary, NotificationType.Success));
+        _manager?.Show(new Avalonia.Controls.Notifications.Notification(ResUI.TbToastConnected, serverSummary, NotificationType.Success));
     }
 
     public void ShowUpdateAvailable()

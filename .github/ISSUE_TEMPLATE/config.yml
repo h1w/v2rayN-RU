@@ -2,7 +2,7 @@ blank_issues_enabled: false
 
 contact_links:
   - name: Discussions / 讨论区
-    url: https://github.com/2dust/v2rayN/discussions
+    url: https://github.com/h1w/v2rayN-RU/discussions
     about: 使用问题或需要帮助请前往 Discussions。
   - name: Wiki / 使用说明
     url: https://github.com/2dust/v2rayN/wiki

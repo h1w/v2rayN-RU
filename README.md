@@ -2,15 +2,15 @@
 
 ### A GUI client for Windows, Linux and macOS. Support [Xray](https://github.com/XTLS/Xray-core) and [sing-box](https://github.com/SagerNet/sing-box) and [others](https://github.com/2dust/v2rayN/wiki/List-of-supported-cores)
 
-[![CodeFactor](https://www.codefactor.io/repository/github/2dust/v2rayn/badge)](https://www.codefactor.io/repository/github/2dust/v2rayn)
-[![Release](https://img.shields.io/github/v/release/2dust/v2rayN?logo=github&label=Release)](https://github.com/2dust/v2rayN/releases)
-[![Downloads](https://img.shields.io/github/downloads/2dust/v2rayN/latest/total?logo=github&label=Downloads)](https://github.com/2dust/v2rayN/releases)
+[![CodeFactor](https://www.codefactor.io/repository/github/h1w/v2rayn-ru/badge)](https://www.codefactor.io/repository/github/h1w/v2rayn-ru)
+[![Release](https://img.shields.io/github/v/release/h1w/v2rayN-RU?logo=github&label=Release)](https://github.com/h1w/v2rayN-RU/releases)
+[![Downloads](https://img.shields.io/github/downloads/h1w/v2rayN-RU/latest/total?logo=github&label=Downloads)](https://github.com/h1w/v2rayN-RU/releases)
 [![Telegram](https://img.shields.io/badge/Telegram-Chat-26A5E4?logo=telegram)](https://t.me/v2rayn)
  
-[![Windows](https://img.shields.io/badge/Windows-supported-0078D6?logo=windows)](https://github.com/2dust/v2rayN) 
-[![Linux](https://img.shields.io/badge/Linux-supported-FCC624?logo=linux&logoColor=000)](https://github.com/2dust/v2rayN) 
-[![macOS](https://img.shields.io/badge/macOS-supported-000000?logo=apple)](https://github.com/2dust/v2rayN) 
-[![GPG Signed](https://img.shields.io/badge/GPG-signed-4B32C3?logo=gnuprivacyguard)](https://github.com/2dust/v2rayN)
+[![Windows](https://img.shields.io/badge/Windows-supported-0078D6?logo=windows)](https://github.com/h1w/v2rayN-RU) 
+[![Linux](https://img.shields.io/badge/Linux-supported-FCC624?logo=linux&logoColor=000)](https://github.com/h1w/v2rayN-RU) 
+[![macOS](https://img.shields.io/badge/macOS-supported-000000?logo=apple)](https://github.com/h1w/v2rayN-RU) 
+[![GPG Signed](https://img.shields.io/badge/GPG-signed-4B32C3?logo=gnuprivacyguard)](https://github.com/h1w/v2rayN-RU)
 
 
 ---
@@ -21,7 +21,7 @@ Download the latest release here:
 
 在这里下载最新版本：
 
-[https://github.com/2dust/v2rayN/releases](https://github.com/2dust/v2rayN/releases)
+[https://github.com/h1w/v2rayN-RU/releases](https://github.com/h1w/v2rayN-RU/releases)
 
 
 > [!TIP]
