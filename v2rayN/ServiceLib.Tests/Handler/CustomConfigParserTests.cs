@@ -141,4 +141,22 @@ public class CustomConfigParserTests
         // returned nodes are detached clones (no parent) so callers can re-parent them
         map["front"].Parent.Should().BeNull();
     }
+
+    [Fact]
+    public void ParseDisplayRules_Singbox_transforms_port_range_colon_to_dash()
+    {
+        var json = """
+        {
+          "route": {
+            "rules": [
+              { "outbound": "direct", "port_range": ["1000:2000", "8080:9090"] }
+            ]
+          }
+        }
+        """;
+        var rules = CustomConfigParser.ParseDisplayRules(json, ECoreType.sing_box);
+
+        rules.Should().ContainSingle();
+        rules[0].Port.Should().Be("1000-2000,8080-9090");
+    }
 }

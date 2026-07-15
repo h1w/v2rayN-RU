@@ -46,7 +46,6 @@ public static class CustomConfigParser
             }
 
             // index every outbound node by tag, and record its direct dependency tags
-            var nodesByTag = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
             var directDeps = new Dictionary<string, List<string>>(StringComparer.Ordinal);
             foreach (var ob in outbounds)
             {
@@ -55,7 +54,6 @@ public static class CustomConfigParser
                 {
                     continue;
                 }
-                nodesByTag[tag] = ob;
                 directDeps[tag] = GetDirectDeps(ob, coreType);
             }
 
