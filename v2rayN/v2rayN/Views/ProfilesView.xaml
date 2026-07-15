@@ -57,6 +57,17 @@
                     <materialDesign:PackIcon VerticalAlignment="Center" Kind="Plus" />
                 </Button>
 
+                <Button
+                    x:Name="btnOpenConfigDir"
+                    Width="30"
+                    Height="30"
+                    Margin="{StaticResource MarginLeftRight4}"
+                    AutomationProperties.Name="{x:Static resx:ResUI.menuOpenConfigDir}"
+                    Style="{StaticResource MaterialDesignFloatingActionMiniLightButton}"
+                    ToolTip="{x:Static resx:ResUI.menuOpenConfigDir}">
+                    <materialDesign:PackIcon VerticalAlignment="Center" Kind="FolderOpen" />
+                </Button>
+
                 <TextBox
                     x:Name="txtServerFilter"
                     Width="200"

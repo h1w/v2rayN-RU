@@ -24,6 +24,7 @@ public partial class ProfilesView
         txtServerFilter.PreviewKeyDown += TxtServerFilter_PreviewKeyDown;
         lstProfiles.PreviewKeyDown += LstProfiles_PreviewKeyDown;
         lstProfiles.SelectionChanged += LstProfiles_SelectionChanged;
+        lstProfiles.PreviewMouseLeftButtonUp += LstProfiles_PreviewMouseLeftButtonUp;
         lstProfiles.LoadingRow += LstProfiles_LoadingRow;
         menuSelectAll.Click += menuSelectAll_Click;
 
@@ -51,6 +52,7 @@ public partial class ProfilesView
             this.Bind(ViewModel, vm => vm.SelectedSub, v => v.lstGroup.SelectedItem).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.ServerFilter, v => v.txtServerFilter.Text).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.AddSubCmd, v => v.btnAddSub).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.OpenConfigDirCmd, v => v.btnOpenConfigDir).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.EditSubCmd, v => v.btnEditSub).DisposeWith(disposables);
 
             //servers delete
@@ -217,6 +219,19 @@ public partial class ProfilesView
 
         var colName = ((MyDGTextColumn)colHeader.Column).ExName;
         ViewModel?.SortServer(colName);
+    }
+
+    private async void LstProfiles_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var cell = FindAncestor<DataGridCell>((DependencyObject)e.OriginalSource);
+        if (cell?.Column is not MyDGTextColumn { ExName: "Address" })
+        {
+            return;
+        }
+        if (cell.DataContext is ProfileItemModel item && ViewModel is not null)
+        {
+            await ViewModel.CopyCustomConfigFileName(item);
+        }
     }
 
     private void menuSelectAll_Click(object sender, RoutedEventArgs e)
