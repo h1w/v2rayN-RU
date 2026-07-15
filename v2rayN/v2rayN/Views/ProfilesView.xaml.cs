@@ -11,6 +11,7 @@ public partial class ProfilesView
 {
     private static Config _config;
     private static readonly string _tag = "ProfilesView";
+    private Window? _hostWindow;
 
     public ProfilesView()
     {
@@ -25,6 +26,12 @@ public partial class ProfilesView
         lstProfiles.SelectionChanged += LstProfiles_SelectionChanged;
         lstProfiles.LoadingRow += LstProfiles_LoadingRow;
         menuSelectAll.Click += menuSelectAll_Click;
+
+        // Cancel a running speed/delay test on Esc regardless of which control has focus:
+        // the per-grid PreviewKeyDown only fires when the grid is focused, so a test started from a
+        // toolbar/menu couldn't be stopped until focus returned to the grid.
+        Loaded += ProfilesView_Loaded;
+        Unloaded += ProfilesView_Unloaded;
 
         if (_config.UiItem.EnableDragDropSort)
         {
@@ -290,6 +297,36 @@ public partial class ProfilesView
                     ViewModel?.ServerSpeedtestStop();
                     break;
             }
+        }
+    }
+
+    private void ProfilesView_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (_hostWindow is null)
+        {
+            _hostWindow = Window.GetWindow(this);
+            if (_hostWindow is not null)
+            {
+                _hostWindow.PreviewKeyDown += HostWindow_PreviewKeyDown;
+            }
+        }
+    }
+
+    private void ProfilesView_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (_hostWindow is not null)
+        {
+            _hostWindow.PreviewKeyDown -= HostWindow_PreviewKeyDown;
+            _hostWindow = null;
+        }
+    }
+
+    private void HostWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        // Do not mark handled: Esc keeps flowing to any other handler (e.g. closing a popup).
+        if (e.Key == Key.Escape)
+        {
+            ViewModel?.ServerSpeedtestStop();
         }
     }
 
