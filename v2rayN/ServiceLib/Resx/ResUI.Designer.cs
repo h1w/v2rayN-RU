@@ -1850,7 +1850,25 @@ namespace ServiceLib.Resx {
                 return ResourceManager.GetString("menuSubAdd", resourceCulture);
             }
         }
-        
+
+        /// <summary>
+        ///   Looks up a localized string similar to Open config folder.
+        /// </summary>
+        public static string menuOpenConfigDir {
+            get {
+                return ResourceManager.GetString("menuOpenConfigDir", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Copied to clipboard.
+        /// </summary>
+        public static string TipCopiedToClipboard {
+            get {
+                return ResourceManager.GetString("TipCopiedToClipboard", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   查找类似 Delete 的本地化字符串。
         /// </summary>

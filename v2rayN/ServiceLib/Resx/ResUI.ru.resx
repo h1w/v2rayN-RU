@@ -549,6 +549,12 @@
   <data name="menuSubAdd" xml:space="preserve">
     <value>Добавить</value>
   </data>
+  <data name="menuOpenConfigDir" xml:space="preserve">
+    <value>Открыть папку конфигов</value>
+  </data>
+  <data name="TipCopiedToClipboard" xml:space="preserve">
+    <value>Скопировано в буфер обмена</value>
+  </data>
   <data name="menuSubDelete" xml:space="preserve">
     <value>Удалить</value>
   </data>

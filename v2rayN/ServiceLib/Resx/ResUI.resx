@@ -552,6 +552,12 @@
   <data name="menuSubAdd" xml:space="preserve">
     <value>Add</value>
   </data>
+  <data name="menuOpenConfigDir" xml:space="preserve">
+    <value>Open config folder</value>
+  </data>
+  <data name="TipCopiedToClipboard" xml:space="preserve">
+    <value>Copied to clipboard</value>
+  </data>
   <data name="menuSubDelete" xml:space="preserve">
     <value>Delete</value>
   </data>
