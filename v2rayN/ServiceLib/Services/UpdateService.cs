@@ -100,6 +100,30 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
         }
     }
 
+    /// <summary>
+    /// Returns the currently installed version for display (e.g. "v1.8.4").
+    /// Empty string if the core is not installed or has no detectable version.
+    /// </summary>
+    public async Task<string> GetInstalledVersionDisplay(ECoreType type)
+    {
+        try
+        {
+            if (type == ECoreType.v2rayN)
+            {
+                return "v" + Utils.GetVersionInfo();
+            }
+
+            var version = await GetCoreVersion(type);
+            var text = version?.ToVersionString("v");
+            return (text.IsNullOrEmpty() || text == "v" || text == "v0.0.0") ? string.Empty : text;
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+            return string.Empty;
+        }
+    }
+
     public async Task<UpdateResult> CheckHasUpdateOnly(ECoreType type, bool preRelease)
     {
         if (!CoreInfoManager.Instance.IsCheckUpdateSupported(type))

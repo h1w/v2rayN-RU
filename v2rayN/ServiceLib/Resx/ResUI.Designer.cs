@@ -914,6 +914,15 @@ namespace ServiceLib.Resx {
                 return ResourceManager.GetString("menuCheckUpdate", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Check and Update.
+        /// </summary>
+        public static string menuCheckAndUpdate {
+            get {
+                return ResourceManager.GetString("menuCheckAndUpdate", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   查找类似 Clear all service statistics 的本地化字符串。

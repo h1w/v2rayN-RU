@@ -5,6 +5,7 @@ public class CheckUpdateModel : ReactiveObject
     public bool? IsSelected { get; set; }
     public ECoreType? CoreType { get; set; }
     [Reactive] public string? Remarks { get; set; }
+    [Reactive] public string? CurrentVersion { get; set; }
     public string? FileName { get; set; }
     public bool? IsFinished { get; set; }
     public bool IsGeoFile { get; set; }

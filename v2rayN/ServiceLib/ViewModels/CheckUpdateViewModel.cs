@@ -12,6 +12,9 @@ public class CheckUpdateViewModel : MyReactiveObject
     public IObservableCollection<CheckUpdateModel> CheckUpdateModels { get; } = new ObservableCollectionExtended<CheckUpdateModel>();
     public ReactiveCommand<Unit, Unit> CheckUpdateCmd { get; }
     public ReactiveCommand<Unit, Unit> CheckOnlyCmd { get; }
+    public ReactiveCommand<CheckUpdateModel, Unit> CheckUpdateItemCmd { get; }
+    public ReactiveCommand<CheckUpdateModel, Unit> CheckOnlyItemCmd { get; }
+    public ReactiveCommand<Unit, Unit> OpenCoreFolderCmd { get; }
     [Reactive] public bool EnableCheckPreReleaseUpdate { get; set; }
 
     public CheckUpdateViewModel()
@@ -31,6 +34,15 @@ public class CheckUpdateViewModel : MyReactiveObject
             Logging.SaveLog(_tag, ex);
             _ = UpdateView(_v2rayN, ex.Message);
         });
+
+        CheckUpdateItemCmd = ReactiveCommand.CreateFromTask<CheckUpdateModel>(CheckUpdateItemExec);
+        CheckUpdateItemCmd.ThrownExceptions.Subscribe(ex => Logging.SaveLog(_tag, ex));
+
+        CheckOnlyItemCmd = ReactiveCommand.CreateFromTask<CheckUpdateModel>(CheckOnlyItemExec);
+        CheckOnlyItemCmd.ThrownExceptions.Subscribe(ex => Logging.SaveLog(_tag, ex));
+
+        OpenCoreFolderCmd = ReactiveCommand.Create(OpenCoreFolder);
+        OpenCoreFolderCmd.ThrownExceptions.Subscribe(ex => Logging.SaveLog(_tag, ex));
 
         EnableCheckPreReleaseUpdate = _config.CheckUpdateItem.CheckPreReleaseUpdate;
 
@@ -52,6 +64,49 @@ public class CheckUpdateViewModel : MyReactiveObject
 
         CheckUpdateModels.Clear();
         CheckUpdateModels.AddRange(models);
+
+        _ = Task.Run(LoadCurrentVersions);
+    }
+
+    private async Task LoadCurrentVersions()
+    {
+        foreach (var item in CheckUpdateModels.ToList())
+        {
+            await RefreshCurrentVersion(item.CoreType, item);
+        }
+    }
+
+    /// <summary>
+    /// Re-reads the currently installed version of a core and updates the row text on the UI thread.
+    /// Called on window open and again right after a core is applied, so the displayed version
+    /// reflects reality in real time without restarting the app.
+    /// </summary>
+    private async Task RefreshCurrentVersion(ECoreType? coreType, CheckUpdateModel? row = null)
+    {
+        if (coreType == null)
+        {
+            return;
+        }
+
+        var found = row ?? CheckUpdateModels.FirstOrDefault(t => t.CoreType == coreType && !t.IsGeoFile);
+        if (found == null || found.IsGeoFile)
+        {
+            return;
+        }
+
+        var service = new UpdateService(_config, (success, msg) => Task.CompletedTask);
+        var version = await service.GetInstalledVersionDisplay(coreType.Value);
+
+        RxSchedulers.MainThreadScheduler.Schedule(version, (scheduler, ver) =>
+        {
+            found.CurrentVersion = ver;
+            return Disposable.Empty;
+        });
+    }
+
+    private void OpenCoreFolder()
+    {
+        ProcUtils.ProcessStart(Utils.GetBinPath(""));
     }
 
     private CheckUpdateModel GetCheckUpdateModel(ECoreType coreType)
@@ -130,30 +185,7 @@ public class CheckUpdateViewModel : MyReactiveObject
                 continue;
             }
 
-            await UpdateView(item.CoreType, "...");
-
-            if (item.IsGeoFile || item.CoreType == null)
-            {
-                await UpdateView(item.CoreType, ResUI.menuCheckOnly + $" ({ResUI.MsgNotSupport})");
-                continue;
-            }
-
-            if (item.CoreType == null)
-            {
-                await UpdateView(item.CoreType, ResUI.MsgNotSupport);
-                continue;
-            }
-
-            var updateService = new UpdateService(_config, async (success, msg) => await Task.CompletedTask);
-            var result = await updateService.CheckHasUpdateOnly(item.CoreType.Value, EnableCheckPreReleaseUpdate);
-            if (result.Success && result.Version != null)
-            {
-                await UpdateView(item.CoreType, string.Format(ResUI.MsgCheckUpdateHasNewVersion, item.CoreType, result.Version));
-            }
-            else
-            {
-                await UpdateView(item.CoreType, result.Msg);
-            }
+            await CheckOnlyItem(item);
         }
     }
 
@@ -178,32 +210,85 @@ public class CheckUpdateViewModel : MyReactiveObject
                 continue;
             }
 
-            await UpdateView(item.CoreType, "...");
-
-            if (item.IsGeoFile)
-            {
-                await CheckUpdateGeo();
-            }
-            else if (item.CoreType == _v2rayN)
-            {
-                if (Utils.IsPackagedInstall())
-                {
-                    await UpdateView(_v2rayN, ResUI.MsgNotSupport);
-                    continue;
-                }
-                await CheckUpdateN(EnableCheckPreReleaseUpdate);
-            }
-            else if (item.CoreType == ECoreType.Xray)
-            {
-                await CheckUpdateCore(item, EnableCheckPreReleaseUpdate);
-            }
-            else if (item.CoreType.HasValue)
-            {
-                await CheckUpdateCore(item, false);
-            }
+            await CheckUpdateItem(item);
         }
 
         await UpdateFinished();
+    }
+
+    // Per-item: check-only for a single row (independent of its checkbox, does not resave selection).
+    private async Task CheckOnlyItemExec(CheckUpdateModel item)
+    {
+        await Task.Run(() => CheckOnlyItem(item));
+    }
+
+    // Per-item: full install cycle scoped to a single row (stop core -> unpack -> restart / self-upgrade).
+    private async Task CheckUpdateItemExec(CheckUpdateModel item)
+    {
+        await Task.Run(async () =>
+        {
+            _lstUpdated.Clear();
+            _lstUpdated =
+            [
+                new CheckUpdateModel()
+                {
+                    CoreType = item.CoreType,
+                    IsGeoFile = item.IsGeoFile
+                }
+            ];
+
+            await CheckUpdateItem(item);
+            await UpdateFinished();
+        });
+    }
+
+    private async Task CheckOnlyItem(CheckUpdateModel item)
+    {
+        await UpdateView(item.CoreType, "...");
+
+        if (item.IsGeoFile || item.CoreType == null)
+        {
+            await UpdateView(item.CoreType, ResUI.menuCheckOnly + $" ({ResUI.MsgNotSupport})");
+            return;
+        }
+
+        var updateService = new UpdateService(_config, async (success, msg) => await Task.CompletedTask);
+        var result = await updateService.CheckHasUpdateOnly(item.CoreType.Value, EnableCheckPreReleaseUpdate);
+        if (result.Success && result.Version != null)
+        {
+            await UpdateView(item.CoreType, string.Format(ResUI.MsgCheckUpdateHasNewVersion, item.CoreType, result.Version));
+        }
+        else
+        {
+            await UpdateView(item.CoreType, result.Msg);
+        }
+    }
+
+    private async Task CheckUpdateItem(CheckUpdateModel item)
+    {
+        await UpdateView(item.CoreType, "...");
+
+        if (item.IsGeoFile)
+        {
+            await CheckUpdateGeo();
+        }
+        else if (item.CoreType == _v2rayN)
+        {
+            if (Utils.IsPackagedInstall())
+            {
+                await UpdateView(_v2rayN, ResUI.MsgNotSupport);
+                return;
+            }
+            await CheckUpdateN(EnableCheckPreReleaseUpdate);
+        }
+        else if (item.CoreType == ECoreType.Xray)
+        {
+            await CheckUpdateCore(item, EnableCheckPreReleaseUpdate);
+        }
+        else if (item.CoreType.HasValue)
+        {
+            await CheckUpdateCore(item, false);
+        }
     }
 
     private void UpdatedPlusPlus(ECoreType? coreType, string fileName)
@@ -387,6 +472,10 @@ public class CheckUpdateViewModel : MyReactiveObject
             }
 
             await UpdateView(item.CoreType, ResUI.MsgUpdateV2rayCoreSuccessfully);
+
+            // The new core binary is now on disk — refresh the displayed installed version
+            // immediately so it reflects the applied update without restarting the app.
+            await RefreshCurrentVersion(item.CoreType);
 
             if (File.Exists(fileName))
             {

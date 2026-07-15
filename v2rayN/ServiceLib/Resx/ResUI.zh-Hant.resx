@@ -402,6 +402,9 @@
   <data name="menuCheckUpdate" xml:space="preserve">
     <value>檢查更新</value>
   </data>
+  <data name="menuCheckAndUpdate" xml:space="preserve">
+    <value>檢查並更新</value>
+  </data>
   <data name="menuClose" xml:space="preserve">
     <value>關閉</value>
   </data>

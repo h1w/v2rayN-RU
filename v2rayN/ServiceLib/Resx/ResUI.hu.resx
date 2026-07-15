@@ -402,6 +402,9 @@
   <data name="menuCheckUpdate" xml:space="preserve">
     <value>Frissítés ellenőrzése</value>
   </data>
+  <data name="menuCheckAndUpdate" xml:space="preserve">
+    <value>Ellenőrzés és frissítés</value>
+  </data>
   <data name="menuClose" xml:space="preserve">
     <value>Bezárás</value>
   </data>

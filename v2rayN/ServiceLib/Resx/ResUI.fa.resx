@@ -402,6 +402,9 @@
   <data name="menuCheckUpdate" xml:space="preserve">
     <value>بررسی بروزرسانی</value>
   </data>
+  <data name="menuCheckAndUpdate" xml:space="preserve">
+    <value>بررسی و بروزرسانی</value>
+  </data>
   <data name="menuClose" xml:space="preserve">
     <value>بستن</value>
   </data>
