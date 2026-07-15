@@ -271,7 +271,7 @@ public class RoutingSettingViewModel : MyReactiveObject
             NoticeManager.Instance.Enqueue(ResUI.OperationFailed);
             return;
         }
-        var existing = await AppManager.Instance.RoutingItems();
+        var existing = await AppManager.Instance.RoutingItems() ?? [];
         var maxSort = existing.Count > 0 ? existing.Max(t => t.Sort) : 0;
         foreach (var item in items)
         {

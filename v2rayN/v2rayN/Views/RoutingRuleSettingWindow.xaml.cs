@@ -80,7 +80,7 @@ public partial class RoutingRuleSettingWindow
 
             ViewModel.SaveRulesFileInteraction.RegisterHandler(interaction =>
             {
-                if (UI.SaveFileDialog(out var fileName, "Rules|*.json|All|*.*") != true)
+                if (UI.SaveFileDialog(out var fileName, "Rules|*.json|All|*.*", interaction.Input) != true)
                 {
                     interaction.SetOutput(null);
                     return;

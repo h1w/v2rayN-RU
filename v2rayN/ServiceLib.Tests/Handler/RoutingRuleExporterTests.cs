@@ -73,6 +73,8 @@ public class RoutingRuleExporterTests
         parsed[0].RuleSet.Should().Contain("proxy");
         parsed[0].Id.Should().BeNullOrEmpty();
         parsed[0].IsActive.Should().BeFalse();
+        parsed[0].Sort.Should().Be(0);
+        parsed[0].Locked.Should().BeFalse();
     }
 
     [Fact]
