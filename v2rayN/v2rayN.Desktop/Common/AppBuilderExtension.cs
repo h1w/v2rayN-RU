@@ -5,6 +5,12 @@ public static class AppBuilderExtension
     private static readonly string DefaultFontFamilyName =
         Path.Combine(Global.AvaAssets, "Fonts#Noto Sans SC");
 
+    // Color-emoji font bundled with the app. Segoe UI Emoji on Windows does not draw
+    // regional-indicator flag emoji (e.g. country flags), so we ship Noto Color Emoji
+    // inside the build and put it ahead of the OS fonts to guarantee flags render.
+    private static readonly string EmojiFontFamilyName =
+        Path.Combine(Global.AvaAssets, "Fonts#Noto Color Emoji");
+
     public static AppBuilder WithFontByDefault(this AppBuilder appBuilder)
     {
         var fallbacks = new List<FontFallback>();
@@ -15,6 +21,9 @@ public static class AppBuilderExtension
         {
             FontFamily = notoSansSc
         });
+
+        // Bundled emoji font takes priority over OS emoji fonts on every platform.
+        AddFontFallback(fallbacks, EmojiFontFamilyName);
 
         if (OperatingSystem.IsWindows())
         {

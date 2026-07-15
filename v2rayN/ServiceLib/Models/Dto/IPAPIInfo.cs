@@ -22,7 +22,8 @@ public readonly record struct IpInfoResult(string Country, string? Ip)
 {
     public override string ToString()
     {
-        var emoji = Utils.IsWindows() ? null : Country.CountryToEmoji();
+        // Flags render on Windows too now that a color-emoji font is bundled with the app.
+        var emoji = Country.CountryToEmoji();
         return $"{emoji}({Country}) {Ip}";
     }
 }
