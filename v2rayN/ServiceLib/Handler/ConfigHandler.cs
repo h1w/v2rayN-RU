@@ -2269,6 +2269,24 @@ public static class ConfigHandler
         return await Task.FromResult(0);
     }
 
+    public static int MoveRoutingRuleTo(List<RulesItem> rules, int fromIndex, int toIndex)
+    {
+        if (rules is null
+            || fromIndex < 0 || fromIndex >= rules.Count
+            || toIndex < 0 || toIndex >= rules.Count)
+        {
+            return -1;
+        }
+        if (fromIndex == toIndex)
+        {
+            return 0;
+        }
+        var item = rules[fromIndex];
+        rules.RemoveAt(fromIndex);
+        rules.Insert(toIndex, item);
+        return 0;
+    }
+
     /// <summary>
     /// Set the default routing configuration
     /// </summary>
