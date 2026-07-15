@@ -25,12 +25,18 @@ public class RoutingRuleDetailsViewModel : MyReactiveObject, ICloseable
     [Reactive]
     public bool AutoSort { get; set; }
 
+    [Reactive]
+    public bool IsReadonly { get; set; }
+
+    public bool IsEditable => !IsReadonly;
+
     public ReactiveCommand<Unit, Unit> SelectProfileCmd { get; }
     public ReactiveCommand<Unit, Unit> SaveCmd { get; }
 
-    public RoutingRuleDetailsViewModel(RulesItem rulesItem)
+    public RoutingRuleDetailsViewModel(RulesItem rulesItem, bool isReadonly = false)
     {
         _config = AppManager.Instance.Config;
+        IsReadonly = isReadonly;
 
         SelectProfileCmd = ReactiveCommand.CreateFromTask(async () =>
         {
@@ -61,6 +67,12 @@ public class RoutingRuleDetailsViewModel : MyReactiveObject, ICloseable
 
     private async Task SaveRulesAsync()
     {
+        if (IsReadonly)
+        {
+            RequestClose?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
         Domain = Utils.Convert2Comma(Domain);
         IP = Utils.Convert2Comma(IP);
         Process = Utils.ParseProcess(Process);
