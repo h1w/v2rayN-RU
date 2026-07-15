@@ -1,7 +1,13 @@
+using System.Windows.Controls;
+using System.Windows.Media;
+
 namespace v2rayN.Views;
 
 public partial class RoutingRuleSettingWindow
 {
+    private Point _dragStartPoint;
+    private RulesItemModel? _draggedRule;
+
     public RoutingRuleSettingWindow()
     {
         InitializeComponent();
@@ -10,6 +16,9 @@ public partial class RoutingRuleSettingWindow
         PreviewKeyDown += RoutingRuleSettingWindow_PreviewKeyDown;
         lstRules.SelectionChanged += lstRules_SelectionChanged;
         lstRules.MouseDoubleClick += LstRules_MouseDoubleClick;
+        lstRules.PreviewMouseLeftButtonDown += lstRules_PreviewMouseLeftButtonDown;
+        lstRules.MouseMove += lstRules_MouseMove;
+        lstRules.Drop += lstRules_Drop;
         menuRuleSelectAll.Click += menuRuleSelectAll_Click;
         btnBrowseCustomIcon.Click += btnBrowseCustomIcon_Click;
         btnBrowseCustomRulesetPath4Singbox.Click += btnBrowseCustomRulesetPath4Singbox_Click;
@@ -185,5 +194,48 @@ public partial class RoutingRuleSettingWindow
     private void linkCustomRulesetPath4Singbox(object sender, RoutedEventArgs e)
     {
         ProcUtils.ProcessStart("https://github.com/2dust/v2rayCustomRoutingList/blob/master/singbox_custom_ruleset_example.json");
+    }
+
+    private void lstRules_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _dragStartPoint = e.GetPosition(null);
+        _draggedRule = (e.OriginalSource as DependencyObject).TryFindParent<DataGridRow>()?.Item as RulesItemModel;
+    }
+
+    private void lstRules_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _draggedRule is null || _draggedRule.IsReadonly)
+        {
+            return;
+        }
+        var diff = _dragStartPoint - e.GetPosition(null);
+        if (Math.Abs(diff.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(diff.Y) < SystemParameters.MinimumVerticalDragDistance)
+        {
+            return;
+        }
+        DragDrop.DoDragDrop(lstRules, _draggedRule, DragDropEffects.Move);
+    }
+
+    private void lstRules_Drop(object sender, DragEventArgs e)
+    {
+        var target = (e.OriginalSource as DependencyObject).TryFindParent<DataGridRow>()?.Item as RulesItemModel;
+        if (_draggedRule is not null && target is not null)
+        {
+            ViewModel?.MoveRuleByDrag(_draggedRule, target);
+        }
+        _draggedRule = null;
+    }
+}
+
+internal static class VisualTreeExtensions
+{
+    public static T? TryFindParent<T>(this DependencyObject? child) where T : DependencyObject
+    {
+        while (child is not null and not T)
+        {
+            child = VisualTreeHelper.GetParent(child);
+        }
+        return child as T;
     }
 }

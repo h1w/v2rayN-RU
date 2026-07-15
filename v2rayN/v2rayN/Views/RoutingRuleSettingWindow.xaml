@@ -264,6 +264,7 @@
             <TabItem HorizontalAlignment="Left" Header="{x:Static resx:ResUI.menuRuleList}">
                 <DataGrid
                     x:Name="lstRules"
+                    AllowDrop="True"
                     AutoGenerateColumns="False"
                     BorderThickness="1"
                     CanUserAddRows="False"
@@ -318,10 +319,17 @@
                         </ContextMenu>
                     </DataGrid.ContextMenu>
                     <DataGrid.Columns>
-                        <DataGridCheckBoxColumn
-                            Width="60"
-                            Binding="{Binding Enabled}"
-                            Header="" />
+                        <DataGridTemplateColumn Width="60" Header="">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox
+                                        HorizontalAlignment="Center"
+                                        IsChecked="{Binding Enabled, Mode=OneWay}"
+                                        IsEnabled="{Binding IsEditable}"
+                                        IsHitTestVisible="{Binding IsEditable}" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn
                             Width="150"
                             Binding="{Binding Remarks}"

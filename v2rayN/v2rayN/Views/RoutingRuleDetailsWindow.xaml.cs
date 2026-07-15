@@ -32,6 +32,9 @@ public partial class RoutingRuleDetailsWindow
             this.BindCommand(ViewModel, vm => vm.SelectProfileCmd, v => v.btnSelectProfile).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.SaveCmd, v => v.btnSave).DisposeWith(disposables);
 
+            this.OneWayBind(ViewModel, vm => vm.IsEditable, v => v.btnSave.IsEnabled).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.IsEditable, v => v.gridContent.IsEnabled).DisposeWith(disposables);
+
             this.WhenAnyValue(v => v.ViewModel.SelectedSource)
                 .WhereNotNull()
                 .Subscribe(InitializeData)
