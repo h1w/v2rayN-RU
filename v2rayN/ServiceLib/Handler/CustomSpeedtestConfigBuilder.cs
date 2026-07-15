@@ -59,7 +59,28 @@ public static class CustomSpeedtestConfigBuilder
 
     private static string BuildSingbox(JsonNode root, IReadOnlyList<(OutboundTestTarget target, int port)> targets)
     {
-        // Implemented in Task 2.
-        return string.Empty;
+        var inbounds = new JsonArray();
+        var rules = new JsonArray();
+        foreach (var (target, port) in targets)
+        {
+            var inTag = "in-" + target.Tag;
+            inbounds.Add(new JsonObject
+            {
+                ["type"] = "socks",
+                ["tag"] = inTag,
+                ["listen"] = Global.Loopback,
+                ["listen_port"] = port,
+            });
+            rules.Add(new JsonObject
+            {
+                ["inbound"] = new JsonArray(inTag),
+                ["outbound"] = target.Tag,
+            });
+        }
+        root["inbounds"] = inbounds;
+        var route = root["route"] as JsonObject ?? new JsonObject();
+        route["rules"] = rules;   // other route keys (final, default_domain_resolver, ...) preserved
+        root["route"] = route;
+        return root.ToJsonString(_writeOptions);
     }
 }

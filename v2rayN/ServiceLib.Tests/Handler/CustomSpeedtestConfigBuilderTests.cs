@@ -21,6 +21,18 @@ public class CustomSpeedtestConfigBuilderTests
     }
     """;
 
+    private const string SingboxJson = """
+    {
+      "inbounds": [ { "type": "mixed", "tag": "mixed-in", "listen_port": 10808 } ],
+      "outbounds": [
+        { "type": "vless", "tag": "proxyA" },
+        { "type": "shadowsocks", "tag": "proxyB", "detour": "proxyA" },
+        { "type": "direct", "tag": "direct" }
+      ],
+      "route": { "final": "proxyA", "rules": [ { "outbound": "direct" } ] }
+    }
+    """;
+
     private static List<(OutboundTestTarget, int)> Targets()
         => new()
         {
@@ -52,5 +64,27 @@ public class CustomSpeedtestConfigBuilderTests
     public void Build_null_returns_empty()
     {
         CustomSpeedtestConfigBuilder.Build(null, ECoreType.Xray, Targets()).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Build_Singbox_pins_one_inbound_per_outbound()
+    {
+        var json = CustomSpeedtestConfigBuilder.Build(SingboxJson, ECoreType.sing_box, Targets());
+        var root = JsonUtils.ParseJson(json)!;
+
+        var inbounds = root["inbounds"]!.AsArray();
+        inbounds.Should().HaveCount(2);
+        inbounds[0]!["type"]!.GetValue<string>().Should().Be("socks");
+        inbounds[0]!["listen_port"]!.GetValue<int>().Should().Be(20001);
+        inbounds[0]!["tag"]!.GetValue<string>().Should().Be("in-proxyA");
+
+        var rules = root["route"]!["rules"]!.AsArray();
+        rules.Should().HaveCount(2);
+        rules[0]!["inbound"]!.AsArray()[0]!.GetValue<string>().Should().Be("in-proxyA");
+        rules[0]!["outbound"]!.GetValue<string>().Should().Be("proxyA");
+
+        // other route keys preserved
+        root["route"]!["final"]!.GetValue<string>().Should().Be("proxyA");
+        root["outbounds"]!.AsArray().Should().HaveCount(3);
     }
 }
