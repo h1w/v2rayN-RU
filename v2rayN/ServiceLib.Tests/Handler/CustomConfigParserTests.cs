@@ -131,4 +131,14 @@ public class CustomConfigParserTests
         var front = targets.Single(t => t.Tag == "front");
         front.ChainTags.Should().Contain("bridge");
     }
+
+    [Fact]
+    public void GetOutboundNodesByTag_returns_cloned_nodes_keyed_by_tag()
+    {
+        var map = CustomConfigParser.GetOutboundNodesByTag(XrayChainJson, ECoreType.Xray);
+        map.Keys.Should().BeEquivalentTo(new[] { "front", "bridge", "direct" });
+        map["front"]!["protocol"]!.GetValue<string>().Should().Be("vless");
+        // returned nodes are detached clones (no parent) so callers can re-parent them
+        map["front"].Parent.Should().BeNull();
+    }
 }

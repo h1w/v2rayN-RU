@@ -86,6 +86,39 @@ public static class CustomConfigParser
         }
     }
 
+    public static Dictionary<string, JsonNode> GetOutboundNodesByTag(string? json, ECoreType coreType)
+    {
+        var result = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
+        try
+        {
+            var root = JsonUtils.ParseJson(json);
+            var outbounds = root?["outbounds"]?.AsArray();
+            if (outbounds is null)
+            {
+                return result;
+            }
+            foreach (var ob in outbounds)
+            {
+                var tag = ob?["tag"]?.GetValue<string>();
+                if (ob is null || tag.IsNullOrEmpty())
+                {
+                    continue;
+                }
+                var clone = JsonNode.Parse(ob.ToJsonString());
+                if (clone is not null)
+                {
+                    result[tag] = clone;
+                }
+            }
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+            return result;
+        }
+    }
+
     private static List<string> GetDirectDeps(JsonNode ob, ECoreType coreType)
     {
         var deps = new List<string>();
