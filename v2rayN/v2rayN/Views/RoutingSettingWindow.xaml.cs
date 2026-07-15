@@ -30,11 +30,51 @@ public partial class RoutingSettingWindow
             this.BindCommand(ViewModel, vm => vm.RoutingAdvancedImportRulesCmd, v => v.menuRoutingAdvancedImportRules).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.RoutingAdvancedImportRulesCmd, v => v.menuRoutingAdvancedImportRules2).DisposeWith(disposables);
 
+            this.BindCommand(ViewModel, vm => vm.ExportRoutingToClipboardCmd, v => v.menuRoutingAdvancedExportToClipboard).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.ExportRoutingToClipboardCmd, v => v.menuRoutingAdvancedExportToClipboard2).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.ExportRoutingToFileCmd, v => v.menuRoutingAdvancedExportToFile).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.ExportRoutingToFileCmd, v => v.menuRoutingAdvancedExportToFile2).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.ImportRoutingFromFileCmd, v => v.menuRoutingAdvancedImportFromFile).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.ImportRoutingFromFileCmd, v => v.menuRoutingAdvancedImportFromFile2).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.ImportRoutingFromClipboardCmd, v => v.menuRoutingAdvancedImportFromClipboard).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.ImportRoutingFromClipboardCmd, v => v.menuRoutingAdvancedImportFromClipboard2).DisposeWith(disposables);
+
             ViewModel.ShowYesNoInteraction.RegisterHandler(interaction =>
             {
                 var message = interaction.Input;
                 var result = UI.ShowYesNo(message) != MessageBoxResult.No;
                 interaction.SetOutput(result);
+            }).DisposeWith(disposables);
+
+            ViewModel?.SetClipboardDataInteraction.RegisterHandler(interaction =>
+            {
+                WindowsUtils.SetClipboardData(interaction.Input);
+                interaction.SetOutput(Unit.Default);
+            }).DisposeWith(disposables);
+
+            ViewModel?.ReadTextFromClipboardInteraction.RegisterHandler(interaction =>
+            {
+                interaction.SetOutput(WindowsUtils.GetClipboardData());
+            }).DisposeWith(disposables);
+
+            ViewModel?.BrowseRoutingFileInteraction.RegisterHandler(interaction =>
+            {
+                if (UI.OpenFileDialog(out var fileName, "Rules|*.json|All|*.*") != true)
+                {
+                    interaction.SetOutput(null);
+                    return;
+                }
+                interaction.SetOutput(fileName);
+            }).DisposeWith(disposables);
+
+            ViewModel?.SaveRoutingFileInteraction.RegisterHandler(interaction =>
+            {
+                if (UI.SaveFileDialog(out var fileName, "Rules|*.json|All|*.*") != true)
+                {
+                    interaction.SetOutput(null);
+                    return;
+                }
+                interaction.SetOutput(fileName);
             }).DisposeWith(disposables);
         });
         WindowsUtils.SetDarkBorder(this, AppManager.Instance.Config.UiItem.CurrentTheme);
