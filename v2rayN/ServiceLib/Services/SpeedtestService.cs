@@ -205,16 +205,12 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             NoticeManager.Instance.Enqueue(ResUI.SpeedtestingPressEscToExit);
         }
 
-        // Phase 2 (concurrent): honor the user's parallel-test setting.
-        // Each custom profile is its OWN core process (unlike the normal flow which batches many lightweight
-        // configs onto a single core), so parallelism is bounded by the configured mixed-concurrency count for
-        // both delay and mixed runs rather than the much larger page size. Pure speed runs stay sequential to
-        // avoid bandwidth contention skewing results (matches the normal Speedtest, which uses concurrency 1).
-        var concurrency = actionType switch
-        {
-            ESpeedActionType.Speedtest => 1,
-            _ => Math.Max(1, _config.SpeedTestItem.MixedConcurrencyCount),
-        };
+        // Phase 2 (concurrent): honor the user's parallel-test concurrency setting (MixedConcurrencyCount)
+        // for EVERY custom test type — delay, speed, and mixed alike. Each custom profile is its own core
+        // process (unlike the normal flow which batches many lightweight configs onto one core), so this count
+        // bounds how many run at once. (Higher concurrency splits bandwidth across parallel speed downloads —
+        // that trade-off is the user's to make via this setting.)
+        var concurrency = Math.Max(1, _config.SpeedTestItem.MixedConcurrencyCount);
 
         using var concurrencySemaphore = new SemaphoreSlim(concurrency);
         var tasks = new List<Task>();
