@@ -49,6 +49,7 @@ public partial class ProfilesView : ReactiveUserControl<ProfilesViewModel>
             this.Bind(ViewModel, vm => vm.SelectedSub, v => v.lstGroup.SelectedItem).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.ServerFilter, v => v.txtServerFilter.Text).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.AddSubCmd, v => v.btnAddSub).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.OpenConfigDirCmd, v => v.btnOpenConfigDir).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.EditSubCmd, v => v.btnEditSub).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.EditSubCmd, v => v.menuSubEdit).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.AddSubCmd, v => v.menuSubAdd).DisposeWith(disposables);
@@ -201,6 +202,14 @@ public partial class ProfilesView : ReactiveUserControl<ProfilesViewModel>
         if (ViewModel != null)
         {
             ViewModel.SelectedProfiles = lstProfiles.SelectedItems.Cast<ProfileItemModel>().ToList();
+        }
+    }
+
+    private async void AddressCell_Tapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        if (sender is Control { DataContext: ProfileItemModel item } && ViewModel is not null)
+        {
+            await ViewModel.CopyCustomConfigFileName(item);
         }
     }
 
