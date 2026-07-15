@@ -179,7 +179,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             var path = File.Exists(profile.Address) ? profile.Address : Utils.GetConfigPath(profile.Address);
             if (!File.Exists(path))
             {
-                await UpdateFunc(profile.IndexId, blDelay ? ResUI.SpeedtestingSkip : "", blSpeed ? ResUI.FailedToRunCore : ResUI.FailedToRunCore);
+                await UpdateFunc(profile.IndexId, blDelay ? ResUI.SpeedtestingSkip : "", blSpeed ? ResUI.SpeedtestingSkip : "");
                 continue;
             }
             var json = await File.ReadAllTextAsync(path);
@@ -205,13 +205,15 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             NoticeManager.Instance.Enqueue(ResUI.SpeedtestingPressEscToExit);
         }
 
-        // Phase 2 (concurrent): honor the same parallel-test settings the normal flow uses.
-        //  Realping -> page size; Mixedtest -> configured mixed concurrency; Speedtest -> 1 (avoid bandwidth contention).
+        // Phase 2 (concurrent): honor the user's parallel-test setting.
+        // Each custom profile is its OWN core process (unlike the normal flow which batches many lightweight
+        // configs onto a single core), so parallelism is bounded by the configured mixed-concurrency count for
+        // both delay and mixed runs rather than the much larger page size. Pure speed runs stay sequential to
+        // avoid bandwidth contention skewing results (matches the normal Speedtest, which uses concurrency 1).
         var concurrency = actionType switch
         {
-            ESpeedActionType.Realping => Math.Max(1, Math.Min(prepared.Count, _speedTestPageSize)),
-            ESpeedActionType.Mixedtest => Math.Max(1, _config.SpeedTestItem.MixedConcurrencyCount),
-            _ => 1,
+            ESpeedActionType.Speedtest => 1,
+            _ => Math.Max(1, _config.SpeedTestItem.MixedConcurrencyCount),
         };
 
         using var concurrencySemaphore = new SemaphoreSlim(concurrency);
