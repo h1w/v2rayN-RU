@@ -173,13 +173,13 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         {
             if (ShouldStopTest(exitLoopKey))
             {
-                await UpdateFunc(profile.IndexId, blDelay ? ResUI.SpeedtestingSkip : "", blSpeed ? ResUI.SpeedtestingSkip : "");
+                await UpdateFunc(profile.IndexId, ResUI.SpeedtestingSkip, blSpeed ? ResUI.SpeedtestingSkip : "");
                 continue;
             }
             var path = File.Exists(profile.Address) ? profile.Address : Utils.GetConfigPath(profile.Address);
             if (!File.Exists(path))
             {
-                await UpdateFunc(profile.IndexId, blDelay ? ResUI.SpeedtestingSkip : "", blSpeed ? ResUI.SpeedtestingSkip : "");
+                await UpdateFunc(profile.IndexId, ResUI.SpeedtestingSkip, blSpeed ? ResUI.SpeedtestingSkip : "");
                 continue;
             }
             var json = await File.ReadAllTextAsync(path);
@@ -187,7 +187,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             var targets = CustomConfigParser.ParseTestableOutbounds(json, coreType);
             if (targets.Count == 0)
             {
-                await UpdateFunc(profile.IndexId, blDelay ? ResUI.SpeedtestingSkip : "", blSpeed ? ResUI.SpeedtestingSkip : "");
+                await UpdateFunc(profile.IndexId, ResUI.SpeedtestingSkip, blSpeed ? ResUI.SpeedtestingSkip : "");
                 continue;
             }
             var targetsWithPorts = new List<(OutboundTestTarget target, int port)>();
@@ -222,7 +222,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         {
             if (ShouldStopTest(exitLoopKey))
             {
-                await UpdateFunc(item.profile.IndexId, blDelay ? ResUI.SpeedtestingSkip : "", blSpeed ? ResUI.SpeedtestingSkip : "");
+                await UpdateFunc(item.profile.IndexId, ResUI.SpeedtestingSkip, blSpeed ? ResUI.SpeedtestingSkip : "");
                 continue;
             }
             await concurrencySemaphore.WaitAsync();
@@ -233,7 +233,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                 {
                     if (ShouldStopTest(exitLoopKey))
                     {
-                        await UpdateFunc(captured.profile.IndexId, blDelay ? ResUI.SpeedtestingSkip : "", blSpeed ? ResUI.SpeedtestingSkip : "");
+                        await UpdateFunc(captured.profile.IndexId, ResUI.SpeedtestingSkip, blSpeed ? ResUI.SpeedtestingSkip : "");
                         return;
                     }
                     await RunCustomProfileTestAsync(captured.profile, captured.coreType, captured.json, captured.targetsWithPorts, blDelay, blSpeed, exitLoopKey);
