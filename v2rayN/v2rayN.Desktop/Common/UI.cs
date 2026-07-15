@@ -34,7 +34,7 @@ internal class UI
         return files.FirstOrDefault()?.TryGetLocalPath();
     }
 
-    public static async Task<string?> SaveFileDialog(string filter)
+    public static async Task<string?> SaveFileDialog(string filter, string? suggestedFileName = null)
     {
         var sp = GetStorageProvider();
         if (sp is null)
@@ -42,12 +42,21 @@ internal class UI
             return null;
         }
 
-        // Start async operation to open the dialog.
-        var files = await sp.SaveFilePickerAsync(new FilePickerSaveOptions
+        var options = new FilePickerSaveOptions
         {
-        });
+            SuggestedFileName = suggestedFileName,
+        };
+        if (filter == "json")
+        {
+            options.DefaultExtension = "json";
+            options.FileTypeChoices =
+            [
+                new FilePickerFileType("JSON") { Patterns = ["*.json"] },
+            ];
+        }
 
-        return files?.TryGetLocalPath();
+        var file = await sp.SaveFilePickerAsync(options);
+        return file?.TryGetLocalPath();
     }
 
     private static IStorageProvider? GetStorageProvider()
