@@ -165,55 +165,100 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             await UpdateFunc(profile.IndexId, blDelay ? ResUI.Speedtesting : "", blSpeed ? ResUI.SpeedtestingWait : "");
         }
 
+        // Phase 1 (single-threaded): parse each config and reserve a distinct socks port per outbound.
+        // Allocating ports here (not concurrently inside each profile) avoids two profiles racing onto the same port.
+        var prepared = new List<(ProfileItem profile, ECoreType coreType, string json, List<(OutboundTestTarget target, int port)> targetsWithPorts)>();
+        var portCursor = AppManager.Instance.GetLocalPort(EInboundProtocol.speedtest);
         foreach (var profile in customs)
         {
             if (ShouldStopTest(exitLoopKey))
             {
-                // Clear BOTH columns that were placeholdered, so a skipped profile doesn't stay stuck on Testing.../Waiting...
                 await UpdateFunc(profile.IndexId, blDelay ? ResUI.SpeedtestingSkip : "", blSpeed ? ResUI.SpeedtestingSkip : "");
                 continue;
             }
-            await RunCustomProfileTestAsync(profile, blDelay, blSpeed, exitLoopKey);
-        }
-    }
-
-    private async Task RunCustomProfileTestAsync(ProfileItem profile, bool blDelay, bool blSpeed, string exitLoopKey)
-    {
-        ProcessService? processService = null;
-        try
-        {
             var path = File.Exists(profile.Address) ? profile.Address : Utils.GetConfigPath(profile.Address);
             if (!File.Exists(path))
             {
-                await UpdateFunc(profile.IndexId, "", ResUI.FailedToRunCore);
-                return;
+                await UpdateFunc(profile.IndexId, blDelay ? ResUI.SpeedtestingSkip : "", blSpeed ? ResUI.FailedToRunCore : ResUI.FailedToRunCore);
+                continue;
             }
             var json = await File.ReadAllTextAsync(path);
             var coreType = AppManager.Instance.GetCoreType(profile, EConfigType.Custom);
             var targets = CustomConfigParser.ParseTestableOutbounds(json, coreType);
             if (targets.Count == 0)
             {
-                await UpdateFunc(profile.IndexId, ResUI.SpeedtestingSkip);
-                return;
+                await UpdateFunc(profile.IndexId, blDelay ? ResUI.SpeedtestingSkip : "", blSpeed ? ResUI.SpeedtestingSkip : "");
+                continue;
             }
-
-            var basePort = AppManager.Instance.GetLocalPort(EInboundProtocol.speedtest);
             var targetsWithPorts = new List<(OutboundTestTarget target, int port)>();
-            for (var i = 0; i < targets.Count; i++)
+            foreach (var t in targets)
             {
-                targetsWithPorts.Add((targets[i], Utils.GetFreePort(basePort + i)));
+                var port = Utils.GetFreePort(portCursor);
+                portCursor = port + 1;
+                targetsWithPorts.Add((t, port));
             }
+            prepared.Add((profile, coreType, json, targetsWithPorts));
+        }
 
-            if (targets.Count > 1)
+        if (prepared.Count > 1 || prepared.Any(p => p.targetsWithPorts.Count > 1))
+        {
+            NoticeManager.Instance.Enqueue(ResUI.SpeedtestingPressEscToExit);
+        }
+
+        // Phase 2 (concurrent): honor the same parallel-test settings the normal flow uses.
+        //  Realping -> page size; Mixedtest -> configured mixed concurrency; Speedtest -> 1 (avoid bandwidth contention).
+        var concurrency = actionType switch
+        {
+            ESpeedActionType.Realping => Math.Max(1, Math.Min(prepared.Count, _speedTestPageSize)),
+            ESpeedActionType.Mixedtest => Math.Max(1, _config.SpeedTestItem.MixedConcurrencyCount),
+            _ => 1,
+        };
+
+        using var concurrencySemaphore = new SemaphoreSlim(concurrency);
+        var tasks = new List<Task>();
+        foreach (var item in prepared)
+        {
+            if (ShouldStopTest(exitLoopKey))
             {
-                NoticeManager.Instance.Enqueue(ResUI.SpeedtestingPressEscToExit);
+                await UpdateFunc(item.profile.IndexId, blDelay ? ResUI.SpeedtestingSkip : "", blSpeed ? ResUI.SpeedtestingSkip : "");
+                continue;
             }
+            await concurrencySemaphore.WaitAsync();
+            var captured = item;
+            tasks.Add(Task.Run(async () =>
+            {
+                try
+                {
+                    if (ShouldStopTest(exitLoopKey))
+                    {
+                        await UpdateFunc(captured.profile.IndexId, blDelay ? ResUI.SpeedtestingSkip : "", blSpeed ? ResUI.SpeedtestingSkip : "");
+                        return;
+                    }
+                    await RunCustomProfileTestAsync(captured.profile, captured.coreType, captured.json, captured.targetsWithPorts, blDelay, blSpeed, exitLoopKey);
+                }
+                catch (Exception ex)
+                {
+                    Logging.SaveLog(_tag, ex);
+                }
+                finally
+                {
+                    concurrencySemaphore.Release();
+                }
+            }));
+        }
+        await Task.WhenAll(tasks);
+    }
 
+    private async Task RunCustomProfileTestAsync(ProfileItem profile, ECoreType coreType, string json, List<(OutboundTestTarget target, int port)> targetsWithPorts, bool blDelay, bool blSpeed, string exitLoopKey)
+    {
+        ProcessService? processService = null;
+        try
+        {
             var configJson = CustomSpeedtestConfigBuilder.Build(json, coreType, targetsWithPorts);
             processService = await CoreManager.Instance.LoadCoreConfigCustomSpeedtest(configJson, coreType);
             if (processService is null)
             {
-                await UpdateFunc(profile.IndexId, "", ResUI.FailedToRunCore);
+                await UpdateFunc(profile.IndexId, blDelay ? ResUI.FailedToRunCore : "", blSpeed ? ResUI.FailedToRunCore : "");
                 return;
             }
             await Task.Delay(1000);
