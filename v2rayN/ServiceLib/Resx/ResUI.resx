@@ -300,6 +300,9 @@
   <data name="PleaseSelectRules" xml:space="preserve">
     <value>Please select rules</value>
   </data>
+  <data name="CustomJsonRuleReadonlyTip" xml:space="preserve">
+    <value>These rules come from the active custom JSON config and are read-only.</value>
+  </data>
   <data name="RemoveRules" xml:space="preserve">
     <value>Are you sure you want to remove the rules?</value>
   </data>
