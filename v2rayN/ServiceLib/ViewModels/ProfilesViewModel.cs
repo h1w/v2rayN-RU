@@ -88,6 +88,8 @@ public class ProfilesViewModel : MyReactiveObject
     public ReactiveCommand<Unit, Unit> EditSubCmd { get; }
     public ReactiveCommand<Unit, Unit> DeleteSubCmd { get; }
 
+    public ReactiveCommand<Unit, Unit> OpenConfigDirCmd { get; }
+
     #endregion Menu
 
     #region Init
@@ -241,6 +243,11 @@ public class ProfilesViewModel : MyReactiveObject
             await DeleteSubAsync();
         });
 
+        OpenConfigDirCmd = ReactiveCommand.CreateFromTask(async () =>
+        {
+            await OpenConfigDir();
+        });
+
         #endregion WhenAnyValue && ReactiveCommand
 
         #region AppEvents
@@ -272,6 +279,34 @@ public class ProfilesViewModel : MyReactiveObject
     private void Reload()
     {
         ReloadRequested.Publish();
+    }
+
+    private async Task OpenConfigDir()
+    {
+        var path = Utils.GetConfigPath();
+        if (Utils.IsWindows())
+        {
+            ProcUtils.ProcessStart(path);
+        }
+        else if (Utils.IsLinux())
+        {
+            ProcUtils.ProcessStart("xdg-open", path);
+        }
+        else if (Utils.IsMacOS())
+        {
+            ProcUtils.ProcessStart("open", path);
+        }
+        await Task.CompletedTask;
+    }
+
+    public async Task CopyCustomConfigFileName(ProfileItemModel? item)
+    {
+        if (item is null || item.ConfigType != EConfigType.Custom || item.Address.IsNullOrEmpty())
+        {
+            return;
+        }
+        await SetClipboardDataInteraction.Handle(item.Address);
+        NoticeManager.Instance.Enqueue(ResUI.TipCopiedToClipboard);
     }
 
     public async Task SetSpeedTestResult(SpeedTestResult result)
