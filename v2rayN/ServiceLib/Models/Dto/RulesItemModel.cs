@@ -8,4 +8,7 @@ public class RulesItemModel : RulesItem
     public string Domains { get; set; }
     public string Protocols { get; set; }
     public string RuleTypeName { get; set; }
+
+    public bool IsReadonly { get; set; }
+    public bool IsEditable => !IsReadonly;
 }
