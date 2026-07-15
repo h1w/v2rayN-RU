@@ -846,6 +846,27 @@
   <data name="menuRuleExportSelected" xml:space="preserve">
     <value>Export Selected Rules</value>
   </data>
+  <data name="menuRuleExportToClipboard" xml:space="preserve">
+    <value>Export Rules To Clipboard</value>
+  </data>
+  <data name="menuRuleExportToFile" xml:space="preserve">
+    <value>Export Rules To File</value>
+  </data>
+  <data name="menuRoutingAdvancedExportToClipboard" xml:space="preserve">
+    <value>Export Rule Set To Clipboard</value>
+  </data>
+  <data name="menuRoutingAdvancedExportToFile" xml:space="preserve">
+    <value>Export Rule Set To File</value>
+  </data>
+  <data name="menuRoutingAdvancedImportFromFile" xml:space="preserve">
+    <value>Import Rule Set From File</value>
+  </data>
+  <data name="menuRoutingAdvancedImportFromClipboard" xml:space="preserve">
+    <value>Import Rule Set From Clipboard</value>
+  </data>
+  <data name="SaveRoutingRulesResult" xml:space="preserve">
+    <value>Routing rules saved at: {0}</value>
+  </data>
   <data name="menuRuleList" xml:space="preserve">
     <value>Rule List</value>
   </data>

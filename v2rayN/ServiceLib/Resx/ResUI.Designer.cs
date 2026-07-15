@@ -1652,7 +1652,70 @@ namespace ServiceLib.Resx {
                 return ResourceManager.GetString("menuRuleExportSelected", resourceCulture);
             }
         }
-        
+
+        /// <summary>
+        ///   Looks up a localized string similar to Export Rules To Clipboard.
+        /// </summary>
+        public static string menuRuleExportToClipboard {
+            get {
+                return ResourceManager.GetString("menuRuleExportToClipboard", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Export Rules To File.
+        /// </summary>
+        public static string menuRuleExportToFile {
+            get {
+                return ResourceManager.GetString("menuRuleExportToFile", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Export Rule Set To Clipboard.
+        /// </summary>
+        public static string menuRoutingAdvancedExportToClipboard {
+            get {
+                return ResourceManager.GetString("menuRoutingAdvancedExportToClipboard", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Export Rule Set To File.
+        /// </summary>
+        public static string menuRoutingAdvancedExportToFile {
+            get {
+                return ResourceManager.GetString("menuRoutingAdvancedExportToFile", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Import Rule Set From File.
+        /// </summary>
+        public static string menuRoutingAdvancedImportFromFile {
+            get {
+                return ResourceManager.GetString("menuRoutingAdvancedImportFromFile", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Import Rule Set From Clipboard.
+        /// </summary>
+        public static string menuRoutingAdvancedImportFromClipboard {
+            get {
+                return ResourceManager.GetString("menuRoutingAdvancedImportFromClipboard", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Routing rules saved at: {0}.
+        /// </summary>
+        public static string SaveRoutingRulesResult {
+            get {
+                return ResourceManager.GetString("SaveRoutingRulesResult", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   查找类似 Rule List 的本地化字符串。
         /// </summary>
