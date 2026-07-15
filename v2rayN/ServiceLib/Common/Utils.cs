@@ -1077,12 +1077,21 @@ public class Utils
 
     public static string StartupPath()
     {
+#if DEBUG
+        // Debug builds keep a fully self-contained storage next to the executable
+        // (bin/cores, guiConfigs, database, logs — everything under the app output folder,
+        // e.g. ...\bin\Debug\net10.0\). The path is derived dynamically, never hard-coded,
+        // and the per-user Release fallback is intentionally ignored so debugging never
+        // touches the installed Release data.
+        return GetBaseDirectory();
+#else
         if (Environment.GetEnvironmentVariable(Global.LocalAppData) == "1")
         {
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "v2rayN");
         }
 
         return GetBaseDirectory();
+#endif
     }
 
     public static string GetTempPath(string filename = "")
