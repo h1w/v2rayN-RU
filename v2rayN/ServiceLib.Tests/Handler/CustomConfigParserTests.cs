@@ -42,4 +42,39 @@ public class CustomConfigParserTests
         CustomConfigParser.ParseDisplayRules(null, ECoreType.Xray).Should().BeEmpty();
         CustomConfigParser.ParseDisplayRules("not json", ECoreType.Xray).Should().BeEmpty();
     }
+
+    private const string SingboxJson = """
+    {
+      "outbounds": [
+        { "type": "vless", "tag": "proxy" },
+        { "type": "direct", "tag": "direct" },
+        { "type": "selector", "tag": "auto", "outbounds": ["proxy"] }
+      ],
+      "route": {
+        "rules": [
+          { "outbound": "direct", "domain_suffix": ["cn"], "geosite": ["cn"], "port": [443] },
+          { "action": "reject", "domain_keyword": ["ads"] },
+          { "outbound": "proxy", "ip_cidr": ["8.8.8.8/32"], "network": ["tcp"], "protocol": ["tls"] }
+        ]
+      }
+    }
+    """;
+
+    [Fact]
+    public void ParseDisplayRules_Singbox_maps_fields_and_actions()
+    {
+        var rules = CustomConfigParser.ParseDisplayRules(SingboxJson, ECoreType.sing_box);
+
+        rules.Should().HaveCount(3);
+        rules[0].OutboundTag.Should().Be("direct");
+        rules[0].Domain.Should().Contain("domain:cn");
+        rules[0].Domain.Should().Contain("geosite:cn");
+        rules[0].Port.Should().Be("443");
+        rules[1].OutboundTag.Should().Be("block");     // action=reject maps to block tag
+        rules[1].Domain.Should().Contain("keyword:ads");
+        rules[2].OutboundTag.Should().Be("proxy");
+        rules[2].Ip.Should().Contain("8.8.8.8/32");
+        rules[2].Network.Should().Be("tcp");
+        rules[2].Protocol.Should().Contain("tls");
+    }
 }

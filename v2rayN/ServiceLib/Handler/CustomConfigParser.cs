@@ -59,8 +59,83 @@ public static class CustomConfigParser
 
     private static List<RulesItem> ParseSingboxDisplayRules(JsonNode root)
     {
-        // Implemented in Task 3.
-        return new List<RulesItem>();
+        var result = new List<RulesItem>();
+        var rules = root["route"]?["rules"]?.AsArray();
+        if (rules is null)
+        {
+            return result;
+        }
+        foreach (var node in rules)
+        {
+            if (node is null)
+            {
+                continue;
+            }
+
+            var item = new RulesItem { Enabled = true };
+
+            var action = node["action"]?.GetValue<string>();
+            var outbound = node["outbound"]?.GetValue<string>();
+            item.OutboundTag = action == "reject" ? "block" : outbound;
+
+            // ports: sing-box uses number array `port` and string array `port_range` ("1000:2000")
+            var ports = new List<string>();
+            if (node["port"] is JsonArray portArr)
+            {
+                foreach (var p in portArr)
+                {
+                    var s = GetStringLoose(p);
+                    if (s.IsNotEmpty())
+                    {
+                        ports.Add(s);
+                    }
+                }
+            }
+            if (node["port_range"] is JsonArray rangeArr)
+            {
+                foreach (var p in rangeArr)
+                {
+                    var s = GetStringLoose(p)?.Replace(":", "-");
+                    if (s.IsNotEmpty())
+                    {
+                        ports.Add(s);
+                    }
+                }
+            }
+            item.Port = ports.Count > 0 ? string.Join(",", ports) : null;
+
+            item.Network = JoinArray(node["network"]);
+            item.InboundTag = ToStringList(node["inbound"]);
+            item.Protocol = ToStringList(node["protocol"]);
+
+            // domains: merge the sing-box domain families back into prefixed strings
+            var domains = new List<string>();
+            AddPrefixed(domains, node["domain"], "full:");
+            AddPrefixed(domains, node["domain_suffix"], "domain:");
+            AddPrefixed(domains, node["domain_keyword"], "keyword:");
+            AddPrefixed(domains, node["domain_regex"], "regexp:");
+            AddPrefixed(domains, node["geosite"], "geosite:");
+            item.Domain = domains.Count > 0 ? domains : null;
+
+            // ips: geoip + ip_cidr + ip_is_private
+            var ips = new List<string>();
+            AddPrefixed(ips, node["geoip"], "geoip:");
+            AddPrefixed(ips, node["ip_cidr"], "");
+            if (node["ip_is_private"]?.GetValue<bool>() == true)
+            {
+                ips.Add("geoip:private");
+            }
+            item.Ip = ips.Count > 0 ? ips : null;
+
+            // processes
+            var procs = new List<string>();
+            AddPrefixed(procs, node["process_name"], "");
+            AddPrefixed(procs, node["process_path"], "");
+            item.Process = procs.Count > 0 ? procs : null;
+
+            result.Add(item);
+        }
+        return result;
     }
 
     private static List<string>? ToStringList(JsonNode? node)
@@ -119,6 +194,25 @@ public static class CustomConfigParser
         catch
         {
             return string.Empty;
+        }
+    }
+
+    private static string? JoinArray(JsonNode? node)
+    {
+        var list = ToStringList(node);
+        return list?.Count > 0 ? string.Join(",", list) : null;
+    }
+
+    private static void AddPrefixed(List<string> target, JsonNode? node, string prefix)
+    {
+        var list = ToStringList(node);
+        if (list is null)
+        {
+            return;
+        }
+        foreach (var s in list)
+        {
+            target.Add(prefix + s);
         }
     }
 }
