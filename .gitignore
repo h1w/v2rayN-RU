@@ -402,3 +402,6 @@ FodyWeavers.xsd
 # JetBrains Rider
 .idea/
 *.sln.iml
+
+# Local planning/design docs — never pushed
+docs/
