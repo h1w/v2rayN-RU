@@ -300,6 +300,9 @@
   <data name="PleaseSelectRules" xml:space="preserve">
     <value>Please select rules</value>
   </data>
+  <data name="CustomJsonRuleReadonlyTip" xml:space="preserve">
+    <value>These rules come from the active custom JSON config and are read-only.</value>
+  </data>
   <data name="RemoveRules" xml:space="preserve">
     <value>Are you sure you want to remove the rules?</value>
   </data>
@@ -1856,5 +1859,14 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
   </data>
   <data name="TbToastConnected" xml:space="preserve">
     <value>Connected</value>
+  </data>
+  <data name="CustomTestBestDelayResult" xml:space="preserve">
+    <value>Best delay: {0} ms ({1})</value>
+  </data>
+  <data name="CustomTestSpeedResult" xml:space="preserve">
+    <value>Speed: {0} ({1})</value>
+  </data>
+  <data name="CustomTestAllFailed" xml:space="preserve">
+    <value>All outbounds failed</value>
   </data>
 </root>

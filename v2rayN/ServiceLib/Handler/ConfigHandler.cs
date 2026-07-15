@@ -2270,6 +2270,40 @@ public static class ConfigHandler
     }
 
     /// <summary>
+    /// Move a rule so it lands immediately before (insertAfter=false) or after (insertAfter=true)
+    /// the target rule, honoring the exact insertion edge regardless of drag direction.
+    /// Returns 0 on success (including a no-op that leaves order unchanged), -1 on invalid indices.
+    /// </summary>
+    public static int MoveRoutingRuleRelative(List<RulesItem> rules, int fromIndex, int targetIndex, bool insertAfter)
+    {
+        if (rules is null
+            || fromIndex < 0 || fromIndex >= rules.Count
+            || targetIndex < 0 || targetIndex >= rules.Count)
+        {
+            return -1;
+        }
+
+        // Insertion slot expressed in the ORIGINAL list's index space.
+        var insertPos = insertAfter ? targetIndex + 1 : targetIndex;
+
+        // Dropping onto either edge adjacent to the item's own position doesn't move it.
+        if (insertPos == fromIndex || insertPos == fromIndex + 1)
+        {
+            return 0;
+        }
+
+        var item = rules[fromIndex];
+        rules.RemoveAt(fromIndex);
+        if (insertPos > fromIndex)
+        {
+            insertPos--; // account for the removal shifting later positions down
+        }
+        insertPos = Math.Clamp(insertPos, 0, rules.Count);
+        rules.Insert(insertPos, item);
+        return 0;
+    }
+
+    /// <summary>
     /// Set the default routing configuration
     /// </summary>
     /// <param name="config">Current configuration</param>

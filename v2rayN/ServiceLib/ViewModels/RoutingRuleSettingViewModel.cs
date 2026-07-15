@@ -10,6 +10,7 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
     public Interaction<string, string?> SaveRulesFileInteraction { get; } = new();
 
     private List<RulesItem> _rules;
+    private List<RulesItem> _readonlyJsonRules = [];
 
     [Reactive]
     public RoutingItem SelectedRouting { get; set; }
@@ -106,6 +107,46 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
         _rules = routingItem.Id.IsNullOrEmpty() ? [] : JsonUtils.Deserialize<List<RulesItem>>(SelectedRouting.RuleSet);
 
         RefreshRulesItems();
+        _ = InitReadonlyJsonRulesAsync();
+    }
+
+    private async Task InitReadonlyJsonRulesAsync()
+    {
+        try
+        {
+            if (SelectedRouting?.IsActive != true)
+            {
+                return;
+            }
+            var node = await AppManager.Instance.GetProfileItem(_config.IndexId);
+            if (node is null || node.ConfigType != EConfigType.Custom)
+            {
+                return;
+            }
+            var path = node.Address;
+            if (!File.Exists(path))
+            {
+                path = Utils.GetConfigPath(node.Address);
+            }
+            if (!File.Exists(path))
+            {
+                return;
+            }
+            var json = await File.ReadAllTextAsync(path);
+            var coreType = AppManager.Instance.GetCoreType(node, EConfigType.Custom);
+            var parsed = CustomConfigParser.ParseDisplayRules(json, coreType);
+            foreach (var r in parsed)
+            {
+                r.Id = Utils.GetGuid(false);   // stable id for selection/lookup
+                r.Enabled = true;
+            }
+            _readonlyJsonRules = parsed;
+            RefreshRulesItems();
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(ex.Message, ex);
+        }
     }
 
     public void RefreshRulesItems()
@@ -113,28 +154,49 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
         RulesItems.Clear();
 
         var models = new List<RulesItemModel>();
+        foreach (var item in _readonlyJsonRules)
+        {
+            models.Add(ToRuleModel(item, isReadonly: true));
+        }
         foreach (var item in _rules)
         {
-            var it = new RulesItemModel()
-            {
-                Id = item.Id,
-                RuleTypeName = item.RuleType?.ToString(),
-                OutboundTag = item.OutboundTag,
-                Port = item.Port,
-                Network = item.Network,
-                Protocols = Utils.List2String(item.Protocol),
-                InboundTags = Utils.List2String(item.InboundTag),
-                Domains = Utils.List2String((item.Domain ?? []).Concat(item.Ip ?? []).ToList().Concat(item.Process ?? []).ToList()),
-                Enabled = item.Enabled,
-                Remarks = item.Remarks,
-            };
-            models.Add(it);
+            models.Add(ToRuleModel(item, isReadonly: false));
         }
         RulesItems.AddRange(models);
     }
 
+    private static RulesItemModel ToRuleModel(RulesItem item, bool isReadonly)
+    {
+        return new RulesItemModel()
+        {
+            Id = item.Id,
+            RuleTypeName = item.RuleType?.ToString(),
+            OutboundTag = item.OutboundTag,
+            Port = item.Port,
+            Network = item.Network,
+            Protocols = Utils.List2String(item.Protocol),
+            InboundTags = Utils.List2String(item.InboundTag),
+            Domains = Utils.List2String((item.Domain ?? []).Concat(item.Ip ?? []).ToList().Concat(item.Process ?? []).ToList()),
+            Enabled = item.Enabled,
+            Remarks = item.Remarks,
+            IsReadonly = isReadonly,
+        };
+    }
+
     public async Task RuleEditAsync(bool blNew)
     {
+        if (!blNew && SelectedSource?.IsReadonly == true)
+        {
+            var ro = _readonlyJsonRules.FirstOrDefault(t => t.Id == SelectedSource.Id);
+            if (ro is null)
+            {
+                return;
+            }
+            var readonlyVm = new RoutingRuleDetailsViewModel(JsonUtils.DeepCopy(ro), isReadonly: true);
+            await AppManager.Instance.WindowDialog.ShowDialogAsync(readonlyVm);
+            return;
+        }
+
         RulesItem? item;
         if (blNew)
         {
@@ -164,6 +226,11 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
         if (SelectedSource is null || SelectedSource.OutboundTag.IsNullOrEmpty())
         {
             NoticeManager.Instance.Enqueue(ResUI.PleaseSelectRules);
+            return;
+        }
+        if (SelectedSource?.IsReadonly == true)
+        {
+            NoticeManager.Instance.Enqueue(ResUI.CustomJsonRuleReadonlyTip);
             return;
         }
         if (await ShowYesNoInteraction.Handle(ResUI.RemoveServer) == false)
@@ -232,6 +299,11 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
             NoticeManager.Instance.Enqueue(ResUI.PleaseSelectRules);
             return;
         }
+        if (SelectedSource?.IsReadonly == true)
+        {
+            NoticeManager.Instance.Enqueue(ResUI.CustomJsonRuleReadonlyTip);
+            return;
+        }
 
         var item = _rules.FirstOrDefault(t => t.Id == SelectedSource?.Id);
         if (item == null)
@@ -240,6 +312,20 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
         }
         var index = _rules.IndexOf(item);
         if (await ConfigHandler.MoveRoutingRule(_rules, index, eMove) == 0)
+        {
+            RefreshRulesItems();
+        }
+    }
+
+    public void MoveRuleByDrag(RulesItemModel? dragged, RulesItemModel? target, bool insertAfter)
+    {
+        if (dragged is null || target is null || dragged.IsReadonly || target.IsReadonly)
+        {
+            return;
+        }
+        var from = _rules.FindIndex(t => t.Id == dragged.Id);
+        var to = _rules.FindIndex(t => t.Id == target.Id);
+        if (ConfigHandler.MoveRoutingRuleRelative(_rules, from, to, insertAfter) == 0)
         {
             RefreshRulesItems();
         }

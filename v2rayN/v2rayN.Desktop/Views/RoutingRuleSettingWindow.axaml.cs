@@ -1,3 +1,6 @@
+using Avalonia.Controls.Primitives;
+using Avalonia.Layout;
+using Avalonia.VisualTree;
 using v2rayN.Desktop.Base;
 using v2rayN.Desktop.Common;
 
@@ -5,6 +8,20 @@ namespace v2rayN.Desktop.Views;
 
 public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingViewModel>
 {
+    private static readonly DataFormat<object> LstRulesRowFormat =
+        DataFormat.CreateInProcessFormat<object>("LstRulesRow");
+
+    private static readonly SolidColorBrush InsertionLineBrush = new(Color.FromRgb(0, 122, 204));
+    private static readonly SolidColorBrush DragGhostBackgroundBrush = new(Color.FromArgb(210, 45, 45, 48));
+    private static readonly SolidColorBrush DragGhostBorderBrush = new(Color.FromArgb(220, 0, 122, 204));
+
+    private AdornerLayer? _adornerLayer;
+    private Border? _insertionAdorner;
+    private DataGridRow? _insertionAdornerRow;
+    private bool _insertionAdornerIsTopEdge;
+    private Border? _dragGhostAdorner;
+    private TextBlock? _dragGhostText;
+
     public RoutingRuleSettingWindow()
     {
         InitializeComponent();
@@ -17,6 +34,11 @@ public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingVie
         menuRuleSelectAll.Click += menuRuleSelectAll_Click;
         //btnBrowseCustomIcon.Click += btnBrowseCustomIcon_Click;
         btnBrowseCustomRulesetPath4Singbox.Click += btnBrowseCustomRulesetPath4Singbox_ClickAsync;
+
+        lstRules.AddHandler(PointerPressedEvent, LstRules_PointerPressed, RoutingStrategies.Bubble, true);
+        lstRules.AddHandler(DragDrop.DragOverEvent, LstRules_DragOver, RoutingStrategies.Bubble);
+        lstRules.AddHandler(DragDrop.DragLeaveEvent, LstRules_DragLeave, RoutingStrategies.Bubble);
+        lstRules.AddHandler(DragDrop.DropEvent, LstRules_Drop, RoutingStrategies.Bubble);
 
         cmbdomainStrategy.ItemsSource = Global.DomainStrategies.AppendEmpty();
         cmbdomainStrategy4Singbox.ItemsSource = Global.DomainStrategies4Sbox;
@@ -176,4 +198,238 @@ public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingVie
     {
         ProcUtils.ProcessStart("https://github.com/2dust/v2rayCustomRoutingList/blob/master/singbox_custom_ruleset_example.json");
     }
+
+    #region Drag and Drop
+
+    private async void LstRules_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        try
+        {
+            if (e.Source is not Visual visualSource)
+            {
+                return;
+            }
+
+            var row = visualSource.FindAncestorOfType<DataGridRow>(true);
+            if (row?.DataContext is not RulesItemModel { IsEditable: true } item)
+            {
+                return;
+            }
+
+            if (e.GetCurrentPoint(row).Properties.IsLeftButtonPressed)
+            {
+                var dragData = new DataTransfer();
+                var dataItem = DataTransferItem.Create(LstRulesRowFormat, item);
+                dragData.Add(dataItem);
+                try
+                {
+                    await DragDrop.DoDragDropAsync(e, dragData, DragDropEffects.Move);
+                }
+                finally
+                {
+                    RemoveDragAdorners();
+                }
+            }
+        }
+        catch
+        {
+            // Ignore
+        }
+    }
+
+    private void LstRules_DragOver(object? sender, DragEventArgs e)
+    {
+        if (!e.DataTransfer.Contains(LstRulesRowFormat))
+        {
+            e.DragEffects = DragDropEffects.None;
+            RemoveDragAdorners();
+            return;
+        }
+
+        var sourceItem = GetDraggedItem(e);
+        UpdateDragGhost(e, sourceItem);
+
+        if (e.Source is not Visual visualTarget)
+        {
+            e.DragEffects = DragDropEffects.None;
+            RemoveInsertionAdorner();
+            return;
+        }
+
+        var row = visualTarget.FindAncestorOfType<DataGridRow>(true);
+        if (row is not { DataContext: RulesItemModel targetItem } || targetItem.IsReadonly || ReferenceEquals(sourceItem, targetItem))
+        {
+            e.DragEffects = DragDropEffects.None;
+            RemoveInsertionAdorner();
+            return;
+        }
+
+        e.DragEffects = DragDropEffects.Move;
+        var isTopEdge = e.GetPosition(row).Y < row.Bounds.Height / 2;
+        ShowInsertionAdorner(row, isTopEdge);
+    }
+
+    private void LstRules_DragLeave(object? sender, DragEventArgs e)
+    {
+        RemoveDragAdorners();
+    }
+
+    private void LstRules_Drop(object? sender, DragEventArgs e)
+    {
+        RemoveDragAdorners();
+
+        if (!e.DataTransfer.Contains(LstRulesRowFormat))
+        {
+            return;
+        }
+        var sourceItem = GetDraggedItem(e);
+        if (sourceItem == null)
+        {
+            return;
+        }
+        if (e.Source is not Visual visualTarget)
+        {
+            return;
+        }
+
+        var targetRow = visualTarget.FindAncestorOfType<DataGridRow>(true);
+        if (targetRow is not { DataContext: RulesItemModel targetItem })
+        {
+            return;
+        }
+        if (ReferenceEquals(sourceItem, targetItem))
+        {
+            return;
+        }
+        // Match the insertion line shown in DragOver: top half -> before target, bottom half -> after.
+        var isTopEdge = e.GetPosition(targetRow).Y < targetRow.Bounds.Height / 2;
+        ViewModel?.MoveRuleByDrag(sourceItem, targetItem, insertAfter: !isTopEdge);
+    }
+
+    private static RulesItemModel? GetDraggedItem(DragEventArgs e)
+    {
+        foreach (var dataItem in e.DataTransfer.Items)
+        {
+            if (!dataItem.Formats.Contains(LstRulesRowFormat))
+            {
+                continue;
+            }
+            if (dataItem.TryGetRaw(LstRulesRowFormat) is RulesItemModel model)
+            {
+                return model;
+            }
+        }
+        return null;
+    }
+
+    private AdornerLayer? EnsureAdornerLayer()
+    {
+        return _adornerLayer ??= AdornerLayer.GetAdornerLayer(lstRules);
+    }
+
+    private void ShowInsertionAdorner(DataGridRow row, bool isTopEdge)
+    {
+        var layer = EnsureAdornerLayer();
+        if (layer is null)
+        {
+            return;
+        }
+
+        if (_insertionAdorner is not null && ReferenceEquals(_insertionAdornerRow, row) && _insertionAdornerIsTopEdge == isTopEdge)
+        {
+            return;
+        }
+
+        if (_insertionAdorner is null)
+        {
+            _insertionAdorner = new Border
+            {
+                Height = 3,
+                Background = InsertionLineBrush,
+                CornerRadius = new CornerRadius(1.5),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                IsHitTestVisible = false,
+            };
+            layer.Children.Add(_insertionAdorner);
+        }
+
+        AdornerLayer.SetAdornedElement(_insertionAdorner, row);
+        _insertionAdorner.VerticalAlignment = isTopEdge ? VerticalAlignment.Top : VerticalAlignment.Bottom;
+        _insertionAdornerRow = row;
+        _insertionAdornerIsTopEdge = isTopEdge;
+    }
+
+    private void RemoveInsertionAdorner()
+    {
+        if (_insertionAdorner is not null)
+        {
+            _adornerLayer?.Children.Remove(_insertionAdorner);
+            _insertionAdorner = null;
+            _insertionAdornerRow = null;
+        }
+    }
+
+    private void UpdateDragGhost(DragEventArgs e, RulesItemModel? draggedItem)
+    {
+        if (draggedItem is null)
+        {
+            RemoveDragGhostAdorner();
+            return;
+        }
+
+        var layer = EnsureAdornerLayer();
+        if (layer is null)
+        {
+            return;
+        }
+
+        if (_dragGhostAdorner is null || _dragGhostText is null)
+        {
+            _dragGhostText = new TextBlock
+            {
+                Foreground = Brushes.White,
+                FontSize = 12,
+            };
+            _dragGhostAdorner = new Border
+            {
+                Background = DragGhostBackgroundBrush,
+                BorderBrush = DragGhostBorderBrush,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(6, 3),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                IsHitTestVisible = false,
+                Opacity = 0.9,
+                Child = _dragGhostText,
+            };
+            AdornerLayer.SetAdornedElement(_dragGhostAdorner, lstRules);
+            layer.Children.Add(_dragGhostAdorner);
+        }
+
+        var text = draggedItem.Remarks.IsNullOrEmpty() ? draggedItem.OutboundTag : draggedItem.Remarks;
+        _dragGhostText.Text = text ?? string.Empty;
+
+        var position = e.GetPosition(lstRules);
+        _dragGhostAdorner.Margin = new Thickness(position.X + 16, position.Y + 10, 0, 0);
+    }
+
+    private void RemoveDragGhostAdorner()
+    {
+        if (_dragGhostAdorner is not null)
+        {
+            _adornerLayer?.Children.Remove(_dragGhostAdorner);
+            _dragGhostAdorner = null;
+            _dragGhostText = null;
+        }
+    }
+
+    private void RemoveDragAdorners()
+    {
+        RemoveInsertionAdorner();
+        RemoveDragGhostAdorner();
+        _adornerLayer = null;
+    }
+
+    #endregion Drag and Drop
 }

@@ -2507,7 +2507,16 @@ namespace ServiceLib.Resx {
                 return ResourceManager.GetString("PleaseSelectRules", resourceCulture);
             }
         }
-        
+
+        /// <summary>
+        ///   查找类似 These rules come from the active custom JSON config and are read-only. 的本地化字符串。
+        /// </summary>
+        public static string CustomJsonRuleReadonlyTip {
+            get {
+                return ResourceManager.GetString("CustomJsonRuleReadonlyTip", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   查找类似 Please select the Configuration first 的本地化字符串。
         /// </summary>
@@ -5271,6 +5280,24 @@ namespace ServiceLib.Resx {
         public static string UpgradeAppNotExistTip {
             get {
                 return ResourceManager.GetString("UpgradeAppNotExistTip", resourceCulture);
+            }
+        }
+
+        public static string CustomTestBestDelayResult {
+            get {
+                return ResourceManager.GetString("CustomTestBestDelayResult", resourceCulture);
+            }
+        }
+
+        public static string CustomTestSpeedResult {
+            get {
+                return ResourceManager.GetString("CustomTestSpeedResult", resourceCulture);
+            }
+        }
+
+        public static string CustomTestAllFailed {
+            get {
+                return ResourceManager.GetString("CustomTestAllFailed", resourceCulture);
             }
         }
     }

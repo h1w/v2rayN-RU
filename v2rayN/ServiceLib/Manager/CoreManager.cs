@@ -144,6 +144,20 @@ public class CoreManager
         return await RunProcess(coreInfo, fileName, true, false);
     }
 
+    public async Task<ProcessService?> LoadCoreConfigCustomSpeedtest(string configJson, ECoreType coreType)
+    {
+        if (configJson.IsNullOrEmpty())
+        {
+            return null;
+        }
+        var fileName = string.Format(Global.CoreSpeedtestConfigFileName, Utils.GetGuid(false));
+        var configPath = Utils.GetBinConfigPath(fileName);
+        await File.WriteAllTextAsync(configPath, configJson);
+
+        var coreInfo = CoreInfoManager.Instance.GetCoreInfo(coreType);
+        return await RunProcess(coreInfo, fileName, true, false);
+    }
+
     public async Task CoreStop()
     {
         try

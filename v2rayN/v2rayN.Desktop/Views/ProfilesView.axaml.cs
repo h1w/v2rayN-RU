@@ -9,6 +9,7 @@ public partial class ProfilesView : ReactiveUserControl<ProfilesViewModel>
 {
     private static Config _config;
     private static readonly string _tag = "ProfilesView";
+    private TopLevel? _hostTopLevel;
 
     public ProfilesView()
     {
@@ -20,6 +21,12 @@ public partial class ProfilesView : ReactiveUserControl<ProfilesViewModel>
         btnAutofitColumnWidth.Click += BtnAutofitColumnWidth_Click;
         txtServerFilter.KeyDown += TxtServerFilter_KeyDown;
         lstProfiles.KeyDown += LstProfiles_KeyDown;
+
+        // Cancel a running speed/delay test on Esc regardless of which control has focus:
+        // the per-grid KeyDown only fires when the grid is focused, so a test started from a
+        // toolbar/menu couldn't be stopped until focus returned to the grid.
+        Loaded += ProfilesView_Loaded;
+        Unloaded += ProfilesView_Unloaded;
         lstProfiles.SelectionChanged += lstProfiles_SelectionChanged;
         lstProfiles.DoubleTapped += LstProfiles_DoubleTapped;
         lstProfiles.LoadingRow += LstProfiles_LoadingRow;
@@ -235,6 +242,33 @@ public partial class ProfilesView : ReactiveUserControl<ProfilesViewModel>
     private void menuSelectAll_Click(object? sender, RoutedEventArgs e)
     {
         lstProfiles.SelectAll();
+    }
+
+    private void ProfilesView_Loaded(object? sender, RoutedEventArgs e)
+    {
+        if (_hostTopLevel is null)
+        {
+            _hostTopLevel = TopLevel.GetTopLevel(this);
+            _hostTopLevel?.AddHandler(InputElement.KeyDownEvent, HostTopLevel_KeyDown, RoutingStrategies.Tunnel);
+        }
+    }
+
+    private void ProfilesView_Unloaded(object? sender, RoutedEventArgs e)
+    {
+        if (_hostTopLevel is not null)
+        {
+            _hostTopLevel.RemoveHandler(InputElement.KeyDownEvent, HostTopLevel_KeyDown);
+            _hostTopLevel = null;
+        }
+    }
+
+    private void HostTopLevel_KeyDown(object? sender, KeyEventArgs e)
+    {
+        // Do not mark handled: Esc keeps flowing to any other handler.
+        if (e.Key == Key.Escape)
+        {
+            ViewModel?.ServerSpeedtestStop();
+        }
     }
 
     private void LstProfiles_KeyDown(object? sender, KeyEventArgs e)
