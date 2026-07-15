@@ -44,15 +44,26 @@ public static class CustomConfigParser
             {
                 return result;
             }
-            var order = 0;
+
+            // index every outbound node by tag, and record its direct dependency tags
+            var nodesByTag = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
+            var directDeps = new Dictionary<string, List<string>>(StringComparer.Ordinal);
             foreach (var ob in outbounds)
             {
-                if (ob is null)
+                var tag = ob?["tag"]?.GetValue<string>();
+                if (ob is null || tag.IsNullOrEmpty())
                 {
                     continue;
                 }
-                var tag = ob["tag"]?.GetValue<string>();
-                if (tag.IsNullOrEmpty())
+                nodesByTag[tag] = ob;
+                directDeps[tag] = GetDirectDeps(ob, coreType);
+            }
+
+            var order = 0;
+            foreach (var ob in outbounds)
+            {
+                var tag = ob?["tag"]?.GetValue<string>();
+                if (ob is null || tag.IsNullOrEmpty())
                 {
                     continue;
                 }
@@ -63,7 +74,8 @@ public static class CustomConfigParser
                 {
                     continue;
                 }
-                result.Add(new OutboundTestTarget(tag, order++, Array.Empty<string>()));
+                var chain = ResolveChain(tag, directDeps);
+                result.Add(new OutboundTestTarget(tag, order++, chain));
             }
             return result;
         }
@@ -72,6 +84,58 @@ public static class CustomConfigParser
             Logging.SaveLog(_tag, ex);
             return result;
         }
+    }
+
+    private static List<string> GetDirectDeps(JsonNode ob, ECoreType coreType)
+    {
+        var deps = new List<string>();
+        if (coreType == ECoreType.sing_box)
+        {
+            var detour = ob["detour"]?.GetValue<string>();
+            if (detour.IsNotEmpty())
+            {
+                deps.Add(detour);
+            }
+        }
+        else
+        {
+            var proxyTag = ob["proxySettings"]?["tag"]?.GetValue<string>();
+            if (proxyTag.IsNotEmpty())
+            {
+                deps.Add(proxyTag);
+            }
+            var dialer = ob["streamSettings"]?["sockopt"]?["dialerProxy"]?.GetValue<string>();
+            if (dialer.IsNotEmpty())
+            {
+                deps.Add(dialer);
+            }
+        }
+        return deps;
+    }
+
+    private static IReadOnlyList<string> ResolveChain(string startTag, Dictionary<string, List<string>> directDeps)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal) { startTag };
+        var ordered = new List<string>();
+        var queue = new Queue<string>();
+        foreach (var d in directDeps.GetValueOrDefault(startTag) ?? new List<string>())
+        {
+            queue.Enqueue(d);
+        }
+        while (queue.Count > 0)
+        {
+            var t = queue.Dequeue();
+            if (!seen.Add(t))
+            {
+                continue;
+            }
+            ordered.Add(t);
+            foreach (var d in directDeps.GetValueOrDefault(t) ?? new List<string>())
+            {
+                queue.Enqueue(d);
+            }
+        }
+        return ordered;
     }
 
     private static List<RulesItem> ParseXrayDisplayRules(JsonNode root)

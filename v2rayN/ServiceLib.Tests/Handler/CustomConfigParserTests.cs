@@ -94,4 +94,41 @@ public class CustomConfigParserTests
         targets.Should().ContainSingle();
         targets[0].Tag.Should().Be("proxy");   // direct + selector excluded
     }
+
+    private const string XrayChainJson = """
+    {
+      "outbounds": [
+        { "protocol": "vless", "tag": "front", "streamSettings": { "sockopt": { "dialerProxy": "bridge" } } },
+        { "protocol": "shadowsocks", "tag": "bridge" },
+        { "protocol": "freedom", "tag": "direct" }
+      ]
+    }
+    """;
+
+    private const string SingboxChainJson = """
+    {
+      "outbounds": [
+        { "type": "vless", "tag": "front", "detour": "bridge" },
+        { "type": "shadowsocks", "tag": "bridge" },
+        { "type": "direct", "tag": "direct" }
+      ]
+    }
+    """;
+
+    [Fact]
+    public void ParseTestableOutbounds_Xray_resolves_dialerProxy_chain()
+    {
+        var targets = CustomConfigParser.ParseTestableOutbounds(XrayChainJson, ECoreType.Xray);
+        var front = targets.Single(t => t.Tag == "front");
+        front.ChainTags.Should().Contain("bridge");
+        front.ChainTags.Should().NotContain("front");
+    }
+
+    [Fact]
+    public void ParseTestableOutbounds_Singbox_resolves_detour_chain()
+    {
+        var targets = CustomConfigParser.ParseTestableOutbounds(SingboxChainJson, ECoreType.sing_box);
+        var front = targets.Single(t => t.Tag == "front");
+        front.ChainTags.Should().Contain("bridge");
+    }
 }
