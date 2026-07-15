@@ -270,11 +270,13 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             // profile flow where speed only runs on a node whose delay succeeded.
             var best = await MeasureBestDelayAsync(targetsWithPorts, exitLoopKey);
 
-            if (blDelay && !ShouldStopTest(exitLoopKey))
+            // Always fill the delay column from the measured best delay — even on a pure speed test, which
+            // (like the normal flow, where Speedtest runs a real ping before downloading) shows delay too.
+            if (!ShouldStopTest(exitLoopKey))
             {
                 ProfileExManager.Instance.SetTestDelay(profile.IndexId, best.delay);
                 await UpdateFunc(profile.IndexId, best.delay > 0 ? best.delay.ToString() : ResUI.SpeedtestingSkip);
-                if (best.delay > 0)
+                if (blDelay && best.delay > 0)
                 {
                     NoticeManager.Instance.Enqueue(string.Format(ResUI.CustomTestBestDelayResult, best.delay, best.tag));
                 }
