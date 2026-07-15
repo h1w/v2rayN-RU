@@ -21,6 +21,12 @@
             <MenuItem x:Name="menuImportRulesFromFile" Header="{x:Static resx:ResUI.menuImportRulesFromFile}" />
             <MenuItem x:Name="menuImportRulesFromClipboard" Header="{x:Static resx:ResUI.menuImportRulesFromClipboard}" />
             <MenuItem x:Name="menuImportRulesFromUrl" Header="{x:Static resx:ResUI.menuImportRulesFromUrl}" />
+            <MenuItem
+                x:Name="menuRuleExportToClipboard"
+                Header="{x:Static resx:ResUI.menuRuleExportToClipboard}" />
+            <MenuItem
+                x:Name="menuRuleExportToFile"
+                Header="{x:Static resx:ResUI.menuRuleExportToFile}" />
         </Menu>
 
         <StackPanel
