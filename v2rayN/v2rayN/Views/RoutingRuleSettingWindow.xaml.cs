@@ -262,10 +262,13 @@ public partial class RoutingRuleSettingWindow
     {
         RemoveDragAdorners();
 
-        var target = (e.OriginalSource as DependencyObject).TryFindParent<DataGridRow>()?.Item as RulesItemModel;
-        if (_draggedRule is not null && target is not null)
+        var row = (e.OriginalSource as DependencyObject).TryFindParent<DataGridRow>();
+        var target = row?.Item as RulesItemModel;
+        if (_draggedRule is not null && row is not null && target is not null)
         {
-            ViewModel?.MoveRuleByDrag(_draggedRule, target);
+            // Match the insertion line shown in DragOver: top half -> before target, bottom half -> after.
+            var isTopEdge = e.GetPosition(row).Y < row.ActualHeight / 2;
+            ViewModel?.MoveRuleByDrag(_draggedRule, target, insertAfter: !isTopEdge);
         }
         _draggedRule = null;
     }

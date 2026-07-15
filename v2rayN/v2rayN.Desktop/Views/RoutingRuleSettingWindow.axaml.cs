@@ -301,7 +301,9 @@ public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingVie
         {
             return;
         }
-        ViewModel?.MoveRuleByDrag(sourceItem, targetItem);
+        // Match the insertion line shown in DragOver: top half -> before target, bottom half -> after.
+        var isTopEdge = e.GetPosition(targetRow).Y < targetRow.Bounds.Height / 2;
+        ViewModel?.MoveRuleByDrag(sourceItem, targetItem, insertAfter: !isTopEdge);
     }
 
     private static RulesItemModel? GetDraggedItem(DragEventArgs e)

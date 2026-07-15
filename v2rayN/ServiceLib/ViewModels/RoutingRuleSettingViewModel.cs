@@ -317,7 +317,7 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
         }
     }
 
-    public void MoveRuleByDrag(RulesItemModel? dragged, RulesItemModel? target)
+    public void MoveRuleByDrag(RulesItemModel? dragged, RulesItemModel? target, bool insertAfter)
     {
         if (dragged is null || target is null || dragged.IsReadonly || target.IsReadonly)
         {
@@ -325,7 +325,7 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
         }
         var from = _rules.FindIndex(t => t.Id == dragged.Id);
         var to = _rules.FindIndex(t => t.Id == target.Id);
-        if (ConfigHandler.MoveRoutingRuleTo(_rules, from, to) == 0)
+        if (ConfigHandler.MoveRoutingRuleRelative(_rules, from, to, insertAfter) == 0)
         {
             RefreshRulesItems();
         }

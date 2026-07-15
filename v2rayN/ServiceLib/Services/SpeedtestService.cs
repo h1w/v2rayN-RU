@@ -157,20 +157,20 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             if (blDelay)
             {
                 ProfileExManager.Instance.SetTestDelay(profile.IndexId, 0);
-                await UpdateFunc(profile.IndexId, ResUI.Speedtesting, "");
             }
             if (blSpeed)
             {
                 ProfileExManager.Instance.SetTestSpeed(profile.IndexId, 0);
-                await UpdateFunc(profile.IndexId, "", ResUI.SpeedtestingWait);
             }
+            await UpdateFunc(profile.IndexId, blDelay ? ResUI.Speedtesting : "", blSpeed ? ResUI.SpeedtestingWait : "");
         }
 
         foreach (var profile in customs)
         {
             if (ShouldStopTest(exitLoopKey))
             {
-                await UpdateFunc(profile.IndexId, ResUI.SpeedtestingSkip);
+                // Clear BOTH columns that were placeholdered, so a skipped profile doesn't stay stuck on Testing.../Waiting...
+                await UpdateFunc(profile.IndexId, blDelay ? ResUI.SpeedtestingSkip : "", blSpeed ? ResUI.SpeedtestingSkip : "");
                 continue;
             }
             await RunCustomProfileTestAsync(profile, blDelay, blSpeed, exitLoopKey);
