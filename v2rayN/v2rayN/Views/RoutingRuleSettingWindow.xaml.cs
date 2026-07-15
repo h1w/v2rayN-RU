@@ -1,5 +1,7 @@
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
+using v2rayN.Base;
 
 namespace v2rayN.Views;
 
@@ -7,6 +9,9 @@ public partial class RoutingRuleSettingWindow
 {
     private Point _dragStartPoint;
     private RulesItemModel? _draggedRule;
+    private AdornerLayer? _adornerLayer;
+    private InsertionAdorner? _insertionAdorner;
+    private DragGhostAdorner? _dragGhostAdorner;
 
     public RoutingRuleSettingWindow()
     {
@@ -18,6 +23,8 @@ public partial class RoutingRuleSettingWindow
         lstRules.MouseDoubleClick += LstRules_MouseDoubleClick;
         lstRules.PreviewMouseLeftButtonDown += lstRules_PreviewMouseLeftButtonDown;
         lstRules.MouseMove += lstRules_MouseMove;
+        lstRules.DragOver += lstRules_DragOver;
+        lstRules.DragLeave += lstRules_DragLeave;
         lstRules.Drop += lstRules_Drop;
         menuRuleSelectAll.Click += menuRuleSelectAll_Click;
         btnBrowseCustomIcon.Click += btnBrowseCustomIcon_Click;
@@ -214,17 +221,128 @@ public partial class RoutingRuleSettingWindow
         {
             return;
         }
-        DragDrop.DoDragDrop(lstRules, _draggedRule, DragDropEffects.Move);
+
+        try
+        {
+            DragDrop.DoDragDrop(lstRules, _draggedRule, DragDropEffects.Move);
+        }
+        finally
+        {
+            RemoveDragAdorners();
+        }
+    }
+
+    private void lstRules_DragOver(object sender, DragEventArgs e)
+    {
+        e.Handled = true;
+
+        UpdateDragGhost(e.GetPosition(lstRules));
+
+        var row = (e.OriginalSource as DependencyObject).TryFindParent<DataGridRow>();
+        var targetItem = row?.Item as RulesItemModel;
+
+        if (row is null || targetItem is null || targetItem.IsReadonly || _draggedRule is null || _draggedRule.IsReadonly)
+        {
+            RemoveInsertionAdorner();
+            e.Effects = DragDropEffects.None;
+            return;
+        }
+
+        var isTopEdge = e.GetPosition(row).Y < row.ActualHeight / 2;
+        ShowInsertionAdorner(row, isTopEdge);
+        e.Effects = DragDropEffects.Move;
+    }
+
+    private void lstRules_DragLeave(object sender, DragEventArgs e)
+    {
+        RemoveDragAdorners();
     }
 
     private void lstRules_Drop(object sender, DragEventArgs e)
     {
+        RemoveDragAdorners();
+
         var target = (e.OriginalSource as DependencyObject).TryFindParent<DataGridRow>()?.Item as RulesItemModel;
         if (_draggedRule is not null && target is not null)
         {
             ViewModel?.MoveRuleByDrag(_draggedRule, target);
         }
         _draggedRule = null;
+    }
+
+    private AdornerLayer? EnsureAdornerLayer()
+    {
+        return _adornerLayer ??= AdornerLayer.GetAdornerLayer(lstRules);
+    }
+
+    private void ShowInsertionAdorner(DataGridRow row, bool isTopEdge)
+    {
+        var layer = EnsureAdornerLayer();
+        if (layer is null)
+        {
+            return;
+        }
+
+        if (_insertionAdorner is not null && _insertionAdorner.AdornedElement == row && _insertionAdorner.IsTopEdge == isTopEdge)
+        {
+            return;
+        }
+
+        if (_insertionAdorner is not null)
+        {
+            layer.Remove(_insertionAdorner);
+        }
+
+        _insertionAdorner = new InsertionAdorner(row, isTopEdge);
+        layer.Add(_insertionAdorner);
+    }
+
+    private void RemoveInsertionAdorner()
+    {
+        if (_insertionAdorner is not null)
+        {
+            _adornerLayer?.Remove(_insertionAdorner);
+            _insertionAdorner = null;
+        }
+    }
+
+    private void UpdateDragGhost(Point position)
+    {
+        if (_draggedRule is null)
+        {
+            return;
+        }
+
+        var layer = EnsureAdornerLayer();
+        if (layer is null)
+        {
+            return;
+        }
+
+        if (_dragGhostAdorner is null)
+        {
+            var text = string.IsNullOrWhiteSpace(_draggedRule.Remarks) ? _draggedRule.OutboundTag : _draggedRule.Remarks;
+            _dragGhostAdorner = new DragGhostAdorner(lstRules, text ?? string.Empty);
+            layer.Add(_dragGhostAdorner);
+        }
+
+        _dragGhostAdorner.UpdatePosition(position);
+    }
+
+    private void RemoveDragGhostAdorner()
+    {
+        if (_dragGhostAdorner is not null)
+        {
+            _adornerLayer?.Remove(_dragGhostAdorner);
+            _dragGhostAdorner = null;
+        }
+    }
+
+    private void RemoveDragAdorners()
+    {
+        RemoveInsertionAdorner();
+        RemoveDragGhostAdorner();
+        _adornerLayer = null;
     }
 }
 
