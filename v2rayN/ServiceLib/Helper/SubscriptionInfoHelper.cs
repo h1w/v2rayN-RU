@@ -65,4 +65,36 @@ public static class SubscriptionInfoHelper
 
         return value;
     }
+
+    public static (string Remarks, bool AutoRemark) ResolveRemarkOnSave(string? entered, string originalRemarks, bool wasAuto, string urlHost)
+    {
+        if (entered.IsNullOrEmpty())
+        {
+            return (urlHost, true);
+        }
+
+        // User changed the text => manual; unchanged => keep prior auto/manual state.
+        if (entered != originalRemarks)
+        {
+            return (entered!, false);
+        }
+
+        return (entered!, wasAuto);
+    }
+
+    public static string ResolveRemarkOnUpdate(string currentRemarks, bool autoRemark, string? profileTitle, string urlHost)
+    {
+        if (!autoRemark)
+        {
+            return currentRemarks;
+        }
+
+        var title = DecodeProfileTitle(profileTitle);
+        if (!title.IsNullOrEmpty())
+        {
+            return title!;
+        }
+
+        return currentRemarks.IsNullOrEmpty() ? urlHost : currentRemarks;
+    }
 }
