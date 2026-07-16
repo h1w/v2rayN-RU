@@ -229,6 +229,11 @@ public class DownloadService
     /// </summary>
     private void CheckHwidResponseHeaders(HttpResponseMessage response)
     {
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
         if (response.Headers.Contains("x-hwid-max-devices-reached") || response.Headers.Contains("x-hwid-limit"))
         {
             Error?.Invoke(this, new ErrorEventArgs(new Exception(ResUI.MsgHwidMaxDevicesReached)));
