@@ -430,7 +430,7 @@ public class OptionSettingViewModel : MyReactiveObject, ICloseable
         _config.SpeedTestItem.IPAPIUrl = IPAPIUrl;
         _config.GuiItem.RootCertProvider = RootCertProvider;
         _config.HwidItem.Enabled = HwidEnabled;
-        _config.HwidItem.Hwid = Hwid.TrimEx();
+        _config.HwidItem.Hwid = Hwid;
         _config.HwidItem.GenerateWithoutHyphens = HwidGenerateWithoutHyphens;
 
         //systemProxy
