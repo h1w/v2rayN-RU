@@ -1,3 +1,5 @@
+using System.Windows.Media;
+using v2rayN.Converters;
 using v2rayN.Manager;
 
 namespace v2rayN.Views;
@@ -5,6 +7,7 @@ namespace v2rayN.Views;
 public partial class StatusBarView
 {
     private static Config _config;
+    private static readonly SubLevelToBrushConverter _subLevelToBrushConverter = new();
 
     public StatusBarView()
     {
@@ -56,6 +59,16 @@ public partial class StatusBarView
             this.OneWayBind(ViewModel, vm => vm.SpeedProxyDisplay, v => v.txtSpeedProxyDisplay.Text).DisposeWith(disposables);
             this.OneWayBind(ViewModel, vm => vm.SpeedDirectDisplay, v => v.txtSpeedDirectDisplay.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.EnableTun, v => v.togEnableTun.IsChecked).DisposeWith(disposables);
+
+            //subscription info
+            this.OneWayBind(ViewModel, vm => vm.ShowSubInfo, v => v.spSubInfo.Visibility, conversionHint: BooleanToVisibilityHint.UseHidden, vmToViewConverterOverride: new BooleanToVisibilityTypeConverter()).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.SubToolTip, v => v.spSubInfo.ToolTip).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.SubDaysText, v => v.txtSubDays.Text).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.SubTrafficText, v => v.txtSubTraffic.Text).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.SubTrafficValue, v => v.pbSubTraffic.Value).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.SubTrafficIndeterminate, v => v.pbSubTraffic.IsIndeterminate).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.SubStatusLevel, v => v.txtSubDays.Foreground, level => (Brush)_subLevelToBrushConverter.Convert(level, typeof(Brush), null, CultureInfo.CurrentCulture)).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.SubStatusLevel, v => v.pbSubTraffic.Foreground, level => (Brush)_subLevelToBrushConverter.Convert(level, typeof(Brush), null, CultureInfo.CurrentCulture)).DisposeWith(disposables);
 
             this.Bind(ViewModel, vm => vm.SystemProxySelected, v => v.cmbSystemProxy.SelectedIndex).DisposeWith(disposables);
             this.OneWayBind(ViewModel, vm => vm.RoutingItems, v => v.cmbRoutings2.ItemsSource).DisposeWith(disposables);
