@@ -894,6 +894,19 @@
   <data name="SubUrlTips" xml:space="preserve">
     <value>Для группы оставьте это поле пустым</value>
   </data>
+  <data name="SubDaysLeft" xml:space="preserve">
+    <value>Осталось {0} дн.</value>
+  </data>
+  <data name="SubExpired" xml:space="preserve">
+    <value>Истекла</value>
+  </data>
+  <data name="SubTrafficUsed" xml:space="preserve">
+    <value>{0} / {1}</value>
+  </data>
+  <data name="SubInfoToolTip" xml:space="preserve">
+    <value>Использовано: {0} / {1}
+Истекает: {2}</value>
+  </data>
   <data name="TipChangeRouting" xml:space="preserve">
     <value>Настройки маршрутизации изменены</value>
   </data>

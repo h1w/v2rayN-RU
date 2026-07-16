@@ -867,6 +867,19 @@
   <data name="SubUrlTips" xml:space="preserve">
     <value>Csoport esetén hagyja üresen</value>
   </data>
+  <data name="SubDaysLeft" xml:space="preserve">
+    <value>{0} nap van hátra</value>
+  </data>
+  <data name="SubExpired" xml:space="preserve">
+    <value>Lejárt</value>
+  </data>
+  <data name="SubTrafficUsed" xml:space="preserve">
+    <value>{0} / {1}</value>
+  </data>
+  <data name="SubInfoToolTip" xml:space="preserve">
+    <value>Used: {0} / {1}
+Expires: {2}</value>
+  </data>
   <data name="TipChangeRouting" xml:space="preserve">
     <value>Útválasztási beállítás megváltozott</value>
   </data>
