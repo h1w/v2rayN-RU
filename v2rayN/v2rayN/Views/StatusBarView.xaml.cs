@@ -61,7 +61,7 @@ public partial class StatusBarView
             this.Bind(ViewModel, vm => vm.EnableTun, v => v.togEnableTun.IsChecked).DisposeWith(disposables);
 
             //subscription info
-            this.OneWayBind(ViewModel, vm => vm.ShowSubInfo, v => v.spSubInfo.Visibility, conversionHint: BooleanToVisibilityHint.UseHidden, vmToViewConverterOverride: new BooleanToVisibilityTypeConverter()).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.ShowSubInfo, v => v.spSubInfo.Visibility).DisposeWith(disposables);
             this.OneWayBind(ViewModel, vm => vm.SubToolTip, v => v.spSubInfo.ToolTip).DisposeWith(disposables);
             this.OneWayBind(ViewModel, vm => vm.SubDaysText, v => v.txtSubDays.Text).DisposeWith(disposables);
             this.OneWayBind(ViewModel, vm => vm.SubTrafficText, v => v.txtSubTraffic.Text).DisposeWith(disposables);
