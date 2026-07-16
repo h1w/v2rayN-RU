@@ -113,7 +113,6 @@ public class RoutingRuleDetailsViewModel : MyReactiveObject, ICloseable
     private async Task SelectProfileAsync()
     {
         var profileSelectViewModel = new ProfilesSelectViewModel();
-        profileSelectViewModel.SetConfigTypeFilter([EConfigType.Custom], exclude: true);
         var result = await AppManager.Instance.WindowDialog.ShowDialogAsync(profileSelectViewModel);
         if (result != true)
         {
