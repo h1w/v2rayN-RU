@@ -205,7 +205,10 @@ public class DownloadService
             using var cts = new CancellationTokenSource();
             cts.CancelAfter(TimeSpan.FromSeconds(timeout));
 
-            return await client.GetStringAsync(url, cts.Token);
+            using var response = await client.GetAsync(url, cts.Token);
+            CheckHwidResponseHeaders(response);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsStringAsync(cts.Token);
         }
         catch (Exception ex)
         {
@@ -218,6 +221,22 @@ public class DownloadService
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Reports Remnawave HWID diagnostics (panel v2.7.5+) so the user sees why the
+    /// panel refused, instead of a bare 404.
+    /// </summary>
+    private void CheckHwidResponseHeaders(HttpResponseMessage response)
+    {
+        if (response.Headers.Contains("x-hwid-max-devices-reached") || response.Headers.Contains("x-hwid-limit"))
+        {
+            Error?.Invoke(this, new ErrorEventArgs(new Exception(ResUI.MsgHwidMaxDevicesReached)));
+        }
+        else if (response.Headers.Contains("x-hwid-not-supported"))
+        {
+            Error?.Invoke(this, new ErrorEventArgs(new Exception(ResUI.MsgHwidNotSupported)));
+        }
     }
 
     /// <summary>
