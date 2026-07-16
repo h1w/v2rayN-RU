@@ -79,6 +79,11 @@ public partial class OptionSettingWindow : WindowBase<OptionSettingViewModel>
             this.Bind(ViewModel, vm => vm.DefUserAgent, v => v.cmbdefUserAgent.SelectedValue).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.BindInterface, v => v.txtbindInterface.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SendThrough, v => v.txtsendThrough.Text).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.HwidEnabled, v => v.togHwidEnabled.IsChecked).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.Hwid, v => v.txtHwid.Text).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.HwidGenerateWithoutHyphens, v => v.togHwidGenerateWithoutHyphens.IsChecked).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.HwidValidationText, v => v.txtHwidValidation.Text).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.RegenerateHwidCmd, v => v.btnRegenerateHwid).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.Mux4SboxProtocol, v => v.cmbmux4SboxProtocol.SelectedValue).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.EnableCacheFile4Sbox, v => v.togenableCacheFile4Sbox.IsChecked).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.HyUpMbps, v => v.txtUpMbps.Text).DisposeWith(disposables);
