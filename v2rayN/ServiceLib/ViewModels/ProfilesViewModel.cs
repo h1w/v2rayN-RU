@@ -947,6 +947,12 @@ public class ProfilesViewModel : MyReactiveObject
         {
             await RefreshSubscriptions();
             await SubSelectedChangedAsync(true);
+
+            // Auto-update a newly added subscription so its servers and Profile-Title name are fetched immediately.
+            if (blNew && item.Url.TrimEx().IsNotEmpty())
+            {
+                AppEvents.SubscriptionUpdateOneRequested.Publish(item.Id);
+            }
         }
     }
 

@@ -305,6 +305,11 @@ public class MainWindowViewModel : MyReactiveObject
             .ObserveOn(RxSchedulers.MainThreadScheduler)
             .Subscribe(async blProxy => await UpdateSubscriptionProcess("", blProxy));
 
+        AppEvents.SubscriptionUpdateOneRequested
+            .AsObservable()
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
+            .Subscribe(async subId => await UpdateSubscriptionProcess(subId, false));
+
         _ = Init();
     }
 
@@ -355,6 +360,7 @@ public class MainWindowViewModel : MyReactiveObject
         {
             var indexIdOld = _config.IndexId;
             await RefreshServersDispatcherAsync();
+            await RefreshSubscriptions();
 
             // If indexId changed or subIndexId is empty, directly reload.
             if (indexIdOld != _config.IndexId || _config.SubIndexId.IsNullOrEmpty())
@@ -668,6 +674,7 @@ public class MainWindowViewModel : MyReactiveObject
             });
             RxSchedulers.MainThreadScheduler.Schedule(async () =>
             {
+                await StatusBarViewModel.RefreshServers();
                 await StatusBarViewModel.TestServerAvailability();
             });
 
