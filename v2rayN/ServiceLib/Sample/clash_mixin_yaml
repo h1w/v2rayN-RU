@@ -1,20 +1,20 @@
 #
-# 配置文件内容不会被修改，混合行为只会发生在内存中
+# The config file content is not modified; mixing happens only in memory.
 #
-# 注意下面缩进，请用支持yaml显示的编辑器打开
+# Mind the indentation below; open this file with an editor that supports YAML.
 #
-# 使用clash配置文件关键字则覆盖原配置
+# Using a Clash config keyword overrides the original config.
 #
-# removed-rules    循环匹配rules数组每行,符合则移除当前行 (此规则请放最前面)
+# removed-rules    iterate over each line of the rules array; matching lines are removed (put this rule first)
 #
-# append-rules    数组合并至原配置rules数组后
-# prepend-rules   数组合并至原配置rules数组前
-# append-proxies      数组合并至原配置proxies数组后
-# prepend-proxies     数组合并至原配置proxies数组前
-# append-proxy-groups     数组合并至原配置proxy-groups数组后
-# prepend-proxy-groups    数组合并至原配置proxy-groups数组前
-# append-rule-providers     数组合并至原配置rule-providers数组后
-# prepend-rule-providers    数组合并至原配置rule-providers数组前
+# append-rules    merge the array after the original rules array
+# prepend-rules   merge the array before the original rules array
+# append-proxies      merge the array after the original proxies array
+# prepend-proxies     merge the array before the original proxies array
+# append-proxy-groups     merge the array after the original proxy-groups array
+# prepend-proxy-groups    merge the array before the original proxy-groups array
+# append-rule-providers     merge the array after the original rule-providers array
+# prepend-rule-providers    merge the array before the original rule-providers array
 #
 
 dns:
