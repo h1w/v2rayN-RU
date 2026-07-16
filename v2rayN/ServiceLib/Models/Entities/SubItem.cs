@@ -33,4 +33,17 @@ public class SubItem
     public int? PreSocksPort { get; set; }
 
     public string? Memo { get; set; }
+
+    // Subscription-Userinfo (bytes; Expire = Unix seconds). Null = not reported.
+    public long? Upload { get; set; }
+
+    public long? Download { get; set; }
+
+    public long? Total { get; set; }
+
+    public long? Expire { get; set; }
+
+    // True when Remarks is auto-managed from the server's Profile-Title.
+    // Default false => existing groups are treated as manually named.
+    public bool AutoRemark { get; set; }
 }

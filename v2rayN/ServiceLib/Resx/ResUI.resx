@@ -924,6 +924,19 @@
   <data name="SubUrlTips" xml:space="preserve">
     <value>For group please leave blank here</value>
   </data>
+  <data name="SubDaysLeft" xml:space="preserve">
+    <value>{0} days left</value>
+  </data>
+  <data name="SubExpired" xml:space="preserve">
+    <value>Expired</value>
+  </data>
+  <data name="SubTrafficUsed" xml:space="preserve">
+    <value>{0} / {1}</value>
+  </data>
+  <data name="SubInfoToolTip" xml:space="preserve">
+    <value>Used: {0} / {1}
+Expires: {2}</value>
+  </data>
   <data name="TipChangeRouting" xml:space="preserve">
     <value>Routing setting has changed</value>
   </data>

@@ -101,6 +101,14 @@ public class StatusBarViewModel : MyReactiveObject
     [Reactive]
     public bool BlIsNonWindows { get; set; }
 
+    [Reactive] public bool ShowSubInfo { get; set; }
+    [Reactive] public string SubDaysText { get; set; }
+    [Reactive] public string SubTrafficText { get; set; }
+    [Reactive] public double SubTrafficValue { get; set; }
+    [Reactive] public bool SubTrafficIndeterminate { get; set; }
+    [Reactive] public int SubStatusLevel { get; set; }
+    [Reactive] public string SubToolTip { get; set; }
+
     #endregion UI
 
     public StatusBarViewModel()
@@ -279,12 +287,62 @@ public class StatusBarViewModel : MyReactiveObject
         {
             RunningServerDisplay = running.GetSummary();
             RunningServerToolTipText = GetRunningServerToolTipText(RunningServerDisplay);
+            await RefreshSubInfo(running.Subid);
         }
         else
         {
             RunningServerDisplay = ResUI.CheckServerSettings;
             RunningServerToolTipText = GetRunningServerToolTipText(RunningServerDisplay);
+            await RefreshSubInfo(null);
         }
+    }
+
+    private async Task RefreshSubInfo(string? subId)
+    {
+        var sub = subId.IsNullOrEmpty() ? null : await AppManager.Instance.GetSubItem(subId!);
+        var info = SubStatusHelper.Compute(sub, DateTimeOffset.Now);
+        if (info == null)
+        {
+            ShowSubInfo = false;
+            return;
+        }
+
+        SubStatusLevel = (int)info.Level;
+
+        // Days text
+        if (info.HasExpire)
+        {
+            SubDaysText = info.Expired
+                ? ResUI.SubExpired
+                : string.Format(ResUI.SubDaysLeft, info.RemainDays);
+        }
+        else
+        {
+            SubDaysText = string.Empty;
+        }
+
+        // Traffic text + bar
+        var usedText = Utils.HumanFy(info.UsedBytes);
+        if (info.Unlimited)
+        {
+            SubTrafficText = string.Format(ResUI.SubTrafficUsed, usedText, "∞"); // ∞
+            SubTrafficIndeterminate = true;
+            SubTrafficValue = 0;
+        }
+        else
+        {
+            SubTrafficText = string.Format(ResUI.SubTrafficUsed, usedText, Utils.HumanFy(info.TotalBytes));
+            SubTrafficIndeterminate = false;
+            SubTrafficValue = info.Percent * 100.0;
+        }
+
+        SubToolTip = string.Format(
+            ResUI.SubInfoToolTip,
+            Utils.HumanFy(info.UsedBytes),
+            info.Unlimited ? "∞" : Utils.HumanFy(info.TotalBytes),
+            info.HasExpire ? DateTimeOffset.FromUnixTimeSeconds(sub!.Expire!.Value).LocalDateTime.ToString("yyyy-MM-dd") : "-");
+
+        ShowSubInfo = true;
     }
 
     private string GetRunningServerToolTipText(string serverInfo)

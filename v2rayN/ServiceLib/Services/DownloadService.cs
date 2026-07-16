@@ -13,6 +13,9 @@ public class DownloadService
 
     private static readonly string _tag = "DownloadService";
 
+    public string? LastSubscriptionUserinfo { get; private set; }
+    public string? LastProfileTitle { get; private set; }
+
     /// <summary>
     /// Downloads data with the specified proxy and reports progress messages.
     /// </summary>
@@ -208,6 +211,16 @@ public class DownloadService
             using var response = await client.GetAsync(url, cts.Token);
             CheckHwidResponseHeaders(response);
             response.EnsureSuccessStatusCode();
+
+            if (response.Headers.TryGetValues("Subscription-Userinfo", out var userinfo))
+            {
+                LastSubscriptionUserinfo = string.Join("; ", userinfo);
+            }
+            if (response.Headers.TryGetValues("Profile-Title", out var profileTitle))
+            {
+                LastProfileTitle = profileTitle.FirstOrDefault();
+            }
+
             return await response.Content.ReadAsStringAsync(cts.Token);
         }
         catch (Exception ex)

@@ -41,6 +41,8 @@ public static class SubscriptionHandler
                 if (await ProcessDownloadResult(config, item.Id, result, hashCode, updateFunc))
                 {
                     successCount++;
+                    item.UpdateTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    await ConfigHandler.AddSubItem(config, item);
                 }
 
                 await updateFunc?.Invoke(false, "-------------------------------------------------------");
@@ -147,7 +149,27 @@ public static class SubscriptionHandler
             ? null
             : HwidHelper.BuildSubscriptionHeaders(config.HwidItem);
 
-        return await DownloadSubscriptionContent(downloadHandle, url, blProxy, item.UserAgent, headers);
+        var content = await DownloadSubscriptionContent(downloadHandle, url, blProxy, item.UserAgent, headers);
+
+        // Apply Subscription-Userinfo / Profile-Title from the MAIN subscription response only
+        // (before any MoreUrl downloads overwrite the captured headers).
+        if (item.ConvertTarget.IsNullOrEmpty())
+        {
+            var userinfo = SubscriptionInfoHelper.ParseUserinfo(downloadHandle.LastSubscriptionUserinfo);
+            if (userinfo != null)
+            {
+                item.Upload = userinfo.Upload;
+                item.Download = userinfo.Download;
+                item.Total = userinfo.Total;
+                item.Expire = userinfo.Expire;
+            }
+
+            var urlHost = Utils.TryUri(item.Url.TrimEx())?.IdnHost ?? string.Empty;
+            item.Remarks = SubscriptionInfoHelper.ResolveRemarkOnUpdate(
+                item.Remarks ?? string.Empty, item.AutoRemark, downloadHandle.LastProfileTitle, urlHost);
+        }
+
+        return content;
     }
 
     private static async Task<string> DownloadAdditionalSubscriptions(Config config, SubItem item, string mainResult, bool blProxy, DownloadService downloadHandle)

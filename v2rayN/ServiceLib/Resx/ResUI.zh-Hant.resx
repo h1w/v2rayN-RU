@@ -867,6 +867,19 @@
   <data name="SubUrlTips" xml:space="preserve">
     <value>普通分組此處請留空</value>
   </data>
+  <data name="SubDaysLeft" xml:space="preserve">
+    <value>剩餘 {0} 天</value>
+  </data>
+  <data name="SubExpired" xml:space="preserve">
+    <value>已過期</value>
+  </data>
+  <data name="SubTrafficUsed" xml:space="preserve">
+    <value>{0} / {1}</value>
+  </data>
+  <data name="SubInfoToolTip" xml:space="preserve">
+    <value>已用: {0} / {1}
+到期: {2}</value>
+  </data>
   <data name="TipChangeRouting" xml:space="preserve">
     <value>路由設定已改變</value>
   </data>

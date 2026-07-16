@@ -36,6 +36,39 @@
                 </StackPanel>
 
                 <StackPanel
+                    x:Name="spSubInfo"
+                    Margin="{StaticResource MarginLeftRight8}"
+                    VerticalAlignment="Center"
+                    DockPanel.Dock="Right"
+                    Orientation="Horizontal">
+                    <materialDesign:PackIcon
+                        Margin="{StaticResource MarginRight8}"
+                        VerticalAlignment="Center"
+                        Kind="CalendarClock"
+                        Opacity="0.7" />
+                    <TextBlock
+                        x:Name="txtSubDays"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource StatusbarItem}" />
+                    <Border
+                        Width="1"
+                        Height="24"
+                        Margin="{StaticResource MarginLeftRight8}"
+                        Background="{DynamicResource MaterialDesignDivider}" />
+                    <StackPanel VerticalAlignment="Center" MinWidth="150">
+                        <TextBlock
+                            x:Name="txtSubTraffic"
+                            HorizontalAlignment="Left"
+                            Style="{StaticResource StatusbarItem}" />
+                        <ProgressBar
+                            x:Name="pbSubTraffic"
+                            Height="4"
+                            Margin="0,3,0,0"
+                            Maximum="100" />
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel
                     Width="Auto"
                     Margin="{StaticResource MarginLeftRight8}"
                     VerticalAlignment="Center"

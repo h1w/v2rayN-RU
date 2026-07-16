@@ -2716,6 +2716,43 @@ namespace ServiceLib.Resx {
         }
         
         /// <summary>
+        ///   查找类似 {0} days left 的本地化字符串。
+        /// </summary>
+        public static string SubDaysLeft {
+            get {
+                return ResourceManager.GetString("SubDaysLeft", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Expired 的本地化字符串。
+        /// </summary>
+        public static string SubExpired {
+            get {
+                return ResourceManager.GetString("SubExpired", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Used: {0} / {1}
+        ///Expires: {2} 的本地化字符串。
+        /// </summary>
+        public static string SubInfoToolTip {
+            get {
+                return ResourceManager.GetString("SubInfoToolTip", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 {0} / {1} 的本地化字符串。
+        /// </summary>
+        public static string SubTrafficUsed {
+            get {
+                return ResourceManager.GetString("SubTrafficUsed", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   查找类似 For group please leave blank here 的本地化字符串。
         /// </summary>
         public static string SubUrlTips {
