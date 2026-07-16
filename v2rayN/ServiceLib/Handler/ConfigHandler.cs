@@ -2027,6 +2027,11 @@ public static class ConfigHandler
             item.NextProfile = subItem.NextProfile;
             item.PreSocksPort = subItem.PreSocksPort;
             item.Memo = subItem.Memo;
+            item.Upload = subItem.Upload;
+            item.Download = subItem.Download;
+            item.Total = subItem.Total;
+            item.Expire = subItem.Expire;
+            item.AutoRemark = subItem.AutoRemark;
         }
 
         if (item.Id.IsNullOrEmpty())
