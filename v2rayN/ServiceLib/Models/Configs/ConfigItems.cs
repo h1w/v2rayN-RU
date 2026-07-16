@@ -280,3 +280,11 @@ public class SimpleDNSItem
     public string? Hosts { get; set; }
     public string? DirectExpectedIPs { get; set; }
 }
+
+[Serializable]
+public class HwidItem
+{
+    public bool Enabled { get; set; } = true;
+    public string? Hwid { get; set; }
+    public bool GenerateWithoutHyphens { get; set; }
+}

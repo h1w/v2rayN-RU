@@ -113,6 +113,11 @@ public static class ConfigHandler
         }
 
         config.ConstItem ??= new ConstItem();
+        config.HwidItem ??= new();
+        if (config.HwidItem.Hwid.IsNullOrEmpty())
+        {
+            config.HwidItem.Hwid = HwidHelper.GenerateHwid(config.HwidItem.GenerateWithoutHyphens);
+        }
 
         config.SimpleDNSItem ??= InitBuiltinSimpleDNS();
         config.SimpleDNSItem.GlobalFakeIp ??= true;

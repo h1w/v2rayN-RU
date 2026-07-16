@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using ServiceLib.Helper;
+using ServiceLib.Models.Configs;
 using Xunit;
 
 namespace ServiceLib.Tests.Helper;
@@ -72,5 +73,76 @@ public class HwidHelperTests
         var second = HwidHelper.GenerateHwid(false);
 
         first.Should().NotBe(second);
+    }
+
+    [Fact]
+    public void BuildSubscriptionHeaders_WhenEnabledWithValidHwid_ShouldReturnHappCompatibleHeaders()
+    {
+        var item = new HwidItem { Enabled = true, Hwid = "4998793c-3ce5-4ac9-9dfa-0ef5417b00fa" };
+
+        var headers = HwidHelper.BuildSubscriptionHeaders(item);
+
+        headers.Should().ContainKey("x-hwid").WhoseValue.Should().Be("4998793c-3ce5-4ac9-9dfa-0ef5417b00fa");
+        headers.Should().ContainKey("x-device-os");
+        headers.Should().ContainKey("x-ver-os");
+        headers.Should().ContainKey("x-device-locale");
+    }
+
+    [Fact]
+    public void BuildSubscriptionHeaders_ShouldNeverSendDeviceModel()
+    {
+        var item = new HwidItem { Enabled = true, Hwid = "4998793c-3ce5-4ac9-9dfa-0ef5417b00fa" };
+
+        var headers = HwidHelper.BuildSubscriptionHeaders(item);
+
+        headers.Should().NotContainKey("x-device-model");
+    }
+
+    [Fact]
+    public void BuildSubscriptionHeaders_ShouldSendStoredValueVerbatim()
+    {
+        // GenerateWithoutHyphens must not rewrite an already-stored value.
+        var item = new HwidItem
+        {
+            Enabled = true,
+            Hwid = "4998793c-3ce5-4ac9-9dfa-0ef5417b00fa",
+            GenerateWithoutHyphens = true
+        };
+
+        var headers = HwidHelper.BuildSubscriptionHeaders(item);
+
+        headers["x-hwid"].Should().Be("4998793c-3ce5-4ac9-9dfa-0ef5417b00fa");
+    }
+
+    [Fact]
+    public void BuildSubscriptionHeaders_WhenDisabled_ShouldReturnEmpty()
+    {
+        var item = new HwidItem { Enabled = false, Hwid = "4998793c-3ce5-4ac9-9dfa-0ef5417b00fa" };
+
+        HwidHelper.BuildSubscriptionHeaders(item).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void BuildSubscriptionHeaders_WhenHwidInvalid_ShouldReturnEmpty()
+    {
+        var item = new HwidItem { Enabled = true, Hwid = "short" };
+
+        HwidHelper.BuildSubscriptionHeaders(item).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void BuildSubscriptionHeaders_WhenItemIsNull_ShouldReturnEmpty()
+    {
+        HwidHelper.BuildSubscriptionHeaders(null).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void BuildSubscriptionHeaders_DeviceOs_ShouldBeOneOfKnownPlatformNames()
+    {
+        var item = new HwidItem { Enabled = true, Hwid = "4998793c-3ce5-4ac9-9dfa-0ef5417b00fa" };
+
+        var headers = HwidHelper.BuildSubscriptionHeaders(item);
+
+        headers["x-device-os"].Should().BeOneOf("Windows", "Linux", "macOS");
     }
 }
