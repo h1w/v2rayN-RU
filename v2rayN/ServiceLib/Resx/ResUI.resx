@@ -1915,4 +1915,10 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
   <data name="CustomTestAllFailed" xml:space="preserve">
     <value>All outbounds failed</value>
   </data>
+  <data name="TbProxyDialResolveStrategy" xml:space="preserve">
+    <value>Proxy Dial Resolution Strategy</value>
+  </data>
+  <data name="TbProxyDialResolveStrategyTip" xml:space="preserve">
+    <value>Not recommended; may cause routing loops.</value>
+  </data>
 </root>
