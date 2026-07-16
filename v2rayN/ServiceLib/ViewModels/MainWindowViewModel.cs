@@ -679,7 +679,7 @@ public class MainWindowViewModel : MyReactiveObject
             });
             RxSchedulers.MainThreadScheduler.Schedule(async () =>
             {
-                await StatusBarViewModel.RefreshServers();
+                await StatusBarViewModel.RefreshServersBiz();
                 await StatusBarViewModel.TestServerAvailability();
             });
 
