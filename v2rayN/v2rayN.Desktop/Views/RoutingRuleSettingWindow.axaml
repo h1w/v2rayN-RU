@@ -27,6 +27,9 @@
             <MenuItem
                 x:Name="menuRuleExportToFile"
                 Header="{x:Static resx:ResUI.menuRuleExportToFile}" />
+            <MenuItem
+                x:Name="menuAutofitColumnWidth"
+                Header="{x:Static resx:ResUI.menuProfileAutofitColumnWidth}" />
         </Menu>
 
         <StackPanel
@@ -233,6 +236,10 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
+                        <DataGridTextColumn
+                            Width="120"
+                            Binding="{Binding RuleSource}"
+                            Header="{x:Static resx:ResUI.LvRuleSource}" />
                         <DataGridTextColumn
                             Width="150"
                             Binding="{Binding Remarks}"

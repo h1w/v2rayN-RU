@@ -180,6 +180,7 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
             Enabled = item.Enabled,
             Remarks = item.Remarks,
             IsReadonly = isReadonly,
+            RuleSource = isReadonly ? ResUI.RuleSourceJson : string.Empty,
         };
     }
 
@@ -213,9 +214,20 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
         var routingRuleDetailsViewModel = new RoutingRuleDetailsViewModel(item);
         if (await AppManager.Instance.WindowDialog.ShowDialogAsync(routingRuleDetailsViewModel) == true)
         {
+            // Read the edited rule back from the detail VM: selecting a profile replaces
+            // SelectedSource with a deep copy, so the original `item` reference can be stale.
+            var edited = routingRuleDetailsViewModel.SelectedSource ?? item;
             if (blNew)
             {
-                _rules.Insert(0, item);
+                _rules.Insert(0, edited);
+            }
+            else
+            {
+                var index = _rules.FindIndex(t => t.Id == edited.Id);
+                if (index >= 0)
+                {
+                    _rules[index] = edited;
+                }
             }
             RefreshRulesItems();
         }

@@ -84,6 +84,18 @@
                         <TextBlock Style="{StaticResource ToolbarTextBlock}" Text="{x:Static resx:ResUI.menuRuleExportToFile}" />
                     </StackPanel>
                 </Button>
+                <Separator />
+                <Button
+                    x:Name="btnAutofitColumnWidth"
+                    ToolTip="{x:Static resx:ResUI.menuProfileAutofitColumnWidth}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon
+                            Margin="{StaticResource MarginRight8}"
+                            VerticalAlignment="Center"
+                            Kind="ArrowSplitVertical" />
+                        <TextBlock Style="{StaticResource ToolbarTextBlock}" Text="{x:Static resx:ResUI.menuProfileAutofitColumnWidth}" />
+                    </StackPanel>
+                </Button>
             </ToolBar>
         </ToolBarTray>
 
@@ -331,6 +343,10 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
+                        <DataGridTextColumn
+                            Width="120"
+                            Binding="{Binding RuleSource}"
+                            Header="{x:Static resx:ResUI.LvRuleSource}" />
                         <DataGridTextColumn
                             Width="150"
                             Binding="{Binding Remarks}"

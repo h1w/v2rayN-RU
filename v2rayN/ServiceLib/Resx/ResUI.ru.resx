@@ -300,6 +300,15 @@
   <data name="PleaseSelectRules" xml:space="preserve">
     <value>Выберите правила</value>
   </data>
+  <data name="CustomJsonRuleReadonlyTip" xml:space="preserve">
+    <value>Эти правила берутся из активной пользовательской JSON-конфигурации и доступны только для чтения.</value>
+  </data>
+  <data name="LvRuleSource" xml:space="preserve">
+    <value>Источник</value>
+  </data>
+  <data name="RuleSourceJson" xml:space="preserve">
+    <value>JSON (обязательно)</value>
+  </data>
   <data name="RemoveRules" xml:space="preserve">
     <value>Вы уверены, что хотите удалить правила?</value>
   </data>

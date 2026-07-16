@@ -11,4 +11,10 @@ public class RulesItemModel : RulesItem
 
     public bool IsReadonly { get; set; }
     public bool IsEditable => !IsReadonly;
+
+    /// <summary>
+    /// Origin marker shown in a dedicated column: mandatory rules parsed from the
+    /// active custom JSON config are tagged, user rules are left blank.
+    /// </summary>
+    public string RuleSource { get; set; }
 }

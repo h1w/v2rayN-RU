@@ -2536,6 +2536,24 @@ namespace ServiceLib.Resx {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Source.
+        /// </summary>
+        public static string LvRuleSource {
+            get {
+                return ResourceManager.GetString("LvRuleSource", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to JSON (required).
+        /// </summary>
+        public static string RuleSourceJson {
+            get {
+                return ResourceManager.GetString("RuleSourceJson", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   查找类似 Please select the Configuration first 的本地化字符串。
         /// </summary>
         public static string PleaseSelectServer {

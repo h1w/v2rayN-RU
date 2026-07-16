@@ -282,14 +282,16 @@ public class StatusBarViewModel : MyReactiveObject
         {
             RunningServerDisplay = running.GetSummary();
             RunningServerToolTipText = GetRunningServerToolTipText(RunningServerDisplay);
-            await RefreshSubInfo(running.Subid);
         }
         else
         {
             RunningServerDisplay = ResUI.CheckServerSettings;
             RunningServerToolTipText = GetRunningServerToolTipText(RunningServerDisplay);
-            await RefreshSubInfo(null);
         }
+
+        // The traffic/expiry block reflects the currently selected subscription tab,
+        // not the active profile's subscription, and updates when the tab changes.
+        await RefreshSubInfo(_config.SubIndexId);
     }
 
     private async Task RefreshSubInfo(string? subId)

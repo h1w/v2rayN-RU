@@ -303,6 +303,12 @@
   <data name="CustomJsonRuleReadonlyTip" xml:space="preserve">
     <value>These rules come from the active custom JSON config and are read-only.</value>
   </data>
+  <data name="LvRuleSource" xml:space="preserve">
+    <value>Source</value>
+  </data>
+  <data name="RuleSourceJson" xml:space="preserve">
+    <value>JSON (required)</value>
+  </data>
   <data name="RemoveRules" xml:space="preserve">
     <value>Are you sure you want to remove the rules?</value>
   </data>

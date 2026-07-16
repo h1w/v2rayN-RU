@@ -32,6 +32,7 @@ public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingVie
         lstRules.SelectionChanged += lstRules_SelectionChanged;
         lstRules.DoubleTapped += LstRules_DoubleTapped;
         menuRuleSelectAll.Click += menuRuleSelectAll_Click;
+        menuAutofitColumnWidth.Click += MenuAutofitColumnWidth_Click;
         //btnBrowseCustomIcon.Click += btnBrowseCustomIcon_Click;
         btnBrowseCustomRulesetPath4Singbox.Click += btnBrowseCustomRulesetPath4Singbox_ClickAsync;
 
@@ -170,6 +171,21 @@ public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingVie
     private void menuRuleSelectAll_Click(object? sender, RoutedEventArgs e)
     {
         lstRules.SelectAll();
+    }
+
+    private void MenuAutofitColumnWidth_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            foreach (var it in lstRules.Columns)
+            {
+                it.Width = new DataGridLength(1, DataGridLengthUnitType.Auto);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(ex.Message, ex);
+        }
     }
 
     //private async void btnBrowseCustomIcon_Click(object? sender, RoutedEventArgs e)
