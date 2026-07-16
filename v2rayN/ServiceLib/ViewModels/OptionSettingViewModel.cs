@@ -75,6 +75,10 @@ public class OptionSettingViewModel : MyReactiveObject, ICloseable
     [Reactive] public string RoutingRulesSourceUrl { get; set; }
     [Reactive] public string IPAPIUrl { get; set; }
     [Reactive] public string RootCertProvider { get; set; }
+    [Reactive] public bool HwidEnabled { get; set; }
+    [Reactive] public string Hwid { get; set; }
+    [Reactive] public bool HwidGenerateWithoutHyphens { get; set; }
+    [Reactive] public string HwidValidationText { get; set; }
 
     #endregion UI
 
@@ -124,6 +128,7 @@ public class OptionSettingViewModel : MyReactiveObject, ICloseable
     #endregion CoreType
 
     public ReactiveCommand<Unit, Unit> SaveCmd { get; }
+    public ReactiveCommand<Unit, Unit> RegenerateHwidCmd { get; }
 
     public OptionSettingViewModel()
     {
@@ -137,6 +142,19 @@ public class OptionSettingViewModel : MyReactiveObject, ICloseable
         {
             await SaveSettingAsync();
         });
+
+        RegenerateHwidCmd = ReactiveCommand.Create(() =>
+        {
+            Hwid = HwidHelper.GenerateHwid(HwidGenerateWithoutHyphens);
+        });
+
+        this.WhenAnyValue(x => x.Hwid)
+            .Subscribe(value =>
+            {
+                HwidValidationText = HwidHelper.IsValidHwid(value)
+                    ? ResUI.TbSettingsHwidValid
+                    : ResUI.TbSettingsHwidInvalid;
+            });
 
         _ = Init();
     }
@@ -214,6 +232,9 @@ public class OptionSettingViewModel : MyReactiveObject, ICloseable
         RoutingRulesSourceUrl = _config.ConstItem.RouteRulesTemplateSourceUrl;
         IPAPIUrl = _config.SpeedTestItem.IPAPIUrl;
         RootCertProvider = _config.GuiItem.RootCertProvider;
+        HwidEnabled = _config.HwidItem.Enabled;
+        Hwid = _config.HwidItem.Hwid ?? string.Empty;
+        HwidGenerateWithoutHyphens = _config.HwidItem.GenerateWithoutHyphens;
 
         #endregion UI
 
@@ -307,6 +328,11 @@ public class OptionSettingViewModel : MyReactiveObject, ICloseable
            || LocalPort <= 0 || LocalPort >= Global.MaxPort)
         {
             NoticeManager.Instance.Enqueue(ResUI.FillLocalListeningPort);
+            return;
+        }
+        if (HwidEnabled && !HwidHelper.IsValidHwid(Hwid))
+        {
+            NoticeManager.Instance.Enqueue(ResUI.FillHwidError);
             return;
         }
         var needReboot = EnableStatistics != _config.GuiItem.EnableStatistics
@@ -403,6 +429,9 @@ public class OptionSettingViewModel : MyReactiveObject, ICloseable
         _config.ConstItem.RouteRulesTemplateSourceUrl = RoutingRulesSourceUrl;
         _config.SpeedTestItem.IPAPIUrl = IPAPIUrl;
         _config.GuiItem.RootCertProvider = RootCertProvider;
+        _config.HwidItem.Enabled = HwidEnabled;
+        _config.HwidItem.Hwid = Hwid.TrimEx();
+        _config.HwidItem.GenerateWithoutHyphens = HwidGenerateWithoutHyphens;
 
         //systemProxy
         _config.SystemProxyItem.SystemProxyExceptions = SystemProxyExceptions;
