@@ -1,8 +1,8 @@
 # v2rayN
 
-**English** | [Русский](README-RU.md) | [中文](README-CN.md)
+[English](README.md) | [Русский](README-RU.md) | **中文**
 
-### A GUI client for Windows, Linux and macOS. Support [Xray](https://github.com/XTLS/Xray-core) and [sing-box](https://github.com/SagerNet/sing-box) and [others](https://github.com/2dust/v2rayN/wiki/List-of-supported-cores)
+### 适用于 Windows、Linux 和 macOS 的 GUI 客户端。支持 [Xray](https://github.com/XTLS/Xray-core)、[sing-box](https://github.com/SagerNet/sing-box) 及[其他内核](https://github.com/2dust/v2rayN/wiki/List-of-supported-cores)
 
 [![CodeFactor](https://www.codefactor.io/repository/github/h1w/v2rayn-ru/badge)](https://www.codefactor.io/repository/github/h1w/v2rayn-ru)
 [![Release](https://img.shields.io/github/v/release/h1w/v2rayN-RU?logo=github&label=Release)](https://github.com/h1w/v2rayN-RU/releases)
@@ -17,40 +17,40 @@
 
 ---
 
-## About this fork
+## 关于此分支
 
-**v2rayN-RU** is a fork of [v2rayN](https://github.com/2dust/v2rayN) with extra features:
+**v2rayN-RU** 是 [v2rayN](https://github.com/2dust/v2rayN) 的一个分支，新增功能：
 
-- **Client HWID support** — when updating subscriptions, the client sends Happ-compatible HWID headers (`x-hwid`, `x-device-os`, `x-ver-os`, `x-device-locale`), compatible with Remnawave Panel v2.9.0+. This lets you use subscriptions that require per-device hardware-ID authorization.
-- **Full `.json` configuration support** — import and run complete custom `.json` core configurations as-is.
+- **客户端 HWID 支持** — 更新订阅时，客户端会发送与 Happ 兼容的 HWID 请求头（`x-hwid`、`x-device-os`、`x-ver-os`、`x-device-locale`），兼容 Remnawave Panel v2.9.0+。这样即可使用需要按设备硬件标识进行授权的订阅。
+- **完整的 `.json` 配置支持** — 直接导入并运行完整的自定义 `.json` 内核配置。
 
 ---
 
-## Download
+## 下载
 
-Download the latest release here:
+在这里下载最新版本：
 
 [https://github.com/h1w/v2rayN-RU/releases](https://github.com/h1w/v2rayN-RU/releases)
 
 
 > [!TIP]
-> v2rayN is the desktop version. For the mobile version, please visit v2rayNG
+> v2rayN 是电脑版，手机版请访问 v2rayNG
 >
 > https://github.com/2dust/v2rayNG
 
 ---
 
-## Documentation
+## 使用文档
 
-Read the Wiki for usage guides and configuration details.
+请阅读 Wiki 获取使用说明和配置教程。
 
 [https://github.com/2dust/v2rayN/wiki](https://github.com/2dust/v2rayN/wiki)
 
 ---
 
-## Supported Platforms
+## 支持平台
 
-| Platform | x64 | x86 | arm64 | riscv64 | loong64 |
+| 平台 | x64 | x86 | arm64 | riscv64 | loong64 |
 | --- | --- | --- | --- | --- | --- |
 | Windows | ✅ | ✅ | ✅ | - | - |
 | Linux | ✅ | - | ✅ | ✅ | ✅ |
@@ -58,11 +58,11 @@ Read the Wiki for usage guides and configuration details.
 
 ---
 
-## GPG Verification
+## GPG 签名校验
 
-Release files are signed with GPG to verify authenticity and integrity, helping prevent mirror, ISP, or CDN hijacking.
+发布文件已使用 GPG 签名，可用于校验文件真实性与完整性，预防镜像站、运营商或 CDN 劫持。
 
-### Fingerprint
+### 公钥指纹
 
 ```text
 ECF0 C3FB E838 19F6 6D5D
@@ -71,12 +71,12 @@ ECF0 C3FB E838 19F6 6D5D
 
 ---
 
-## Community
+## 社区
 
-Telegram Group:
+Telegram 群组：
 
 [https://t.me/v2rayN](https://t.me/v2rayN)
 
-Telegram Channel:
+Telegram 频道：
 
 [https://t.me/github_2dust](https://t.me/github_2dust)
