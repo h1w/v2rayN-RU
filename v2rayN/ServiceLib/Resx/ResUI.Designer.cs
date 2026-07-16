@@ -4726,6 +4726,87 @@ namespace ServiceLib.Resx {
         }
         
         /// <summary>
+        ///   查找类似 Send HWID with subscription requests 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsHwidEnabled {
+            get {
+                return ResourceManager.GetString("TbSettingsHwidEnabled", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 HWID 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsHwid {
+            get {
+                return ResourceManager.GetString("TbSettingsHwid", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Generate HWID without hyphens 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsHwidGenerateWithoutHyphens {
+            get {
+                return ResourceManager.GetString("TbSettingsHwidGenerateWithoutHyphens", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Regenerate 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsHwidRegenerate {
+            get {
+                return ResourceManager.GetString("TbSettingsHwidRegenerate", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Format is valid 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsHwidValid {
+            get {
+                return ResourceManager.GetString("TbSettingsHwidValid", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Invalid format (10-64 characters: A-Z a-z 0-9 = -) 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsHwidInvalid {
+            get {
+                return ResourceManager.GetString("TbSettingsHwidInvalid", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Please enter a valid HWID (10-64 characters: A-Z, a-z, 0-9, =, -) 的本地化字符串。
+        /// </summary>
+        public static string FillHwidError {
+            get {
+                return ResourceManager.GetString("FillHwidError", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 This subscription requires an HWID, but it is disabled or invalid in settings 的本地化字符串。
+        /// </summary>
+        public static string MsgHwidNotSupported {
+            get {
+                return ResourceManager.GetString("MsgHwidNotSupported", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Device limit reached for this subscription 的本地化字符串。
+        /// </summary>
+        public static string MsgHwidMaxDevicesReached {
+            get {
+                return ResourceManager.GetString("MsgHwidMaxDevicesReached", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   查找类似 Subscription conversion URL 的本地化字符串。
         /// </summary>
         public static string TbSettingsSubConvert {

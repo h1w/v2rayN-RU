@@ -1863,4 +1863,31 @@
   <data name="TbToastConnected" xml:space="preserve">
     <value>Подключено</value>
   </data>
+  <data name="TbSettingsHwidEnabled" xml:space="preserve">
+    <value>Отправлять HWID в запросах подписки</value>
+  </data>
+  <data name="TbSettingsHwid" xml:space="preserve">
+    <value>HWID</value>
+  </data>
+  <data name="TbSettingsHwidGenerateWithoutHyphens" xml:space="preserve">
+    <value>Генерировать HWID без дефисов</value>
+  </data>
+  <data name="TbSettingsHwidRegenerate" xml:space="preserve">
+    <value>Перегенерировать</value>
+  </data>
+  <data name="TbSettingsHwidValid" xml:space="preserve">
+    <value>Формат верный</value>
+  </data>
+  <data name="TbSettingsHwidInvalid" xml:space="preserve">
+    <value>Неверный формат (10-64 символа: A-Z a-z 0-9 = -)</value>
+  </data>
+  <data name="FillHwidError" xml:space="preserve">
+    <value>Введите корректный HWID (10-64 символа: A-Z, a-z, 0-9, =, -)</value>
+  </data>
+  <data name="MsgHwidNotSupported" xml:space="preserve">
+    <value>Подписка требует HWID, но он отключён или неверен в настройках</value>
+  </data>
+  <data name="MsgHwidMaxDevicesReached" xml:space="preserve">
+    <value>Достигнут лимит устройств для этой подписки</value>
+  </data>
 </root>

@@ -750,6 +750,33 @@
   <data name="TbSettingsSubConvert" xml:space="preserve">
     <value>Subscription conversion URL</value>
   </data>
+  <data name="TbSettingsHwidEnabled" xml:space="preserve">
+    <value>Send HWID with subscription requests</value>
+  </data>
+  <data name="TbSettingsHwid" xml:space="preserve">
+    <value>HWID</value>
+  </data>
+  <data name="TbSettingsHwidGenerateWithoutHyphens" xml:space="preserve">
+    <value>Generate HWID without hyphens</value>
+  </data>
+  <data name="TbSettingsHwidRegenerate" xml:space="preserve">
+    <value>Regenerate</value>
+  </data>
+  <data name="TbSettingsHwidValid" xml:space="preserve">
+    <value>Format is valid</value>
+  </data>
+  <data name="TbSettingsHwidInvalid" xml:space="preserve">
+    <value>Invalid format (10-64 characters: A-Z a-z 0-9 = -)</value>
+  </data>
+  <data name="FillHwidError" xml:space="preserve">
+    <value>Please enter a valid HWID (10-64 characters: A-Z, a-z, 0-9, =, -)</value>
+  </data>
+  <data name="MsgHwidNotSupported" xml:space="preserve">
+    <value>This subscription requires an HWID, but it is disabled or invalid in settings</value>
+  </data>
+  <data name="MsgHwidMaxDevicesReached" xml:space="preserve">
+    <value>Device limit reached for this subscription</value>
+  </data>
   <data name="TbSettingsSystemproxy" xml:space="preserve">
     <value>System proxy settings</value>
   </data>
