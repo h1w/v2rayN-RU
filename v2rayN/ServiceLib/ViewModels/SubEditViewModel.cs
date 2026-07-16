@@ -4,6 +4,8 @@ public class SubEditViewModel : MyReactiveObject, ICloseable
 {
     public event EventHandler? RequestClose;
 
+    private readonly string _originalRemarks;
+
     [Reactive]
     public SubItem SelectedSource { get; set; }
 
@@ -38,19 +40,30 @@ public class SubEditViewModel : MyReactiveObject, ICloseable
             await SaveSubAsync();
         });
 
+        _originalRemarks = subItem.Remarks ?? string.Empty;
         SelectedSource = subItem.Id.IsNullOrEmpty() ? subItem : JsonUtils.DeepCopy(subItem);
     }
 
     private async Task SaveSubAsync()
     {
-        var remarks = SelectedSource.Remarks;
-        if (remarks.IsNullOrEmpty())
+        var url = SelectedSource.Url.TrimEx();
+        if (url.IsNullOrEmpty())
         {
-            NoticeManager.Instance.Enqueue(ResUI.PleaseFillRemarks);
-            return;
+            if (SelectedSource.Remarks.IsNullOrEmpty())
+            {
+                NoticeManager.Instance.Enqueue(ResUI.PleaseFillRemarks);
+                return;
+            }
+        }
+        else
+        {
+            var urlHost = Utils.TryUri(url)?.IdnHost ?? string.Empty;
+            var (resolvedRemarks, autoRemark) = SubscriptionInfoHelper.ResolveRemarkOnSave(
+                SelectedSource.Remarks, _originalRemarks, SelectedSource.AutoRemark, urlHost);
+            SelectedSource.Remarks = resolvedRemarks;
+            SelectedSource.AutoRemark = autoRemark;
         }
 
-        var url = SelectedSource.Url;
         if (url.IsNotEmpty())
         {
             var uri = Utils.TryUri(url);
