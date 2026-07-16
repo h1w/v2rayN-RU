@@ -90,14 +90,14 @@ public static class SubscriptionHandler
         return downloadHandle;
     }
 
-    private static async Task<string> DownloadSubscriptionContent(DownloadService downloadHandle, string url, bool blProxy, string userAgent)
+    private static async Task<string> DownloadSubscriptionContent(DownloadService downloadHandle, string url, bool blProxy, string userAgent, IDictionary<string, string>? headers = null)
     {
-        var result = await downloadHandle.TryDownloadString(url, blProxy, userAgent);
+        var result = await downloadHandle.TryDownloadString(url, blProxy, userAgent, headers);
 
         // If download with proxy fails, try direct connection
         if (blProxy && result.IsNullOrEmpty())
         {
-            result = await downloadHandle.TryDownloadString(url, false, userAgent);
+            result = await downloadHandle.TryDownloadString(url, false, userAgent, headers);
         }
 
         return result ?? string.Empty;
@@ -111,7 +111,7 @@ public static class SubscriptionHandler
         // Process additional subscription links (if any)
         if (item.ConvertTarget.IsNullOrEmpty() && item.MoreUrl.TrimEx().IsNotEmpty())
         {
-            result = await DownloadAdditionalSubscriptions(item, result, blProxy, downloadHandle);
+            result = await DownloadAdditionalSubscriptions(config, item, result, blProxy, downloadHandle);
         }
 
         return result;
@@ -142,11 +142,15 @@ public static class SubscriptionHandler
             }
         }
 
-        // Download and return result directly
-        return await DownloadSubscriptionContent(downloadHandle, url, blProxy, item.UserAgent);
+        // Only send HWID to the subscription itself, never to a third-party conversion service.
+        var headers = item.ConvertTarget.IsNotEmpty()
+            ? null
+            : HwidHelper.BuildSubscriptionHeaders(config.HwidItem);
+
+        return await DownloadSubscriptionContent(downloadHandle, url, blProxy, item.UserAgent, headers);
     }
 
-    private static async Task<string> DownloadAdditionalSubscriptions(SubItem item, string mainResult, bool blProxy, DownloadService downloadHandle)
+    private static async Task<string> DownloadAdditionalSubscriptions(Config config, SubItem item, string mainResult, bool blProxy, DownloadService downloadHandle)
     {
         var result = mainResult;
 
@@ -166,7 +170,7 @@ public static class SubscriptionHandler
                 continue;
             }
 
-            var additionalResult = await DownloadSubscriptionContent(downloadHandle, url2, blProxy, item.UserAgent);
+            var additionalResult = await DownloadSubscriptionContent(downloadHandle, url2, blProxy, item.UserAgent, HwidHelper.BuildSubscriptionHeaders(config.HwidItem));
 
             if (additionalResult.IsNotEmpty())
             {
