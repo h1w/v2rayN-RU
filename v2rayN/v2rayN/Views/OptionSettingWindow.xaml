@@ -691,6 +691,9 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
@@ -1109,6 +1112,65 @@
                             Style="{StaticResource ToolbarTextBlock}"
                             Text="{x:Static resx:ResUI.TbSettingsChinaUserTip}"
                             TextWrapping="Wrap" />
+
+                        <TextBlock
+                            Grid.Row="28"
+                            Grid.Column="0"
+                            Margin="{StaticResource Margin8}"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource ToolbarTextBlock}"
+                            Text="{x:Static resx:ResUI.TbSettingsHwidEnabled}" />
+                        <ToggleButton
+                            x:Name="togHwidEnabled"
+                            Grid.Row="28"
+                            Grid.Column="1"
+                            Margin="{StaticResource Margin8}"
+                            HorizontalAlignment="Left" />
+
+                        <TextBlock
+                            Grid.Row="29"
+                            Grid.Column="0"
+                            Margin="{StaticResource Margin8}"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource ToolbarTextBlock}"
+                            Text="{x:Static resx:ResUI.TbSettingsHwid}" />
+                        <TextBox
+                            x:Name="txtHwid"
+                            Grid.Row="29"
+                            Grid.Column="1"
+                            Width="300"
+                            Margin="{StaticResource Margin8}"
+                            Style="{StaticResource DefTextBox}" />
+                        <StackPanel
+                            Grid.Row="29"
+                            Grid.Column="2"
+                            Orientation="Horizontal">
+                            <Button
+                                x:Name="btnRegenerateHwid"
+                                Margin="{StaticResource Margin4}"
+                                Content="{x:Static resx:ResUI.TbSettingsHwidRegenerate}"
+                                Style="{StaticResource DefButton}" />
+                            <TextBlock
+                                x:Name="txtHwidValidation"
+                                Margin="{StaticResource Margin4}"
+                                VerticalAlignment="Center"
+                                Style="{StaticResource ToolbarTextBlock}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <TextBlock
+                            Grid.Row="30"
+                            Grid.Column="0"
+                            Margin="{StaticResource Margin8}"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource ToolbarTextBlock}"
+                            Text="{x:Static resx:ResUI.TbSettingsHwidGenerateWithoutHyphens}" />
+                        <ToggleButton
+                            x:Name="togHwidGenerateWithoutHyphens"
+                            Grid.Row="30"
+                            Grid.Column="1"
+                            Margin="{StaticResource Margin8}"
+                            HorizontalAlignment="Left" />
                     </Grid>
                 </ScrollViewer>
             </TabItem>

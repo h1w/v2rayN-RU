@@ -116,6 +116,11 @@ public partial class OptionSettingWindow
             this.Bind(ViewModel, vm => vm.GeoFileSourceUrl, v => v.cmbGetFilesSourceUrl.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SrsFileSourceUrl, v => v.cmbSrsFilesSourceUrl.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.RoutingRulesSourceUrl, v => v.cmbRoutingRulesSourceUrl.Text).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.HwidEnabled, v => v.togHwidEnabled.IsChecked).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.Hwid, v => v.txtHwid.Text).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.HwidGenerateWithoutHyphens, v => v.togHwidGenerateWithoutHyphens.IsChecked).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.HwidValidationText, v => v.txtHwidValidation.Text).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.RegenerateHwidCmd, v => v.btnRegenerateHwid).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.IPAPIUrl, v => v.cmbIPAPIUrl.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.RootCertProvider, v => v.cmbRootCertificateProvider.Text).DisposeWith(disposables);
 
