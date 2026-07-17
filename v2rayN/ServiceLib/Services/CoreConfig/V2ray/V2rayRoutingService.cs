@@ -276,4 +276,87 @@ public partial class CoreConfigV2rayService
 
         return directExeSet.ToList();
     }
+
+    /// <summary>
+    /// Генерирует ТОЛЬКО пользовательские правила, в отрыве от оболочки приложения:
+    /// без TUN-правил, без domainStrategy, без инбаундов и DNS. Нужен для вливания
+    /// правил в пользовательский custom JSON, который остаётся основой конфига.
+    /// </summary>
+    public V2rayUserRouting BuildUserRoutingForCustom()
+    {
+        var fragment = new V2rayUserRouting();
+        try
+        {
+            var template = EmbedUtils.GetEmbedText(Global.V2raySampleClient);
+            var shell = JsonUtils.Deserialize<V2rayConfig>(template);
+            if (shell == null)
+            {
+                return fragment;
+            }
+            _coreConfig = shell;
+
+            // Выходы шаблона (direct/block) в конфиг пользователя не переносятся —
+            // их наличие обеспечивается отдельно, по факту использования.
+            var templateTags = _coreConfig.outbounds.Select(o => o.tag).ToHashSet(StringComparer.Ordinal);
+
+            var routing = context.RoutingItem;
+            if (routing == null)
+            {
+                return fragment;
+            }
+            var rules = JsonUtils.Deserialize<List<RulesItem>>(routing.RuleSet) ?? [];
+            foreach (var item in rules)
+            {
+                if (!item.Enabled || item.RuleType == ERuleType.DNS)
+                {
+                    continue;
+                }
+                var target = ResolveUnsupportedCustomTarget(item.OutboundTag);
+                if (target != null)
+                {
+                    fragment.UnsupportedCustomTargets.Add(target);
+                    continue;
+                }
+                var item2 = JsonUtils.Deserialize<RulesItem4Ray>(JsonUtils.Serialize(item));
+                GenRoutingUserRule(item2);
+            }
+
+            // Тот же пост-проход, что и в GenRouting: правила на группы уходят на балансер.
+            var balancerTagList = _coreConfig.routing.balancers?.Select(p => p.tag).ToList() ?? [];
+            if (balancerTagList.Count > 0)
+            {
+                foreach (var rulesItem in _coreConfig.routing.rules.Where(r => balancerTagList.Contains(r.outboundTag + Global.BalancerTagSuffix)))
+                {
+                    rulesItem.balancerTag = rulesItem.outboundTag + Global.BalancerTagSuffix;
+                    rulesItem.outboundTag = null;
+                }
+            }
+
+            fragment.Rules = _coreConfig.routing.rules;
+            fragment.ExtraOutbounds = _coreConfig.outbounds.Where(o => !templateTags.Contains(o.tag)).ToList();
+            fragment.Balancers = _coreConfig.routing.balancers;
+            fragment.Observatory = _coreConfig.observatory;
+            fragment.BurstObservatory = _coreConfig.burstObservatory;
+            return fragment;
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+            return fragment;
+        }
+    }
+
+    /// <summary>
+    /// Возвращает Remarks профиля, если правило указывает на профиль типа Custom.
+    /// Часть 1 такие цели не поддерживает — их обслуживают цепочечные ядра из Части 2.
+    /// </summary>
+    private string? ResolveUnsupportedCustomTarget(string? outboundTag)
+    {
+        if (outboundTag.IsNullOrEmpty() || Global.OutboundTags.Contains(outboundTag))
+        {
+            return null;
+        }
+        var node = context.AllProxiesMap.GetValueOrDefault($"remark:{outboundTag}");
+        return node?.ConfigType == EConfigType.Custom ? outboundTag : null;
+    }
 }

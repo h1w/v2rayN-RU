@@ -58,4 +58,26 @@ public class UserRoutingForCustomTests
         domains.Should().Contain("example.com");
         domains.Should().NotContain("#commented.example.com");
     }
+
+    [Fact]
+    public void Xray_BuildUserRoutingForCustom_returns_only_user_rules()
+    {
+        var ruleSet = """
+        [
+          { "Id": "r1", "OutboundTag": "direct", "Domain": ["example.com"], "Enabled": true },
+          { "Id": "r2", "OutboundTag": "proxy", "Ip": ["8.8.8.8/32"], "Enabled": true },
+          { "Id": "r3", "OutboundTag": "block", "Domain": ["ads.example.com"], "Enabled": false }
+        ]
+        """;
+
+        var fragment = new CoreConfigV2rayService(BuildContext(ruleSet)).BuildUserRoutingForCustom();
+
+        // Выключенное правило пропущено, шаблонные выходы не считаются «лишними».
+        fragment.Rules.Should().HaveCount(2);
+        fragment.Rules[0].outboundTag.Should().Be("direct");
+        fragment.Rules[0].domain.Should().ContainSingle().Which.Should().Be("example.com");
+        fragment.Rules[1].outboundTag.Should().Be("proxy");
+        fragment.ExtraOutbounds.Should().BeEmpty();
+        fragment.UnsupportedCustomTargets.Should().BeEmpty();
+    }
 }
