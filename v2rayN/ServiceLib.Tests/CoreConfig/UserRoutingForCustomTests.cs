@@ -158,4 +158,121 @@ public class UserRoutingForCustomTests
         fragment.UnsupportedCustomTargets.Should().ContainSingle().Which.Should().Be(customNode.Remarks);
         fragment.Rules.Should().BeEmpty();
     }
+
+    private static CoreConfigContext BuildSingboxContext(string ruleSetJson)
+    {
+        var config = CoreConfigTestFactory.CreateConfig(ECoreType.sing_box);
+        CoreConfigTestFactory.BindAppManagerConfig(config);
+        var node = CoreConfigTestFactory.CreateVmessNode(ECoreType.sing_box);
+        var context = CoreConfigTestFactory.CreateContext(config, node, ECoreType.sing_box);
+
+        return context with
+        {
+            RoutingItem = new RoutingItem
+            {
+                Id = "r1",
+                Remarks = "default",
+                RuleSet = ruleSetJson,
+                DomainStrategy = Global.AsIs,
+                DomainStrategy4Singbox = string.Empty,
+            },
+        };
+    }
+
+    [Fact]
+    public void Singbox_BuildUserRoutingForCustom_maps_block_to_reject_action()
+    {
+        var ruleSet = """
+        [
+          { "Id": "r1", "OutboundTag": "block", "Domain": ["ads.example.com"], "Enabled": true },
+          { "Id": "r2", "OutboundTag": "direct", "Domain": ["example.com"], "Enabled": true }
+        ]
+        """;
+
+        var fragment = new CoreConfigSingboxService(BuildSingboxContext(ruleSet)).BuildUserRoutingForCustom();
+
+        fragment.Rules.Should().HaveCount(2);
+        // block — это не выход, а действие правила.
+        fragment.Rules[0].action.Should().Be("reject");
+        fragment.Rules[0].outbound.Should().BeNull();
+        fragment.Rules[1].outbound.Should().Be("direct");
+        fragment.ExtraServers.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Singbox_BuildUserRoutingForCustom_excludes_dns_rules()
+    {
+        // RuleType = DNS (2) не должен попадать в пользовательский фрагмент,
+        // иначе DNS-правило просочится в custom JSON пользователя.
+        var ruleSet = """
+        [
+          { "Id": "r1", "OutboundTag": "direct", "Domain": ["dns.example.com"], "Enabled": true, "RuleType": 2 },
+          { "Id": "r2", "OutboundTag": "proxy", "Domain": ["routing.example.com"], "Enabled": true, "RuleType": 1 }
+        ]
+        """;
+
+        var fragment = new CoreConfigSingboxService(BuildSingboxContext(ruleSet)).BuildUserRoutingForCustom();
+
+        fragment.Rules.Should().ContainSingle();
+        fragment.Rules[0].outbound.Should().Be("proxy");
+    }
+
+    [Fact]
+    public void Singbox_BuildUserRoutingForCustom_rule_to_profile_produces_extra_server()
+    {
+        // Правило нацелено на реальный профиль (не direct/proxy/block) — должен
+        // появиться отдельный server (outbound), а правило должно указывать на его tag.
+        var targetNode = CoreConfigTestFactory.CreateVmessNode(ECoreType.sing_box, "n-target", "target-node");
+        var context = BuildSingboxContext(JsonUtils.Serialize(new List<RulesItem>
+        {
+            new()
+            {
+                Id = "r1",
+                Enabled = true,
+                OutboundTag = targetNode.Remarks,
+                Domain = ["target.example.com"],
+            },
+        }));
+        context.AllProxiesMap[$"remark:{targetNode.Remarks}"] = targetNode;
+
+        var fragment = new CoreConfigSingboxService(context).BuildUserRoutingForCustom();
+
+        var expectedTag = $"{targetNode.IndexId}-{Global.ProxyTag}-{targetNode.Remarks}";
+
+        fragment.Rules.Should().ContainSingle();
+        fragment.Rules[0].outbound.Should().Be(expectedTag);
+
+        // Реальный «лишний» сервер присутствует, а шаблонный direct — нет.
+        fragment.ExtraServers.Should().ContainSingle(o => o.tag == expectedTag);
+        fragment.ExtraServers.Should().NotContain(o => o.tag == Global.DirectTag);
+    }
+
+    [Fact]
+    public void Singbox_BuildUserRoutingForCustom_rule_to_custom_profile_is_unsupported()
+    {
+        // Правило нацелено на профиль типа Custom — Часть 1 такие цели не поддерживает:
+        // ремарка уходит в UnsupportedCustomTargets, а правило в fragment.Rules не появляется.
+        var customNode = new ProfileItem
+        {
+            IndexId = "n-custom",
+            ConfigType = EConfigType.Custom,
+            Remarks = "custom-node",
+        };
+        var context = BuildSingboxContext(JsonUtils.Serialize(new List<RulesItem>
+        {
+            new()
+            {
+                Id = "r1",
+                Enabled = true,
+                OutboundTag = customNode.Remarks,
+                Domain = ["custom.example.com"],
+            },
+        }));
+        context.AllProxiesMap[$"remark:{customNode.Remarks}"] = customNode;
+
+        var fragment = new CoreConfigSingboxService(context).BuildUserRoutingForCustom();
+
+        fragment.UnsupportedCustomTargets.Should().ContainSingle().Which.Should().Be(customNode.Remarks);
+        fragment.Rules.Should().BeEmpty();
+    }
 }
