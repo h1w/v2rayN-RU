@@ -58,42 +58,7 @@ public class CoreConfigContextBuilder
         }
         context = context with { Node = actNode };
         validatorResult.Warnings.AddRange(nodeValidatorResult.Warnings);
-        if (!(context.RoutingItem?.RuleSet.IsNullOrEmpty() ?? true))
-        {
-            var rules = JsonUtils.Deserialize<List<RulesItem>>(context.RoutingItem?.RuleSet) ?? [];
-            foreach (var ruleItem in rules.Where(ruleItem =>
-                         ruleItem.Enabled && !Global.OutboundTags.Contains(ruleItem.OutboundTag)))
-            {
-                if (ruleItem.OutboundTag.IsNullOrEmpty())
-                {
-                    validatorResult.Warnings.Add(string.Format(ResUI.MsgRoutingRuleEmptyOutboundTag, ruleItem.Remarks));
-                    ruleItem.OutboundTag = Global.ProxyTag;
-                    continue;
-                }
-                var ruleOutboundNode = await AppManager.Instance.GetProfileItemViaRemarks(ruleItem.OutboundTag);
-                if (ruleOutboundNode == null)
-                {
-                    validatorResult.Warnings.Add(string.Format(ResUI.MsgRoutingRuleOutboundNodeNotFound,
-                        ruleItem.Remarks, ruleItem.OutboundTag));
-                    ruleItem.OutboundTag = Global.ProxyTag;
-                    continue;
-                }
-
-                var (actRuleNode, ruleNodeValidatorResult) = await ResolveNodeAsync(context, ruleOutboundNode, false);
-                validatorResult.Warnings.AddRange(ruleNodeValidatorResult.Warnings.Select(w =>
-                    string.Format(ResUI.MsgRoutingRuleOutboundNodeWarning, ruleItem.Remarks, ruleItem.OutboundTag, w)));
-                if (!ruleNodeValidatorResult.Success)
-                {
-                    validatorResult.Warnings.AddRange(ruleNodeValidatorResult.Errors.Select(e =>
-                        string.Format(ResUI.MsgRoutingRuleOutboundNodeError, ruleItem.Remarks, ruleItem.OutboundTag,
-                            e)));
-                    ruleItem.OutboundTag = Global.ProxyTag;
-                    continue;
-                }
-
-                context.AllProxiesMap[$"remark:{ruleItem.OutboundTag}"] = actRuleNode;
-            }
-        }
+        await ResolveRuleTargetsAsync(context, validatorResult);
         if (context.IsTunEnabled && context.AppConfig.TunModeItem.RouteExcludeAddress is { Count: > 0 })
         {
             var appConfig = JsonUtils.DeepCopy(config);
@@ -132,6 +97,51 @@ public class CoreConfigContextBuilder
         }
 
         return new CoreConfigContextBuilderResult(context, validatorResult);
+    }
+
+    /// <summary>
+    /// Резолвит цели правил роутинга, ссылающихся на другие профили по remark,
+    /// и складывает их в AllProxiesMap под ключом "remark:{tag}".
+    /// Публичный ради тестов — как ResolveNodeAsync.
+    /// </summary>
+    public static async Task ResolveRuleTargetsAsync(CoreConfigContext context, NodeValidatorResult validatorResult)
+    {
+        if (context.RoutingItem?.RuleSet.IsNullOrEmpty() ?? true)
+        {
+            return;
+        }
+        var rules = JsonUtils.Deserialize<List<RulesItem>>(context.RoutingItem?.RuleSet) ?? [];
+        foreach (var ruleItem in rules.Where(ruleItem =>
+                     ruleItem.Enabled && !Global.OutboundTags.Contains(ruleItem.OutboundTag)))
+        {
+            if (ruleItem.OutboundTag.IsNullOrEmpty())
+            {
+                validatorResult.Warnings.Add(string.Format(ResUI.MsgRoutingRuleEmptyOutboundTag, ruleItem.Remarks));
+                ruleItem.OutboundTag = Global.ProxyTag;
+                continue;
+            }
+            var ruleOutboundNode = await AppManager.Instance.GetProfileItemViaRemarks(ruleItem.OutboundTag);
+            if (ruleOutboundNode == null)
+            {
+                validatorResult.Warnings.Add(string.Format(ResUI.MsgRoutingRuleOutboundNodeNotFound,
+                    ruleItem.Remarks, ruleItem.OutboundTag));
+                ruleItem.OutboundTag = Global.ProxyTag;
+                continue;
+            }
+
+            var (actRuleNode, ruleNodeValidatorResult) = await ResolveNodeAsync(context, ruleOutboundNode, false);
+            validatorResult.Warnings.AddRange(ruleNodeValidatorResult.Warnings.Select(w =>
+                string.Format(ResUI.MsgRoutingRuleOutboundNodeWarning, ruleItem.Remarks, ruleItem.OutboundTag, w)));
+            if (!ruleNodeValidatorResult.Success)
+            {
+                validatorResult.Warnings.AddRange(ruleNodeValidatorResult.Errors.Select(e =>
+                    string.Format(ResUI.MsgRoutingRuleOutboundNodeError, ruleItem.Remarks, ruleItem.OutboundTag, e)));
+                ruleItem.OutboundTag = Global.ProxyTag;
+                continue;
+            }
+
+            context.AllProxiesMap[$"remark:{ruleItem.OutboundTag}"] = actRuleNode;
+        }
     }
 
     /// <summary>
