@@ -14,6 +14,7 @@ public class CoreManager
 
     private ProcessService? _processService;
     private ProcessService? _processPreService;
+    private readonly List<ProcessService> _processChainServices = [];
     private bool _linuxSudo = false;
     private Func<bool, string, Task>? _updateFunc;
     private const string _tag = "CoreHandler";
@@ -91,6 +92,7 @@ public class CoreManager
             await WindowsUtils.RemoveTunDevice();
         }
 
+        await CoreStartChainServices(mainContext);
         await CoreStart(mainContext);
         await WaitForProxyPort(preContext);
         await CoreStartPreService(preContext);
@@ -167,19 +169,70 @@ public class CoreManager
                 await CoreAdminManager.Instance.KillProcessAsLinuxSudo();
                 _linuxSudo = false;
             }
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+        }
 
-            if (_processService != null)
+        await StopProcessSafe(_processService);
+        _processService = null;
+
+        await StopProcessSafe(_processPreService);
+        _processPreService = null;
+
+        foreach (var proc in _processChainServices)
+        {
+            await StopProcessSafe(proc);
+        }
+        _processChainServices.Clear();
+        CleanupChainConfigFiles();
+    }
+
+    /// <summary>
+    /// Останавливает один процесс, не давая его падению утащить за собой остальные:
+    /// раньше общий try/catch означал, что сбой на главном ядре оставлял pre-ядро жить.
+    /// </summary>
+    private async Task StopProcessSafe(ProcessService? proc)
+    {
+        if (proc == null)
+        {
+            return;
+        }
+        try
+        {
+            await proc.StopAsync();
+            proc.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+        }
+    }
+
+    /// <summary>
+    /// Штатный уборщик в TaskManager удаляет только файлы со словом "Test" в имени,
+    /// поэтому конфиги цепочек убираем сами — иначе остатки прошлых запусков копятся вечно.
+    /// </summary>
+    private static void CleanupChainConfigFiles()
+    {
+        try
+        {
+            var dir = Utils.GetBinConfigPath();
+            if (!Directory.Exists(dir))
             {
-                await _processService.StopAsync();
-                _processService.Dispose();
-                _processService = null;
+                return;
             }
-
-            if (_processPreService != null)
+            foreach (var file in Directory.GetFiles(dir, "configChain*.json"))
             {
-                await _processPreService.StopAsync();
-                _processPreService.Dispose();
-                _processPreService = null;
+                try
+                {
+                    File.Delete(file);
+                }
+                catch (Exception ex)
+                {
+                    Logging.SaveLog(_tag, ex);
+                }
             }
         }
         catch (Exception ex)
@@ -189,6 +242,60 @@ public class CoreManager
     }
 
     #region Private
+
+    /// <summary>
+    /// Поднимает по отдельному ядру на каждый .json-профиль, упомянутый в правилах роутинга.
+    /// Каждое отдаёт socks на своём порту; главный конфиг ходит к ним обычными socks-выходами.
+    /// Вызывается ДО старта главного ядра, чтобы его выходам было кого слушать.
+    /// </summary>
+    private async Task CoreStartChainServices(CoreConfigContext? mainContext)
+    {
+        if (mainContext?.ChainCores is not { Count: > 0 })
+        {
+            return;
+        }
+        foreach (var descriptor in mainContext.ChainCores)
+        {
+            try
+            {
+                var sourcePath = descriptor.Node.Address;
+                if (!File.Exists(sourcePath))
+                {
+                    sourcePath = Utils.GetConfigPath(descriptor.Node.Address);
+                }
+                if (!File.Exists(sourcePath))
+                {
+                    await UpdateFunc(false, string.Format(ResUI.MsgChainCoreStartFailed, descriptor.Node.Remarks));
+                    continue;
+                }
+                var rawJson = await File.ReadAllTextAsync(sourcePath);
+                var chainConfig = ChainConfigBuilder.Build(rawJson, descriptor.CoreType, descriptor.Port);
+                if (chainConfig.IsNullOrEmpty())
+                {
+                    await UpdateFunc(false, string.Format(ResUI.MsgChainCoreStartFailed, descriptor.Node.Remarks));
+                    continue;
+                }
+
+                await File.WriteAllTextAsync(Utils.GetBinConfigPath(descriptor.ConfigFileName), chainConfig);
+
+                var coreInfo = CoreInfoManager.Instance.GetCoreInfo(descriptor.CoreType);
+                // Без sudo и без проброса логов: цепочка не занимается TUN, а её вывод
+                // смешался бы с выводом главного ядра — ProcessService не помечает источник.
+                var proc = await RunProcess(coreInfo, descriptor.ConfigFileName, false, false);
+                if (proc is null)
+                {
+                    await UpdateFunc(false, string.Format(ResUI.MsgChainCoreStartFailed, descriptor.Node.Remarks));
+                    continue;
+                }
+                _processChainServices.Add(proc);
+            }
+            catch (Exception ex)
+            {
+                Logging.SaveLog(_tag, ex);
+                await UpdateFunc(false, string.Format(ResUI.MsgChainCoreStartFailed, descriptor.Node.Remarks));
+            }
+        }
+    }
 
     private async Task CoreStart(CoreConfigContext context)
     {

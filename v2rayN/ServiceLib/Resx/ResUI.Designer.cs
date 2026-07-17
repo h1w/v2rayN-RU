@@ -2041,6 +2041,15 @@ namespace ServiceLib.Resx {
         }
         
         /// <summary>
+        ///   查找类似 Failed to start a chained core for JSON profile "{0}". Rules pointing to it will not pass traffic. 的本地化字符串。
+        /// </summary>
+        public static string MsgChainCoreStartFailed {
+            get {
+                return ResourceManager.GetString("MsgChainCoreStartFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 {0} has a new version available: {1} 的本地化字符串。
         /// </summary>
         public static string MsgCheckUpdateHasNewVersion {

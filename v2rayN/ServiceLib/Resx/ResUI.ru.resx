@@ -1747,6 +1747,9 @@
   <data name="MsgRoutingRuleChainCoreFailed" xml:space="preserve">
     <value>Правило «{0}»: не удалось подготовить цепочечное ядро для JSON-профиля «{1}»; правило не сработает.</value>
   </data>
+  <data name="MsgChainCoreStartFailed" xml:space="preserve">
+    <value>Не удалось запустить цепочечное ядро для JSON-профиля «{0}». Правила, указывающие на него, не будут пропускать трафик.</value>
+  </data>
   <data name="MsgSubscriptionPrevProfileNotFound" xml:space="preserve">
     <value>Предыдущий прокси подписки {0} не найден. Пропущено.</value>
   </data>
