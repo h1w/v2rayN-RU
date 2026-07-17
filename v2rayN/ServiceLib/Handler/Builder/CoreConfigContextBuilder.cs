@@ -140,8 +140,87 @@ public class CoreConfigContextBuilder
                 continue;
             }
 
+            if (actRuleNode.ConfigType == EConfigType.Custom)
+            {
+                var chainNode = BuildChainNode(context, actRuleNode, ruleItem.OutboundTag);
+                if (chainNode == null)
+                {
+                    // Цепочку собрать не удалось. Custom-узел остаётся в карте, и
+                    // генератор сообщит о неподдерживаемой цели вместо тихого фолбэка.
+                    validatorResult.Warnings.Add(string.Format(ResUI.MsgRoutingRuleChainCoreFailed,
+                        ruleItem.Remarks, ruleItem.OutboundTag));
+                    context.AllProxiesMap[$"remark:{ruleItem.OutboundTag}"] = actRuleNode;
+                    continue;
+                }
+                context.AllProxiesMap[$"remark:{ruleItem.OutboundTag}"] = chainNode;
+                continue;
+            }
             context.AllProxiesMap[$"remark:{ruleItem.OutboundTag}"] = actRuleNode;
         }
+    }
+
+    /// <summary>
+    /// Правило указывает на .json-профиль. Схлопнуть такой профиль в один outbound нельзя —
+    /// внутри может быть балансер и собственные правила. Поэтому он поднимается отдельным
+    /// ядром на локальном порту, а правило получает обычный socks-узел к нему.
+    /// Возвращает null, если цепочку собрать не удалось.
+    /// </summary>
+    private static ProfileItem? BuildChainNode(CoreConfigContext context, ProfileItem customNode, string remark)
+    {
+        try
+        {
+            // Один .json, упомянутый в нескольких правилах, = одно ядро.
+            var existing = context.ChainCores.FirstOrDefault(c => c.Node.IndexId == customNode.IndexId);
+            if (existing != null)
+            {
+                return BuildSocksNodeFor(existing, remark);
+            }
+
+            // Ссылка на сам активный профиль: отдельное ядро не нужно.
+            if (customNode.IndexId == context.Node.IndexId)
+            {
+                return null;
+            }
+
+            var port = Utils.GetFreePort();
+            if (port is <= 0 or > 65535)
+            {
+                return null;
+            }
+            var coreType = AppManager.Instance.GetCoreType(customNode, EConfigType.Custom);
+            var descriptor = new ChainCoreDescriptor
+            {
+                Node = customNode,
+                CoreType = coreType,
+                Port = port,
+                ConfigFileName = string.Format(Global.CoreChainConfigFileName, context.ChainCores.Count),
+            };
+            context.ChainCores.Add(descriptor);
+            return BuildSocksNodeFor(descriptor, remark);
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog("CoreConfigContextBuilder", ex);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Синтезирует socks-узел к цепочечному ядру. IndexId обязан быть непустым:
+    /// GenRoutingUserRuleOutbound строит тег выхода как "{IndexId}-proxy-{Remarks}",
+    /// и на пустом IndexId теги разных цепочек столкнулись бы.
+    /// </summary>
+    private static ProfileItem BuildSocksNodeFor(ChainCoreDescriptor descriptor, string remark)
+    {
+        return new ProfileItem
+        {
+            IndexId = $"{descriptor.Node.IndexId}-chain",
+            ConfigType = EConfigType.SOCKS,
+            CoreType = descriptor.CoreType,
+            Address = Global.Loopback,
+            Port = descriptor.Port,
+            Remarks = remark,
+        };
     }
 
     /// <summary>

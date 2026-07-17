@@ -2257,6 +2257,15 @@ namespace ServiceLib.Resx {
         }
         
         /// <summary>
+        ///   查找类似 Rule "{0}": could not prepare a chained core for JSON profile "{1}"; the rule will not take effect. 的本地化字符串。
+        /// </summary>
+        public static string MsgRoutingRuleChainCoreFailed {
+            get {
+                return ResourceManager.GetString("MsgRoutingRuleChainCoreFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Routing rule {0} has an empty outbound tag. Fallback to proxy node only. 的本地化字符串。
         /// </summary>
         public static string MsgRoutingRuleEmptyOutboundTag {

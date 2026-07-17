@@ -1744,6 +1744,9 @@
   <data name="MsgRoutingRuleOutboundNodeNotFound" xml:space="preserve">
     <value>Правило маршрутизации {0}, исходящий узел {1} не найден. Используется только прокси-узел.</value>
   </data>
+  <data name="MsgRoutingRuleChainCoreFailed" xml:space="preserve">
+    <value>Правило «{0}»: не удалось подготовить цепочечное ядро для JSON-профиля «{1}»; правило не сработает.</value>
+  </data>
   <data name="MsgSubscriptionPrevProfileNotFound" xml:space="preserve">
     <value>Предыдущий прокси подписки {0} не найден. Пропущено.</value>
   </data>
