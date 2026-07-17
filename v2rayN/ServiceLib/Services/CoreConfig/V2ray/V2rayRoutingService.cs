@@ -133,6 +133,7 @@ public partial class CoreConfigV2rayService
                     if (it.domain[k].StartsWith('#'))
                     {
                         it.domain.RemoveAt(k);
+                        continue;
                     }
                     it.domain[k] = it.domain[k].Replace(Global.RoutingRuleComma, ",");
                 }
