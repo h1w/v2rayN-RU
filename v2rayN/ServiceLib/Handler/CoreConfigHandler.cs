@@ -18,7 +18,7 @@ public static class CoreConfigHandler
             result = node.CoreType switch
             {
                 ECoreType.mihomo => await new CoreConfigClashService(config).GenerateClientCustomConfig(node, fileName),
-                _ => await GenerateClientCustomConfig(node, fileName)
+                _ => await GenerateClientCustomConfig(context, fileName)
             };
         }
         else if (context.RunCoreType == ECoreType.sing_box)
@@ -41,21 +41,16 @@ public static class CoreConfigHandler
         return result;
     }
 
-    private static async Task<RetResult> GenerateClientCustomConfig(ProfileItem node, string? fileName)
+    private static async Task<RetResult> GenerateClientCustomConfig(CoreConfigContext context, string? fileName)
     {
         var ret = new RetResult();
         try
         {
+            var node = context.Node;
             if (node == null || fileName is null)
             {
                 ret.Msg = ResUI.CheckServerSettings;
                 return ret;
-            }
-
-            if (File.Exists(fileName))
-            {
-                File.SetAttributes(fileName, FileAttributes.Normal); //If the file has a read-only attribute, direct deletion will fail
-                File.Delete(fileName);
             }
 
             var addressFileName = node.Address;
@@ -68,10 +63,30 @@ public static class CoreConfigHandler
                 ret.Msg = ResUI.FailedGenDefaultConfiguration;
                 return ret;
             }
-            File.Copy(addressFileName, fileName);
-            File.SetAttributes(fileName, FileAttributes.Normal); //Copy will keep the attributes of addressFileName, so we need to add write permissions to fileName just in case of addressFileName is a read-only file.
 
-            //check again
+            var rawJson = await File.ReadAllTextAsync(addressFileName);
+            var coreType = AppManager.Instance.GetCoreType(node, EConfigType.Custom);
+            var composed = CustomConfigComposer.Compose(rawJson, coreType, context);
+
+            if (composed.Json.IsNotEmpty())
+            {
+                WarnAboutCustomRoutingLimits(composed);
+
+                ret.Msg = string.Format(ResUI.SuccessfulConfiguration, "");
+                ret.Success = true;
+                ret.Data = composed.Json;
+                return ret;
+            }
+
+            // Фолбэк: JSON непригоден для слияния — ведём себя как раньше, дословной копией.
+            if (File.Exists(fileName))
+            {
+                File.SetAttributes(fileName, FileAttributes.Normal);
+                File.Delete(fileName);
+            }
+            File.Copy(addressFileName, fileName);
+            File.SetAttributes(fileName, FileAttributes.Normal);
+
             if (!File.Exists(fileName))
             {
                 ret.Msg = ResUI.FailedGenDefaultConfiguration;
@@ -80,13 +95,31 @@ public static class CoreConfigHandler
 
             ret.Msg = string.Format(ResUI.SuccessfulConfiguration, "");
             ret.Success = true;
-            return await Task.FromResult(ret);
+            return ret;
         }
         catch (Exception ex)
         {
             Logging.SaveLog(_tag, ex);
             ret.Msg = ResUI.FailedGenDefaultConfiguration;
             return ret;
+        }
+    }
+
+    /// <summary>
+    /// Сообщает о ситуациях, в которых локальные правила не сработают, вместо того
+    /// чтобы молча отдать пользователю конфиг, ведущий себя не так, как показывает UI.
+    /// </summary>
+    private static void WarnAboutCustomRoutingLimits(CustomComposeResult composed)
+    {
+        if (composed.CatchAllDetected)
+        {
+            NoticeManager.Instance.SendMessageAndEnqueue(ResUI.CustomJsonCatchAllRuleWarning);
+        }
+        if (composed.UnsupportedCustomTargets.Count > 0)
+        {
+            NoticeManager.Instance.SendMessageAndEnqueue(
+                string.Format(ResUI.CustomJsonRuleTargetUnsupported,
+                    string.Join(", ", composed.UnsupportedCustomTargets.Distinct())));
         }
     }
 
