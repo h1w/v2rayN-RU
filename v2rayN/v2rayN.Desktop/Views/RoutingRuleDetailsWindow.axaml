@@ -9,7 +9,7 @@
     xmlns:vms="clr-namespace:ServiceLib.ViewModels;assembly=ServiceLib"
     Title="{x:Static resx:ResUI.menuRoutingRuleDetailsSetting}"
     Width="900"
-    Height="600"
+    Height="700"
     x:DataType="vms:RoutingRuleDetailsViewModel"
     Design.DataContext="{x:Static dd:DesignData.RoutingRuleDetails}"
     ShowInTaskbar="False"
@@ -233,7 +233,6 @@
                     Name="txtDomain"
                     VerticalAlignment="Stretch"
                     Classes="TextArea"
-                    MinLines="10"
                     TextWrapping="Wrap" />
             </HeaderedContentControl>
             <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" />
@@ -246,7 +245,6 @@
                     Name="txtIP"
                     VerticalAlignment="Stretch"
                     Classes="TextArea"
-                    MinLines="10"
                     TextWrapping="Wrap" />
             </HeaderedContentControl>
             <GridSplitter Grid.Column="3" HorizontalAlignment="Stretch" />
@@ -259,7 +257,6 @@
                     Name="txtProcess"
                     VerticalAlignment="Stretch"
                     Classes="TextArea"
-                    MinLines="10"
                     TextWrapping="Wrap" />
             </HeaderedContentControl>
         </Grid>

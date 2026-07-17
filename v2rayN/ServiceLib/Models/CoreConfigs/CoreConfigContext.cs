@@ -8,6 +8,11 @@ public record CoreConfigContext
     public DNSItem? RawDnsItem { get; init; }
     public SimpleDNSItem SimpleDnsItem { get; init; } = new();
     public Dictionary<string, ProfileItem> AllProxiesMap { get; init; } = new();
+    /// <summary>
+    /// Цепочечные ядра, которые надо поднять для правил, указывающих на .json-профили.
+    /// Наполняется CoreConfigContextBuilder, исполняется CoreManager.
+    /// </summary>
+    public List<ChainCoreDescriptor> ChainCores { get; init; } = [];
     public Config AppConfig { get; init; } = new();
     public FullConfigTemplateItem? FullConfigTemplate { get; init; } = new();
 

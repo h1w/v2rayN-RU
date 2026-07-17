@@ -575,4 +575,78 @@ public partial class CoreConfigSingboxService
 
         return tag;
     }
+
+    /// <summary>
+    /// Генерирует ТОЛЬКО пользовательские правила, в отрыве от оболочки приложения.
+    /// См. одноимённый метод в CoreConfigV2rayService.
+    /// </summary>
+    public SingboxUserRouting BuildUserRoutingForCustom()
+    {
+        var fragment = new SingboxUserRouting();
+        try
+        {
+            var template = EmbedUtils.GetEmbedText(Global.SingboxSampleClient);
+            var shell = JsonUtils.Deserialize<SingboxConfig>(template);
+            if (shell == null)
+            {
+                return fragment;
+            }
+            _coreConfig = shell;
+
+            var templateTags = _coreConfig.outbounds.Select(o => o.tag).ToHashSet(StringComparer.Ordinal);
+
+            var routing = context.RoutingItem;
+            if (routing == null)
+            {
+                return fragment;
+            }
+            var rules = JsonUtils.Deserialize<List<RulesItem>>(routing.RuleSet) ?? [];
+            foreach (var item in rules)
+            {
+                if (!item.Enabled || item.RuleType == ERuleType.DNS)
+                {
+                    continue;
+                }
+                var target = ResolveUnsupportedCustomTarget(item.OutboundTag);
+                if (target != null)
+                {
+                    fragment.UnsupportedCustomTargets.Add(target);
+                    continue;
+                }
+                GenRoutingUserRule(item);
+            }
+
+            fragment.Rules = _coreConfig.route.rules;
+
+            var extra = new List<BaseServer4Sbox>();
+            extra.AddRange(_coreConfig.outbounds.Where(o => !templateTags.Contains(o.tag)));
+            if (_coreConfig.endpoints != null)
+            {
+                extra.AddRange(_coreConfig.endpoints);
+            }
+            fragment.ExtraServers = extra;
+            return fragment;
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+            return fragment;
+        }
+    }
+
+    /// <summary>
+    /// Возвращает Remarks профиля, если правило указывает на профиль типа Custom.
+    /// В норме сюда не попадают: CoreConfigContextBuilder подменяет такие цели на
+    /// socks-узел цепочечного ядра. Custom-узел здесь означает, что цепочку поднять
+    /// не удалось — правило пропускается, а не уводится молча в proxy.
+    /// </summary>
+    private string? ResolveUnsupportedCustomTarget(string? outboundTag)
+    {
+        if (outboundTag.IsNullOrEmpty() || Global.OutboundTags.Contains(outboundTag))
+        {
+            return null;
+        }
+        var node = context.AllProxiesMap.GetValueOrDefault($"remark:{outboundTag}");
+        return node?.ConfigType == EConfigType.Custom ? outboundTag : null;
+    }
 }

@@ -2041,6 +2041,15 @@ namespace ServiceLib.Resx {
         }
         
         /// <summary>
+        ///   查找类似 Failed to start a chained core for JSON profile "{0}". Rules pointing to it will not pass traffic. 的本地化字符串。
+        /// </summary>
+        public static string MsgChainCoreStartFailed {
+            get {
+                return ResourceManager.GetString("MsgChainCoreStartFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 {0} has a new version available: {1} 的本地化字符串。
         /// </summary>
         public static string MsgCheckUpdateHasNewVersion {
@@ -2253,6 +2262,15 @@ namespace ServiceLib.Resx {
         public static string MsgParsingSuccessfully {
             get {
                 return ResourceManager.GetString("MsgParsingSuccessfully", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Rule "{0}": could not prepare a chained core for JSON profile "{1}"; the rule will not take effect. 的本地化字符串。
+        /// </summary>
+        public static string MsgRoutingRuleChainCoreFailed {
+            get {
+                return ResourceManager.GetString("MsgRoutingRuleChainCoreFailed", resourceCulture);
             }
         }
         
@@ -2550,6 +2568,24 @@ namespace ServiceLib.Resx {
         public static string RuleSourceJson {
             get {
                 return ResourceManager.GetString("RuleSourceJson", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The active JSON profile ends with a rule that matches all traffic, so local routing rules below it will never apply.
+        /// </summary>
+        public static string CustomJsonCatchAllRuleWarning {
+            get {
+                return ResourceManager.GetString("CustomJsonCatchAllRuleWarning", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No chained core is available for these JSON profiles, so rules pointing to them were skipped: {0}.
+        /// </summary>
+        public static string CustomJsonRuleTargetUnsupported {
+            get {
+                return ResourceManager.GetString("CustomJsonRuleTargetUnsupported", resourceCulture);
             }
         }
 

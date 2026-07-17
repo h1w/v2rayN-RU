@@ -31,7 +31,16 @@ public class CoreConfigContextBuilder
     ///     Builds a <see cref="CoreConfigContext" /> for the given node, resolves its proxy map,
     ///     and processes outbound nodes referenced by routing rules.
     /// </summary>
-    public static async Task<CoreConfigContextBuilderResult> Build(Config config, ProfileItem node)
+    /// <param name="resolveChainCores">
+    ///     Whether rules targeting a .json (Custom) profile should be substituted with a chained
+    ///     SOCKS core (<see cref="ResolveRuleTargetsAsync" />). Defaults to <c>false</c> so that
+    ///     callers which never start <see cref="CoreConfigContext.ChainCores" /> — speed tests,
+    ///     config export, the pre-socks build — keep the pre-existing (raw-node, silent-fallback)
+    ///     behaviour instead of allocating ports and chain descriptors nobody will start.
+    ///     Only <see cref="BuildAll" />'s main-node build passes <c>true</c>.
+    /// </param>
+    public static async Task<CoreConfigContextBuilderResult> Build(Config config, ProfileItem node,
+        bool resolveChainCores = false)
     {
         var runCoreType = AppManager.Instance.GetCoreType(node, node.ConfigType);
         var coreType = runCoreType == ECoreType.sing_box ? ECoreType.sing_box : ECoreType.Xray;
@@ -58,42 +67,7 @@ public class CoreConfigContextBuilder
         }
         context = context with { Node = actNode };
         validatorResult.Warnings.AddRange(nodeValidatorResult.Warnings);
-        if (!(context.RoutingItem?.RuleSet.IsNullOrEmpty() ?? true))
-        {
-            var rules = JsonUtils.Deserialize<List<RulesItem>>(context.RoutingItem?.RuleSet) ?? [];
-            foreach (var ruleItem in rules.Where(ruleItem =>
-                         ruleItem.Enabled && !Global.OutboundTags.Contains(ruleItem.OutboundTag)))
-            {
-                if (ruleItem.OutboundTag.IsNullOrEmpty())
-                {
-                    validatorResult.Warnings.Add(string.Format(ResUI.MsgRoutingRuleEmptyOutboundTag, ruleItem.Remarks));
-                    ruleItem.OutboundTag = Global.ProxyTag;
-                    continue;
-                }
-                var ruleOutboundNode = await AppManager.Instance.GetProfileItemViaRemarks(ruleItem.OutboundTag);
-                if (ruleOutboundNode == null)
-                {
-                    validatorResult.Warnings.Add(string.Format(ResUI.MsgRoutingRuleOutboundNodeNotFound,
-                        ruleItem.Remarks, ruleItem.OutboundTag));
-                    ruleItem.OutboundTag = Global.ProxyTag;
-                    continue;
-                }
-
-                var (actRuleNode, ruleNodeValidatorResult) = await ResolveNodeAsync(context, ruleOutboundNode, false);
-                validatorResult.Warnings.AddRange(ruleNodeValidatorResult.Warnings.Select(w =>
-                    string.Format(ResUI.MsgRoutingRuleOutboundNodeWarning, ruleItem.Remarks, ruleItem.OutboundTag, w)));
-                if (!ruleNodeValidatorResult.Success)
-                {
-                    validatorResult.Warnings.AddRange(ruleNodeValidatorResult.Errors.Select(e =>
-                        string.Format(ResUI.MsgRoutingRuleOutboundNodeError, ruleItem.Remarks, ruleItem.OutboundTag,
-                            e)));
-                    ruleItem.OutboundTag = Global.ProxyTag;
-                    continue;
-                }
-
-                context.AllProxiesMap[$"remark:{ruleItem.OutboundTag}"] = actRuleNode;
-            }
-        }
+        await ResolveRuleTargetsAsync(context, validatorResult, resolveChainCores);
         if (context.IsTunEnabled && context.AppConfig.TunModeItem.RouteExcludeAddress is { Count: > 0 })
         {
             var appConfig = JsonUtils.DeepCopy(config);
@@ -135,13 +109,174 @@ public class CoreConfigContextBuilder
     }
 
     /// <summary>
+    /// Резолвит цели правил роутинга, ссылающихся на другие профили по remark,
+    /// и складывает их в AllProxiesMap под ключом "remark:{tag}".
+    /// Публичный ради тестов — как ResolveNodeAsync.
+    /// </summary>
+    /// <param name="resolveChainCores">
+    /// Включает подмену Custom-целей на цепочечные SOCKS-узлы (см. <see cref="BuildChainNode"/>).
+    /// По умолчанию выключено: только реальный reload (BuildAll) должен заводить порты и
+    /// ChainCoreDescriptor'ы — остальные вызовы Build (speed test, экспорт конфига, pre-socks)
+    /// никогда не запускают ChainCores, поэтому для них резолв должен вести себя как до Task 3.
+    /// </param>
+    /// <param name="allocatePort">
+    /// Тестовый шов: переопределяет способ выделения порта в <see cref="BuildChainNode"/> вместо
+    /// реального Utils.GetFreePort(). null (по умолчанию) — используется Utils.GetFreePort.
+    /// </param>
+    public static async Task ResolveRuleTargetsAsync(CoreConfigContext context, NodeValidatorResult validatorResult,
+        bool resolveChainCores = false, Func<int>? allocatePort = null)
+    {
+        if (context.RoutingItem?.RuleSet.IsNullOrEmpty() ?? true)
+        {
+            return;
+        }
+        var rules = JsonUtils.Deserialize<List<RulesItem>>(context.RoutingItem?.RuleSet) ?? [];
+        foreach (var ruleItem in rules.Where(ruleItem =>
+                     ruleItem.Enabled && !Global.OutboundTags.Contains(ruleItem.OutboundTag)))
+        {
+            if (ruleItem.OutboundTag.IsNullOrEmpty())
+            {
+                validatorResult.Warnings.Add(string.Format(ResUI.MsgRoutingRuleEmptyOutboundTag, ruleItem.Remarks));
+                ruleItem.OutboundTag = Global.ProxyTag;
+                continue;
+            }
+            var ruleOutboundNode = await AppManager.Instance.GetProfileItemViaRemarks(ruleItem.OutboundTag);
+            if (ruleOutboundNode == null)
+            {
+                validatorResult.Warnings.Add(string.Format(ResUI.MsgRoutingRuleOutboundNodeNotFound,
+                    ruleItem.Remarks, ruleItem.OutboundTag));
+                ruleItem.OutboundTag = Global.ProxyTag;
+                continue;
+            }
+
+            var (actRuleNode, ruleNodeValidatorResult) = await ResolveNodeAsync(context, ruleOutboundNode, false);
+            validatorResult.Warnings.AddRange(ruleNodeValidatorResult.Warnings.Select(w =>
+                string.Format(ResUI.MsgRoutingRuleOutboundNodeWarning, ruleItem.Remarks, ruleItem.OutboundTag, w)));
+            if (!ruleNodeValidatorResult.Success)
+            {
+                validatorResult.Warnings.AddRange(ruleNodeValidatorResult.Errors.Select(e =>
+                    string.Format(ResUI.MsgRoutingRuleOutboundNodeError, ruleItem.Remarks, ruleItem.OutboundTag, e)));
+                ruleItem.OutboundTag = Global.ProxyTag;
+                continue;
+            }
+
+            if (resolveChainCores && actRuleNode.ConfigType == EConfigType.Custom)
+            {
+                var (chainNode, isSelfReference) =
+                    BuildChainNode(context, actRuleNode, ruleItem.OutboundTag, allocatePort);
+                if (isSelfReference)
+                {
+                    // Правило ссылается на сам активный .json-профиль — это no-op, а не сбой:
+                    // такой трафик и так по умолчанию уходит в этот же профиль. Ни записи в
+                    // карту, ни предупреждения — иначе пользователь получит два разных
+                    // "правило не сработает" сообщения (отсюда и из composer'а Части 1) на
+                    // ровном месте.
+                    continue;
+                }
+                if (chainNode == null)
+                {
+                    // Цепочку собрать не удалось. Custom-узел остаётся в карте, и
+                    // генератор сообщит о неподдерживаемой цели вместо тихого фолбэка.
+                    validatorResult.Warnings.Add(string.Format(ResUI.MsgRoutingRuleChainCoreFailed,
+                        ruleItem.Remarks, ruleItem.OutboundTag));
+                    context.AllProxiesMap[$"remark:{ruleItem.OutboundTag}"] = actRuleNode;
+                    continue;
+                }
+                context.AllProxiesMap[$"remark:{ruleItem.OutboundTag}"] = chainNode;
+                continue;
+            }
+            context.AllProxiesMap[$"remark:{ruleItem.OutboundTag}"] = actRuleNode;
+        }
+    }
+
+    /// <summary>
+    /// Правило указывает на .json-профиль. Схлопнуть такой профиль в один outbound нельзя —
+    /// внутри может быть балансер и собственные правила. Поэтому он поднимается отдельным
+    /// ядром на локальном порту, а правило получает обычный socks-узел к нему.
+    /// </summary>
+    /// <returns>
+    /// <c>Node</c> — синтезированный socks-узел цепочки, либо null, если цепочку собрать не
+    /// удалось (порт не выделился или коллизия — см. ниже) или не потребовалось.
+    /// <c>IsSelfReference</c> — true, если правило указывает на сам активный профиль: это не
+    /// сбой, а no-op, и вызывающий код не должен ни писать в карту, ни предупреждать.
+    /// </returns>
+    private static (ProfileItem? Node, bool IsSelfReference) BuildChainNode(CoreConfigContext context,
+        ProfileItem customNode, string remark, Func<int>? allocatePort = null)
+    {
+        try
+        {
+            // Один .json, упомянутый в нескольких правилах, = одно ядро.
+            var existing = context.ChainCores.FirstOrDefault(c => c.Node.IndexId == customNode.IndexId);
+            if (existing != null)
+            {
+                return (BuildSocksNodeFor(existing, remark), false);
+            }
+
+            // Ссылка на сам активный профиль: отдельное ядро не нужно, и это не ошибка —
+            // такой трафик и так по умолчанию идёт туда же.
+            if (customNode.IndexId == context.Node.IndexId)
+            {
+                return (null, true);
+            }
+
+            var port = allocatePort != null ? allocatePort() : Utils.GetFreePort();
+            if (port is <= 0 or > 65535)
+            {
+                return (null, false);
+            }
+            // Utils.GetFreePort никогда не бросает: при сбое отдаёт сентинел 59090, и при
+            // повторном сбое в этом же прогоне отдаст тот же сентинел снова. Не даём двум
+            // разным цепочкам получить один и тот же порт — это фактически провал аллокации.
+            if (context.ChainCores.Any(c => c.Port == port))
+            {
+                return (null, false);
+            }
+            var coreType = AppManager.Instance.GetCoreType(customNode, EConfigType.Custom);
+            var descriptor = new ChainCoreDescriptor
+            {
+                Node = customNode,
+                CoreType = coreType,
+                Port = port,
+                ConfigFileName = string.Format(Global.CoreChainConfigFileName, context.ChainCores.Count),
+            };
+            context.ChainCores.Add(descriptor);
+            return (BuildSocksNodeFor(descriptor, remark), false);
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog("CoreConfigContextBuilder", ex);
+            return (null, false);
+        }
+    }
+
+    /// <summary>
+    /// Синтезирует socks-узел к цепочечному ядру. IndexId обязан быть непустым:
+    /// GenRoutingUserRuleOutbound строит тег выхода как "{IndexId}-proxy-{Remarks}",
+    /// и на пустом IndexId теги разных цепочек столкнулись бы.
+    /// </summary>
+    private static ProfileItem BuildSocksNodeFor(ChainCoreDescriptor descriptor, string remark)
+    {
+        return new ProfileItem
+        {
+            IndexId = $"{descriptor.Node.IndexId}-chain",
+            ConfigType = EConfigType.SOCKS,
+            CoreType = descriptor.CoreType,
+            Address = Global.Loopback,
+            Port = descriptor.Port,
+            Remarks = remark,
+        };
+    }
+
+    /// <summary>
     ///     Builds the main <see cref="CoreConfigContext" /> for <paramref name="node" /> and, when
     ///     the main build succeeds, also builds the optional pre-socks context required for TUN
     ///     protection or pre-socks proxy chaining.
     /// </summary>
     public static async Task<CoreConfigContextBuilderAllResult> BuildAll(Config config, ProfileItem node)
     {
-        var mainResult = await Build(config, node);
+        // Единственный вызов Build, которому разрешено резолвить цепочечные ядра: это
+        // единственный результат, чьи ChainCores реально запустит CoreManager при reload.
+        var mainResult = await Build(config, node, resolveChainCores: true);
         if (!mainResult.Success)
         {
             return new CoreConfigContextBuilderAllResult(mainResult, null);
@@ -192,6 +327,11 @@ public class CoreConfigContextBuilder
         var preSocksItem = ConfigHandler.GetPreSocksItem(config, node, coreType);
         if (preSocksItem != null)
         {
+            // Намеренно БЕЗ resolveChainCores: true. Pre-socks строится на том же RoutingItem,
+            // что и main, и его конфиг реально генерируется (GenerateClientConfigContent зовёт
+            // GenRouting() безусловно) — подмени мы тут Custom-цель на socks к цепочечному
+            // ядру, оно осталось бы незапущенным (это ядро поднимает только BuildAll-результат),
+            // и трафик правила уходил бы в мёртвый порт вместо фолбэка на Global.ProxyTag.
             var preSocksResult = await Build(nodeContext.AppConfig, preSocksItem);
 
             var protectCoreTypeList = new HashSet<ECoreType>(nodeContext.ProtectCoreTypeList) { nodeContext.RunCoreType };

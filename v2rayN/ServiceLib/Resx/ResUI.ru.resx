@@ -309,6 +309,12 @@
   <data name="RuleSourceJson" xml:space="preserve">
     <value>JSON (обязательно)</value>
   </data>
+  <data name="CustomJsonCatchAllRuleWarning" xml:space="preserve">
+    <value>Активный JSON-профиль заканчивается правилом, которое совпадает со всем трафиком — локальные правила после него не сработают.</value>
+  </data>
+  <data name="CustomJsonRuleTargetUnsupported" xml:space="preserve">
+    <value>Для этих JSON-профилей не удалось поднять цепочечное ядро, поэтому правила на них пропущены: {0}</value>
+  </data>
   <data name="RemoveRules" xml:space="preserve">
     <value>Вы уверены, что хотите удалить правила?</value>
   </data>
@@ -1737,6 +1743,12 @@
   </data>
   <data name="MsgRoutingRuleOutboundNodeNotFound" xml:space="preserve">
     <value>Правило маршрутизации {0}, исходящий узел {1} не найден. Используется только прокси-узел.</value>
+  </data>
+  <data name="MsgRoutingRuleChainCoreFailed" xml:space="preserve">
+    <value>Правило «{0}»: не удалось подготовить цепочечное ядро для JSON-профиля «{1}»; правило не сработает.</value>
+  </data>
+  <data name="MsgChainCoreStartFailed" xml:space="preserve">
+    <value>Не удалось запустить цепочечное ядро для JSON-профиля «{0}». Правила, указывающие на него, не будут пропускать трафик.</value>
   </data>
   <data name="MsgSubscriptionPrevProfileNotFound" xml:space="preserve">
     <value>Предыдущий прокси подписки {0} не найден. Пропущено.</value>

@@ -309,6 +309,12 @@
   <data name="RuleSourceJson" xml:space="preserve">
     <value>JSON (required)</value>
   </data>
+  <data name="CustomJsonCatchAllRuleWarning" xml:space="preserve">
+    <value>The active JSON profile ends with a rule that matches all traffic, so local routing rules below it will never apply.</value>
+  </data>
+  <data name="CustomJsonRuleTargetUnsupported" xml:space="preserve">
+    <value>No chained core is available for these JSON profiles, so rules pointing to them were skipped: {0}</value>
+  </data>
   <data name="RemoveRules" xml:space="preserve">
     <value>Are you sure you want to remove the rules?</value>
   </data>
@@ -1764,6 +1770,12 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
   </data>
   <data name="MsgRoutingRuleOutboundNodeNotFound" xml:space="preserve">
     <value>Routing rule {0} outbound node {1} not found. Fallback to proxy node only.</value>
+  </data>
+  <data name="MsgRoutingRuleChainCoreFailed" xml:space="preserve">
+    <value>Rule "{0}": could not prepare a chained core for JSON profile "{1}"; the rule will not take effect.</value>
+  </data>
+  <data name="MsgChainCoreStartFailed" xml:space="preserve">
+    <value>Failed to start a chained core for JSON profile "{0}". Rules pointing to it will not pass traffic.</value>
   </data>
   <data name="MsgSubscriptionPrevProfileNotFound" xml:space="preserve">
     <value>Subscription previous proxy {0} not found. Skipping.</value>
