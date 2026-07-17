@@ -46,13 +46,83 @@ public class CustomConfigComposerTests
         var ctx = EmptyContext(ECoreType.Xray);
 
         var merged = CustomConfigComposer.Compose(XrayJson, ECoreType.Xray, ctx).Json;
-
         merged.Should().NotBeNull();
+
         var json = JsonUtils.ParseJson(merged);
+        json.Should().NotBeNull();
+
+        // Каждый узел сначала проверяется на null отдельным утверждением: если
+        // индексировать через `?.` и повесить `.Should()` на хвост той же цепочки,
+        // то при null где-то в середине вся цепочка (включая .Should()) молча
+        // не выполнится и тест ложно позеленеет.
+
         // Инбаунды пользователя не трогаем.
-        json?["inbounds"]?.AsArray().Should().HaveCount(1);
-        json?["inbounds"]?[0]?["port"]?.GetValue<int>().Should().Be(10808);
+        var inboundsNode = json!["inbounds"];
+        inboundsNode.Should().NotBeNull();
+        var inbounds = inboundsNode!.AsArray();
+        inbounds.Should().HaveCount(1);
+
+        var inbound0 = inbounds[0];
+        inbound0.Should().NotBeNull();
+        var port = inbound0!["port"];
+        port.Should().NotBeNull();
+        port!.GetValue<int>().Should().Be(10808);
+
         // Правила пользователя остаются на месте и первыми.
-        json?["routing"]?["rules"]?[0]?["outboundTag"]?.GetValue<string>().Should().Be("direct");
+        var rulesNode = json["routing"]?["rules"];
+        rulesNode.Should().NotBeNull();
+        var rules = rulesNode!.AsArray();
+        rules.Should().NotBeEmpty();
+
+        var rule0 = rules[0];
+        rule0.Should().NotBeNull();
+        var outboundTag = rule0!["outboundTag"];
+        outboundTag.Should().NotBeNull();
+        outboundTag!.GetValue<string>().Should().Be("direct");
+    }
+
+    [Fact]
+    public void Compose_signals_fallback_for_empty_outbounds_array()
+    {
+        var ctx = EmptyContext(ECoreType.Xray);
+
+        var result = CustomConfigComposer.Compose("""{ "outbounds": [] }""", ECoreType.Xray, ctx);
+
+        result.Json.Should().BeNull();
+    }
+
+    [Fact]
+    public void Compose_signals_fallback_for_non_array_outbounds()
+    {
+        var ctx = EmptyContext(ECoreType.Xray);
+
+        // "outbounds": {} — правдоподобная форма руками правленного JSON.
+        // JsonNode.AsArray() бросает InvalidOperationException, которую обязан
+        // погасить внешний catch в Compose.
+        var result = CustomConfigComposer.Compose("""{ "outbounds": {} }""", ECoreType.Xray, ctx);
+
+        result.Json.Should().BeNull();
+    }
+
+    [Fact]
+    public void Compose_signals_fallback_when_outbounds_have_no_proxy()
+    {
+        var ctx = EmptyContext(ECoreType.Xray);
+
+        // freedom/blackhole — служебные xray-протоколы (CustomConfigParser._xrayUtility),
+        // ParseTestableOutbounds не считает их proxy-выходами, поэтому mainProxyTag
+        // не находится и Compose обязан откатиться на дословное копирование.
+        const string utilityOnlyJson = """
+        {
+          "outbounds": [
+            { "protocol": "freedom", "tag": "direct" },
+            { "protocol": "blackhole", "tag": "block" }
+          ]
+        }
+        """;
+
+        var result = CustomConfigComposer.Compose(utilityOnlyJson, ECoreType.Xray, ctx);
+
+        result.Json.Should().BeNull();
     }
 }
