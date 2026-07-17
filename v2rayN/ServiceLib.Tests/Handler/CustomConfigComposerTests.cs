@@ -183,4 +183,97 @@ public class CustomConfigComposerTests
         outbounds.Should().NotBeNull();
         outbounds!.Count(o => o?["tag"]?.GetValue<string>() == "direct").Should().Be(1);
     }
+
+    private const string XrayJsonWithBlock = """
+    {
+      "outbounds": [
+        { "protocol": "vless", "tag": "main-out" },
+        { "protocol": "blackhole", "tag": "block" }
+      ]
+    }
+    """;
+
+    [Fact]
+    public void Compose_xray_reuses_existing_block_tag()
+    {
+        var ctx = EmptyContext(ECoreType.Xray) with
+        {
+            RoutingItem = new RoutingItem
+            {
+                Id = "r1", Remarks = "d", DomainStrategy = Global.AsIs, DomainStrategy4Singbox = string.Empty,
+                RuleSet = """[{ "Id": "r1", "OutboundTag": "block", "Domain": ["a.example.com"], "Enabled": true }]""",
+            },
+        };
+
+        // XrayJsonWithBlock уже содержит blackhole/block — дубля быть не должно.
+        var merged = CustomConfigComposer.Compose(XrayJsonWithBlock, ECoreType.Xray, ctx).Json;
+
+        var outbounds = JsonUtils.ParseJson(merged)?["outbounds"]?.AsArray();
+        outbounds.Should().NotBeNull();
+        outbounds!.Count(o => o?["tag"]?.GetValue<string>() == "block").Should().Be(1);
+    }
+
+    private const string SingboxJsonNoDirect = """
+    {
+      "outbounds": [ { "type": "vless", "tag": "main-out" } ]
+    }
+    """;
+
+    [Fact]
+    public void Compose_singbox_synthesizes_direct_but_not_block()
+    {
+        var ctx = EmptyContext(ECoreType.sing_box) with
+        {
+            RoutingItem = new RoutingItem
+            {
+                Id = "r1", Remarks = "d", DomainStrategy = Global.AsIs, DomainStrategy4Singbox = string.Empty,
+                RuleSet = """
+                [
+                  { "Id": "r1", "OutboundTag": "direct", "Domain": ["a.example.com"], "Enabled": true },
+                  { "Id": "r2", "OutboundTag": "block", "Domain": ["b.example.com"], "Enabled": true }
+                ]
+                """,
+            },
+        };
+
+        var merged = CustomConfigComposer.Compose(SingboxJsonNoDirect, ECoreType.sing_box, ctx).Json;
+
+        var outbounds = JsonUtils.ParseJson(merged)?["outbounds"]?.AsArray();
+        outbounds.Should().NotBeNull();
+
+        // sing-box direct — { "type": "direct", "tag": "direct" }, НЕ xray-форма
+        // с "protocol"/"freedom".
+        var direct = outbounds!.SingleOrDefault(o => o?["tag"]?.GetValue<string>() == "direct");
+        direct.Should().NotBeNull();
+        var directType = direct!["type"];
+        directType.Should().NotBeNull();
+        directType!.GetValue<string>().Should().Be("direct");
+        direct!["protocol"].Should().BeNull();
+
+        // В sing-box выхода block не существует как класса — блокировка задаётся
+        // через action: "reject" в правиле. Синтезировать outbound с тегом block
+        // нельзя: это сделает конфиг невалидным.
+        outbounds.Any(o => o?["tag"]?.GetValue<string>() == "block").Should().BeFalse();
+    }
+
+    [Fact]
+    public void Compose_disabled_rule_does_not_synthesize_outbound()
+    {
+        var ctx = EmptyContext(ECoreType.Xray) with
+        {
+            RoutingItem = new RoutingItem
+            {
+                Id = "r1", Remarks = "d", DomainStrategy = Global.AsIs, DomainStrategy4Singbox = string.Empty,
+                RuleSet = """[{ "Id": "r1", "OutboundTag": "direct", "Domain": ["a.example.com"], "Enabled": false }]""",
+            },
+        };
+
+        // Правило выключено — CollectUsedOutboundTags обязан его игнорировать,
+        // synth outbound "direct" появиться не должен.
+        var merged = CustomConfigComposer.Compose(XrayJsonNoDirect, ECoreType.Xray, ctx).Json;
+
+        var outbounds = JsonUtils.ParseJson(merged)?["outbounds"]?.AsArray();
+        outbounds.Should().NotBeNull();
+        outbounds!.Any(o => o?["tag"]?.GetValue<string>() == "direct").Should().BeFalse();
+    }
 }
