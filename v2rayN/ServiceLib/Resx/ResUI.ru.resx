@@ -309,6 +309,12 @@
   <data name="RuleSourceJson" xml:space="preserve">
     <value>JSON (обязательно)</value>
   </data>
+  <data name="CustomJsonCatchAllRuleWarning" xml:space="preserve">
+    <value>Активный JSON-профиль заканчивается правилом, которое совпадает со всем трафиком — локальные правила после него не сработают.</value>
+  </data>
+  <data name="CustomJsonRuleTargetUnsupported" xml:space="preserve">
+    <value>Правила, указывающие на JSON-профили, пока не поддерживаются и были пропущены: {0}</value>
+  </data>
   <data name="RemoveRules" xml:space="preserve">
     <value>Вы уверены, что хотите удалить правила?</value>
   </data>

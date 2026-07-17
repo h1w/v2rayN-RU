@@ -2554,6 +2554,24 @@ namespace ServiceLib.Resx {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to The active JSON profile ends with a rule that matches all traffic, so local routing rules below it will never apply.
+        /// </summary>
+        public static string CustomJsonCatchAllRuleWarning {
+            get {
+                return ResourceManager.GetString("CustomJsonCatchAllRuleWarning", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Routing rules pointing to JSON profiles are not supported yet and were skipped: {0}.
+        /// </summary>
+        public static string CustomJsonRuleTargetUnsupported {
+            get {
+                return ResourceManager.GetString("CustomJsonRuleTargetUnsupported", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   查找类似 Please select the Configuration first 的本地化字符串。
         /// </summary>
         public static string PleaseSelectServer {

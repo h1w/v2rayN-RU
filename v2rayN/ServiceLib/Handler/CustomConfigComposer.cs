@@ -44,6 +44,10 @@ public static class CustomConfigComposer
                 return result;
             }
 
+            // По исходному rawJson, до вливания локальных правил — иначе последним
+            // правилом окажется наше собственное, а не пользовательское.
+            result.CatchAllDetected = HasCatchAllLastRule(rawJson, coreType);
+
             var tags = CollectTags(outbounds);
             var usedTags = CollectUsedOutboundTags(context);
             if (usedTags.Contains(Global.DirectTag))
@@ -295,5 +299,43 @@ public static class CustomConfigComposer
         route["rules"] = rules;
         root["route"] = route;
         return fragment.UnsupportedCustomTargets;
+    }
+
+    private static readonly string[] _xrayNarrowingKeys =
+        ["domain", "ip", "port", "sourcePort", "process", "inboundTag", "protocol", "user", "attrs"];
+
+    private static readonly string[] _singboxNarrowingKeys =
+        ["domain", "domain_suffix", "domain_keyword", "domain_regex", "geosite", "geoip", "ip_cidr",
+         "source_ip_cidr", "port", "port_range", "source_port", "source_port_range", "process_name",
+         "process_path", "inbound", "protocol", "rule_set", "clash_mode", "rules"];
+
+    /// <summary>
+    /// true, если последнее правило конфига не сужает трафик ничем — тогда всё, что
+    /// дописано после него, недостижимо.
+    /// </summary>
+    public static bool HasCatchAllLastRule(string? rawJson, ECoreType coreType)
+    {
+        try
+        {
+            var root = JsonUtils.ParseJson(rawJson);
+            var rules = coreType == ECoreType.sing_box
+                ? root?["route"]?["rules"]?.AsArray()
+                : root?["routing"]?["rules"]?.AsArray();
+            if (rules is null || rules.Count == 0)
+            {
+                return false;
+            }
+            if (rules[^1] is not JsonObject last)
+            {
+                return false;
+            }
+            var keys = coreType == ECoreType.sing_box ? _singboxNarrowingKeys : _xrayNarrowingKeys;
+            return !keys.Any(k => last.ContainsKey(k));
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+            return false;
+        }
     }
 }

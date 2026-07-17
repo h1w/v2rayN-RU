@@ -402,4 +402,96 @@ public class CustomConfigComposerTests
         outboundTag.Should().NotBeNull();
         outboundTag!.GetValue<string>().Should().Be(renamedTag);
     }
+
+    [Fact]
+    public void HasCatchAllLastRule_detects_unconditional_trailing_rule()
+    {
+        var withCatchAll = """
+        {
+          "outbounds": [ { "protocol": "vless", "tag": "main-out" } ],
+          "routing": { "rules": [
+            { "type": "field", "outboundTag": "direct", "domain": ["geosite:cn"] },
+            { "type": "field", "outboundTag": "main-out", "network": "tcp,udp" }
+          ] }
+        }
+        """;
+
+        CustomConfigComposer.HasCatchAllLastRule(withCatchAll, ECoreType.Xray).Should().BeTrue();
+        // У последнего правила есть сужающее условие — недостижимости нет.
+        CustomConfigComposer.HasCatchAllLastRule(XrayJson, ECoreType.Xray).Should().BeFalse();
+    }
+
+    // Сверх брифа: тот же детект, но для sing-box (route.rules/outbound, свой
+    // список сужающих ключей) — брифовский тест покрывает только xray-ветку.
+    [Fact]
+    public void HasCatchAllLastRule_detects_singbox_unconditional_trailing_rule()
+    {
+        var withCatchAll = """
+        {
+          "outbounds": [ { "type": "vless", "tag": "main-out" } ],
+          "route": { "rules": [
+            { "outbound": "direct", "domain": ["geosite:cn"] },
+            { "outbound": "main-out" }
+          ] }
+        }
+        """;
+
+        CustomConfigComposer.HasCatchAllLastRule(withCatchAll, ECoreType.sing_box).Should().BeTrue();
+
+        var withNarrowingLastRule = """
+        {
+          "outbounds": [ { "type": "vless", "tag": "main-out" } ],
+          "route": { "rules": [
+            { "outbound": "direct", "domain": ["geosite:cn"] },
+            { "outbound": "main-out", "port": [443] }
+          ] }
+        }
+        """;
+        // У последнего правила есть сужающее условие (port) — недостижимости нет.
+        CustomConfigComposer.HasCatchAllLastRule(withNarrowingLastRule, ECoreType.sing_box).Should().BeFalse();
+    }
+
+    // Сверх брифа: подтверждаем сквозь Compose, что CatchAllDetected читается из
+    // исходного rawJson, а не из смерженного результата. Наше собственное правило,
+    // дописанное последним, содержит "domain" — если бы флаг считался по дереву
+    // после вливания, он бы ложно обнулился (порядок в Compose load-bearing).
+    [Fact]
+    public void Compose_sets_CatchAllDetected_from_raw_json_not_from_merged_result()
+    {
+        const string withCatchAll = """
+        {
+          "outbounds": [ { "protocol": "vless", "tag": "main-out" } ],
+          "routing": { "rules": [
+            { "type": "field", "outboundTag": "direct", "domain": ["geosite:cn"] },
+            { "type": "field", "outboundTag": "main-out", "network": "tcp,udp" }
+          ] }
+        }
+        """;
+
+        var ctx = EmptyContext(ECoreType.Xray) with
+        {
+            RoutingItem = new RoutingItem
+            {
+                Id = "r1", Remarks = "d", DomainStrategy = Global.AsIs, DomainStrategy4Singbox = string.Empty,
+                RuleSet = """[{ "Id": "r1", "OutboundTag": "proxy", "Domain": ["youtube.com"], "Enabled": true }]""",
+            },
+        };
+
+        var result = CustomConfigComposer.Compose(withCatchAll, ECoreType.Xray, ctx);
+
+        result.Json.Should().NotBeNull();
+        result.CatchAllDetected.Should().BeTrue();
+
+        var rulesNode = JsonUtils.ParseJson(result.Json)?["routing"]?["rules"];
+        rulesNode.Should().NotBeNull();
+        var rules = rulesNode!.AsArray();
+        rules.Should().HaveCount(3);
+
+        // Последнее правило смерженного дерева — уже наше (с полем domain),
+        // а не пользовательский catch-all: если бы флаг вычислялся отсюда
+        // (после вливания), эта проверка доказывала бы, что он был бы false.
+        var lastRule = rules[^1];
+        lastRule.Should().NotBeNull();
+        lastRule!["domain"].Should().NotBeNull();
+    }
 }
