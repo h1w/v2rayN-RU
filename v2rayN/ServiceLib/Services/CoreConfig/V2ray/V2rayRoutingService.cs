@@ -63,22 +63,31 @@ public partial class CoreConfigV2rayService
                         GenRoutingUserRule(item2);
                     }
                 }
-                var balancerTagList = _coreConfig.routing.balancers
-                    ?.Select(p => p.tag)
-                    .ToList() ?? [];
-                if (balancerTagList.Count > 0)
-                {
-                    foreach (var rulesItem in _coreConfig.routing.rules.Where(r => balancerTagList.Contains(r.outboundTag + Global.BalancerTagSuffix)))
-                    {
-                        rulesItem.balancerTag = rulesItem.outboundTag + Global.BalancerTagSuffix;
-                        rulesItem.outboundTag = null;
-                    }
-                }
+                ApplyBalancerTags(_coreConfig);
             }
         }
         catch (Exception ex)
         {
             Logging.SaveLog(_tag, ex);
+        }
+    }
+
+    /// <summary>
+    /// Правила, нацеленные на группу с несколькими выходами, уходят на балансер:
+    /// outboundTag очищается, взамен проставляется balancerTag. Общий пост-проход
+    /// для GenRouting и BuildUserRoutingForCustom.
+    /// </summary>
+    private static void ApplyBalancerTags(V2rayConfig coreConfig)
+    {
+        var balancerTagList = coreConfig.routing.balancers?.Select(p => p.tag).ToList() ?? [];
+        if (balancerTagList.Count == 0)
+        {
+            return;
+        }
+        foreach (var rulesItem in coreConfig.routing.rules.Where(r => balancerTagList.Contains(r.outboundTag + Global.BalancerTagSuffix)))
+        {
+            rulesItem.balancerTag = rulesItem.outboundTag + Global.BalancerTagSuffix;
+            rulesItem.outboundTag = null;
         }
     }
 
@@ -322,15 +331,7 @@ public partial class CoreConfigV2rayService
             }
 
             // Тот же пост-проход, что и в GenRouting: правила на группы уходят на балансер.
-            var balancerTagList = _coreConfig.routing.balancers?.Select(p => p.tag).ToList() ?? [];
-            if (balancerTagList.Count > 0)
-            {
-                foreach (var rulesItem in _coreConfig.routing.rules.Where(r => balancerTagList.Contains(r.outboundTag + Global.BalancerTagSuffix)))
-                {
-                    rulesItem.balancerTag = rulesItem.outboundTag + Global.BalancerTagSuffix;
-                    rulesItem.outboundTag = null;
-                }
-            }
+            ApplyBalancerTags(_coreConfig);
 
             fragment.Rules = _coreConfig.routing.rules;
             fragment.ExtraOutbounds = _coreConfig.outbounds.Where(o => !templateTags.Contains(o.tag)).ToList();

@@ -80,4 +80,82 @@ public class UserRoutingForCustomTests
         fragment.ExtraOutbounds.Should().BeEmpty();
         fragment.UnsupportedCustomTargets.Should().BeEmpty();
     }
+
+    [Fact]
+    public void Xray_BuildUserRoutingForCustom_excludes_dns_rules()
+    {
+        // RuleType = DNS (2) не должен попадать в пользовательский фрагмент,
+        // иначе DNS-правило просочится в custom JSON пользователя.
+        var ruleSet = """
+        [
+          { "Id": "r1", "OutboundTag": "direct", "Domain": ["dns.example.com"], "Enabled": true, "RuleType": 2 },
+          { "Id": "r2", "OutboundTag": "proxy", "Domain": ["routing.example.com"], "Enabled": true, "RuleType": 1 }
+        ]
+        """;
+
+        var fragment = new CoreConfigV2rayService(BuildContext(ruleSet)).BuildUserRoutingForCustom();
+
+        fragment.Rules.Should().ContainSingle();
+        fragment.Rules[0].outboundTag.Should().Be("proxy");
+        fragment.Rules[0].domain.Should().ContainSingle().Which.Should().Be("routing.example.com");
+    }
+
+    [Fact]
+    public void Xray_BuildUserRoutingForCustom_rule_to_profile_produces_extra_outbound()
+    {
+        // Правило нацелено на реальный профиль (не direct/proxy/block) — должен
+        // появиться отдельный outbound, а правило должно указывать на его tag.
+        var targetNode = CoreConfigTestFactory.CreateVmessNode(ECoreType.Xray, "n-target", "target-node");
+        var context = BuildContext(JsonUtils.Serialize(new List<RulesItem>
+        {
+            new()
+            {
+                Id = "r1",
+                Enabled = true,
+                OutboundTag = targetNode.Remarks,
+                Domain = ["target.example.com"],
+            },
+        }));
+        context.AllProxiesMap[$"remark:{targetNode.Remarks}"] = targetNode;
+
+        var fragment = new CoreConfigV2rayService(context).BuildUserRoutingForCustom();
+
+        var expectedTag = $"{targetNode.IndexId}-{Global.ProxyTag}-{targetNode.Remarks}";
+
+        fragment.Rules.Should().ContainSingle();
+        fragment.Rules[0].outboundTag.Should().Be(expectedTag);
+
+        // Реальный «лишний» выход присутствует, а шаблонные direct/block — нет.
+        fragment.ExtraOutbounds.Should().ContainSingle(o => o.tag == expectedTag);
+        fragment.ExtraOutbounds.Should().NotContain(o => o.tag == Global.DirectTag || o.tag == Global.BlockTag);
+    }
+
+    [Fact]
+    public void Xray_BuildUserRoutingForCustom_rule_to_custom_profile_is_unsupported()
+    {
+        // Правило нацелено на профиль типа Custom — Часть 1 такие цели не поддерживает:
+        // ремарка уходит в UnsupportedCustomTargets, а правило в fragment.Rules не появляется.
+        var customNode = new ProfileItem
+        {
+            IndexId = "n-custom",
+            ConfigType = EConfigType.Custom,
+            Remarks = "custom-node",
+        };
+        var context = BuildContext(JsonUtils.Serialize(new List<RulesItem>
+        {
+            new()
+            {
+                Id = "r1",
+                Enabled = true,
+                OutboundTag = customNode.Remarks,
+                Domain = ["custom.example.com"],
+            },
+        }));
+        context.AllProxiesMap[$"remark:{customNode.Remarks}"] = customNode;
+
+        var fragment = new CoreConfigV2rayService(context).BuildUserRoutingForCustom();
+
+        fragment.UnsupportedCustomTargets.Should().ContainSingle().Which.Should().Be(customNode.Remarks);
+        fragment.Rules.Should().BeEmpty();
+    }
 }
