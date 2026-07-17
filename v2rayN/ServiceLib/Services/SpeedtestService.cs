@@ -64,7 +64,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                 break;
 
             case ESpeedActionType.Speedtest:
-                await RunMixedTestAsync(lstSelected, 1, true, exitLoopKey);
+                await RunMixedTestAsync(lstSelected, _config.SpeedTestItem.MixedConcurrencyCount, true, exitLoopKey);
                 break;
 
             case ESpeedActionType.Mixedtest:
