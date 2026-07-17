@@ -131,10 +131,12 @@ public class UserRoutingForCustomTests
     }
 
     [Fact]
-    public void Xray_BuildUserRoutingForCustom_rule_to_custom_profile_is_unsupported()
+    public void Xray_BuildUserRoutingForCustom_rule_to_custom_profile_without_chain_is_skipped()
     {
-        // Правило нацелено на профиль типа Custom — Часть 1 такие цели не поддерживает:
-        // ремарка уходит в UnsupportedCustomTargets, а правило в fragment.Rules не появляется.
+        // Правило нацелено на профиль типа Custom. В проде такой узел остаётся в
+        // AllProxiesMap, только если цепочку для него собрать не удалось — здесь это
+        // смоделировано напрямую: ремарка уходит в UnsupportedCustomTargets, а правило
+        // в fragment.Rules не появляется.
         var customNode = new ProfileItem
         {
             IndexId = "n-custom",
@@ -248,10 +250,12 @@ public class UserRoutingForCustomTests
     }
 
     [Fact]
-    public void Singbox_BuildUserRoutingForCustom_rule_to_custom_profile_is_unsupported()
+    public void Singbox_BuildUserRoutingForCustom_rule_to_custom_profile_without_chain_is_skipped()
     {
-        // Правило нацелено на профиль типа Custom — Часть 1 такие цели не поддерживает:
-        // ремарка уходит в UnsupportedCustomTargets, а правило в fragment.Rules не появляется.
+        // Правило нацелено на профиль типа Custom. В проде такой узел остаётся в
+        // AllProxiesMap, только если цепочку для него собрать не удалось — здесь это
+        // смоделировано напрямую: ремарка уходит в UnsupportedCustomTargets, а правило
+        // в fragment.Rules не появляется.
         var customNode = new ProfileItem
         {
             IndexId = "n-custom",

@@ -2581,7 +2581,7 @@ namespace ServiceLib.Resx {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Routing rules pointing to JSON profiles are not supported yet and were skipped: {0}.
+        ///   Looks up a localized string similar to No chained core is available for these JSON profiles, so rules pointing to them were skipped: {0}.
         /// </summary>
         public static string CustomJsonRuleTargetUnsupported {
             get {

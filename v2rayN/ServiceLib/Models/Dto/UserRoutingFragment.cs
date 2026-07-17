@@ -15,7 +15,7 @@ public class V2rayUserRouting
     public Observatory4Ray? Observatory { get; set; }
     public BurstObservatory4Ray? BurstObservatory { get; set; }
 
-    /// <summary>Remarks профилей типа Custom, на которые ссылались правила. Часть 1 их не поддерживает.</summary>
+    /// <summary>Remarks профилей типа Custom, для которых не удалось поднять цепочку — правила на них пропущены.</summary>
     public List<string> UnsupportedCustomTargets { get; set; } = [];
 }
 
@@ -26,6 +26,7 @@ public class SingboxUserRouting
     /// <summary>Outbounds и endpoints, добавленные правилами на конкретные профили (без шаблонного direct).</summary>
     public List<BaseServer4Sbox> ExtraServers { get; set; } = [];
 
+    /// <summary>Remarks профилей типа Custom, для которых не удалось поднять цепочку — правила на них пропущены.</summary>
     public List<string> UnsupportedCustomTargets { get; set; } = [];
 }
 
@@ -42,6 +43,6 @@ public class CustomComposeResult
     /// <summary>Последнее правило JSON ловит весь трафик — локальные правила недостижимы.</summary>
     public bool CatchAllDetected { get; set; }
 
-    /// <summary>Remarks .json-профилей, на которые ссылались правила. Часть 1 их не поддерживает.</summary>
+    /// <summary>Remarks .json-профилей, для которых не удалось поднять цепочку — правила на них пропущены.</summary>
     public List<string> UnsupportedCustomTargets { get; set; } = [];
 }

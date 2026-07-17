@@ -349,7 +349,9 @@ public partial class CoreConfigV2rayService
 
     /// <summary>
     /// Возвращает Remarks профиля, если правило указывает на профиль типа Custom.
-    /// Часть 1 такие цели не поддерживает — их обслуживают цепочечные ядра из Части 2.
+    /// В норме сюда не попадают: CoreConfigContextBuilder подменяет такие цели на
+    /// socks-узел цепочечного ядра. Custom-узел здесь означает, что цепочку поднять
+    /// не удалось — правило пропускается, а не уводится молча в proxy.
     /// </summary>
     private string? ResolveUnsupportedCustomTarget(string? outboundTag)
     {
