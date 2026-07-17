@@ -70,11 +70,10 @@ public static class CoreConfigHandler
 
             if (composed.Json.IsNotEmpty())
             {
-                WarnAboutCustomRoutingLimits(composed);
-
                 ret.Msg = string.Format(ResUI.SuccessfulConfiguration, "");
                 ret.Success = true;
                 ret.Data = composed.Json;
+                WarnAboutCustomRoutingLimits(composed);
                 return ret;
             }
 
