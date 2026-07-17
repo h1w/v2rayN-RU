@@ -276,4 +276,130 @@ public class CustomConfigComposerTests
         outbounds.Should().NotBeNull();
         outbounds!.Any(o => o?["tag"]?.GetValue<string>() == "direct").Should().BeFalse();
     }
+
+    [Fact]
+    public void Compose_xray_appends_local_rules_after_json_rules_and_maps_proxy()
+    {
+        var ctx = EmptyContext(ECoreType.Xray) with
+        {
+            RoutingItem = new RoutingItem
+            {
+                Id = "r1", Remarks = "d", DomainStrategy = Global.AsIs, DomainStrategy4Singbox = string.Empty,
+                RuleSet = """[{ "Id": "r1", "OutboundTag": "proxy", "Domain": ["youtube.com"], "Enabled": true }]""",
+            },
+        };
+
+        var merged = CustomConfigComposer.Compose(XrayJson, ECoreType.Xray, ctx).Json;
+
+        var rules = JsonUtils.ParseJson(merged)?["routing"]?["rules"]?.AsArray();
+        rules.Should().HaveCount(2);
+        // Правило из JSON осталось первым.
+        rules![0]!["domain"]![0]!.GetValue<string>().Should().Be("geosite:cn");
+        // Наше — следом, с подменённым на главный выход JSON тегом.
+        rules[1]!["domain"]![0]!.GetValue<string>().Should().Be("youtube.com");
+        rules[1]!["outboundTag"]!.GetValue<string>().Should().Be("main-out");
+    }
+
+    // Симметричный тест для sing-box: та же гарантия порядка и подмены тега,
+    // но в разделе route.rules и с полем outbound (а не outboundTag). Домен
+    // задан как "full:youtube.com" — в отличие от простого "youtube.com" это
+    // попадает в Rule4Sbox.domain, а не в domain_keyword (см. ParseV2Domain).
+    [Fact]
+    public void Compose_singbox_appends_local_rules_after_json_rules_and_maps_proxy()
+    {
+        const string singboxJson = """
+        {
+          "outbounds": [
+            { "type": "vless", "tag": "main-out" },
+            { "type": "direct", "tag": "direct" }
+          ],
+          "route": {
+            "rules": [
+              { "outbound": "direct", "domain": ["geosite:cn"] }
+            ]
+          }
+        }
+        """;
+
+        var ctx = EmptyContext(ECoreType.sing_box) with
+        {
+            RoutingItem = new RoutingItem
+            {
+                Id = "r1", Remarks = "d", DomainStrategy = Global.AsIs, DomainStrategy4Singbox = string.Empty,
+                RuleSet = """[{ "Id": "r1", "OutboundTag": "proxy", "Domain": ["full:youtube.com"], "Enabled": true }]""",
+            },
+        };
+
+        var merged = CustomConfigComposer.Compose(singboxJson, ECoreType.sing_box, ctx).Json;
+
+        var rules = JsonUtils.ParseJson(merged)?["route"]?["rules"]?.AsArray();
+        rules.Should().HaveCount(2);
+        // Правило из JSON осталось первым.
+        rules![0]!["domain"]![0]!.GetValue<string>().Should().Be("geosite:cn");
+        // Наше — следом, с подменённым на главный выход JSON тегом.
+        rules[1]!["domain"]![0]!.GetValue<string>().Should().Be("youtube.com");
+        rules[1]!["outbound"]!.GetValue<string>().Should().Be("main-out");
+    }
+
+    // Тег сгенерированного extra outbound сталкивается с тегом, который уже
+    // существует в пользовательском JSON: MakeUniqueTag обязан развести их,
+    // а правило — сослаться именно на новый (разведённый) тег, не на старый.
+    [Fact]
+    public void Compose_xray_renames_extra_outbound_on_tag_collision_and_remaps_rule()
+    {
+        var targetNode = CoreConfigTestFactory.CreateVmessNode(ECoreType.Xray, "n-target", "target-node");
+        var generatedTag = $"{targetNode.IndexId}-{Global.ProxyTag}-{targetNode.Remarks}";
+
+        var ctx = EmptyContext(ECoreType.Xray) with
+        {
+            RoutingItem = new RoutingItem
+            {
+                Id = "r1", Remarks = "d", DomainStrategy = Global.AsIs, DomainStrategy4Singbox = string.Empty,
+                RuleSet = JsonUtils.Serialize(new List<RulesItem>
+                {
+                    new() { Id = "r1", Enabled = true, OutboundTag = targetNode.Remarks, Domain = ["target.example.com"] },
+                }),
+            },
+        };
+        ctx.AllProxiesMap[$"remark:{targetNode.Remarks}"] = targetNode;
+
+        // Выход в пользовательском JSON уже носит ровно тот тег, который
+        // BuildUserRoutingForCustom сгенерирует для targetNode.
+        var collidingJson = $$"""
+        {
+          "outbounds": [
+            { "protocol": "vless", "tag": "main-out" },
+            { "protocol": "vmess", "tag": "{{generatedTag}}" }
+          ]
+        }
+        """;
+
+        var merged = CustomConfigComposer.Compose(collidingJson, ECoreType.Xray, ctx).Json;
+        merged.Should().NotBeNull();
+
+        var parsed = JsonUtils.ParseJson(merged);
+        parsed.Should().NotBeNull();
+
+        var outboundsNode = parsed!["outbounds"];
+        outboundsNode.Should().NotBeNull();
+        var outbounds = outboundsNode!.AsArray();
+
+        // Исходный (пользовательский) выход с этим тегом остаётся ровно один...
+        outbounds.Count(o => o?["tag"]?.GetValue<string>() == generatedTag).Should().Be(1);
+        // ...а новый (сгенерированный) выход получает разведённый тег с суффиксом.
+        var renamedTag = $"{generatedTag}-2";
+        outbounds.Count(o => o?["tag"]?.GetValue<string>() == renamedTag).Should().Be(1);
+
+        var rulesNode = parsed["routing"]?["rules"];
+        rulesNode.Should().NotBeNull();
+        var rules = rulesNode!.AsArray();
+        var appended = rules.SingleOrDefault(r => r?["domain"]?[0]?.GetValue<string>() == "target.example.com");
+        appended.Should().NotBeNull();
+
+        // Правило должно указывать на разведённый тег, а не на исходный,
+        // с которым столкнулись.
+        var outboundTag = appended!["outboundTag"];
+        outboundTag.Should().NotBeNull();
+        outboundTag!.GetValue<string>().Should().Be(renamedTag);
+    }
 }

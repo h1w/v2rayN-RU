@@ -11,6 +11,16 @@ public static class CustomConfigComposer
     private static readonly JsonSerializerOptions _writeOptions = new() { WriteIndented = true };
 
     /// <summary>
+    /// Для SerializeToNode при вливании фрагментов: JsonSerializerOptions.Default
+    /// (используется, если не передать options явно) null-поля НЕ опускает — они
+    /// проверялись эмпирически и попадают в вывод как явные "поле": null. Модели
+    /// вроде RulesItem4Ray/Outbounds4Ray почти целиком состоят из необязательных
+    /// полей, поэтому без этой настройки итоговый JSON пользователя зарастает
+    /// шумом из пустых полей.
+    /// </summary>
+    private static readonly JsonSerializerOptions _mergeNodeOptions = new() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+
+    /// <summary>
     /// Сливает локальные правила в custom JSON. Json == null — признак
     /// «фолбэк на дословное копирование».
     /// </summary>
@@ -44,6 +54,10 @@ public static class CustomConfigComposer
             {
                 EnsureUtilityOutbound(outbounds, tags, Global.BlockTag, coreType);
             }
+
+            result.UnsupportedCustomTargets = coreType == ECoreType.sing_box
+                ? MergeSingbox(root, outbounds, tags, mainProxyTag!, context)
+                : MergeXray(root, outbounds, tags, mainProxyTag!, context);
 
             result.Json = root.ToJsonString(_writeOptions);
             return result;
@@ -139,5 +153,147 @@ public static class CustomConfigComposer
             i++;
         }
         return $"{tag}-{i}";
+    }
+
+    /// <summary>
+    /// Вливает локальные правила (и то, что они притащили — выходы, балансеры,
+    /// observatory) в xray-конфиг пользователя. Правила JSON остаются первыми,
+    /// локальные дописываются следом; тег proxy подменяется на главный выход JSON.
+    /// </summary>
+    private static List<string> MergeXray(JsonNode root, JsonArray outbounds, HashSet<string> tags, string mainProxyTag, CoreConfigContext context)
+    {
+        var fragment = new CoreConfigV2rayService(context).BuildUserRoutingForCustom();
+        if (fragment.Rules.Count == 0 && fragment.ExtraOutbounds.Count == 0)
+        {
+            return fragment.UnsupportedCustomTargets;
+        }
+
+        var renames = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var ob in fragment.ExtraOutbounds)
+        {
+            var unique = MakeUniqueTag(ob.tag, tags);
+            if (unique != ob.tag)
+            {
+                renames[ob.tag] = unique;
+                ob.tag = unique;
+            }
+            tags.Add(ob.tag);
+            var node = JsonUtils.SerializeToNode(ob, _mergeNodeOptions);
+            if (node != null)
+            {
+                outbounds.Add(node);
+            }
+        }
+
+        var routing = root["routing"] as JsonObject ?? new JsonObject();
+        var rules = routing["rules"] as JsonArray ?? new JsonArray();
+        foreach (var rule in fragment.Rules)
+        {
+            if (rule.outboundTag == Global.ProxyTag)
+            {
+                rule.outboundTag = mainProxyTag;
+            }
+            else if (rule.outboundTag.IsNotEmpty() && renames.TryGetValue(rule.outboundTag, out var renamed))
+            {
+                rule.outboundTag = renamed;
+            }
+            var node = JsonUtils.SerializeToNode(rule, _mergeNodeOptions);
+            if (node != null)
+            {
+                rules.Add(node);
+            }
+        }
+        routing["rules"] = rules;
+        root["routing"] = routing;
+
+        if (fragment.Balancers?.Count > 0)
+        {
+            var balancers = routing["balancers"] as JsonArray ?? new JsonArray();
+            foreach (var b in fragment.Balancers)
+            {
+                var node = JsonUtils.SerializeToNode(b, _mergeNodeOptions);
+                if (node != null)
+                {
+                    balancers.Add(node);
+                }
+            }
+            routing["balancers"] = balancers;
+        }
+        if (fragment.Observatory != null && root["observatory"] is null)
+        {
+            root["observatory"] = JsonUtils.SerializeToNode(fragment.Observatory, _mergeNodeOptions);
+        }
+        if (fragment.BurstObservatory != null && root["burstObservatory"] is null)
+        {
+            root["burstObservatory"] = JsonUtils.SerializeToNode(fragment.BurstObservatory, _mergeNodeOptions);
+        }
+        return fragment.UnsupportedCustomTargets;
+    }
+
+    /// <summary>
+    /// Вливает локальные правила в sing-box конфиг пользователя. Серверы, добавленные
+    /// правилами, разводятся по outbounds/endpoints согласно рантайм-типу (Endpoints4Sbox
+    /// либо обычный outbound) — endpoints и outbounds это разные секции конфига sing-box.
+    /// </summary>
+    private static List<string> MergeSingbox(JsonNode root, JsonArray outbounds, HashSet<string> tags, string mainProxyTag, CoreConfigContext context)
+    {
+        var fragment = new CoreConfigSingboxService(context).BuildUserRoutingForCustom();
+        if (fragment.Rules.Count == 0 && fragment.ExtraServers.Count == 0)
+        {
+            return fragment.UnsupportedCustomTargets;
+        }
+
+        var renames = new Dictionary<string, string>(StringComparer.Ordinal);
+        var endpoints = root["endpoints"] as JsonArray;
+        foreach (var srv in fragment.ExtraServers)
+        {
+            var unique = MakeUniqueTag(srv.tag, tags);
+            if (unique != srv.tag)
+            {
+                renames[srv.tag] = unique;
+                srv.tag = unique;
+            }
+            tags.Add(srv.tag);
+            var node = JsonUtils.SerializeToNode(srv, _mergeNodeOptions);
+            if (node == null)
+            {
+                continue;
+            }
+            if (srv is Endpoints4Sbox)
+            {
+                endpoints ??= [];
+                endpoints.Add(node);
+            }
+            else
+            {
+                outbounds.Add(node);
+            }
+        }
+        if (endpoints != null)
+        {
+            root["endpoints"] = endpoints;
+        }
+
+        var route = root["route"] as JsonObject ?? new JsonObject();
+        var rules = route["rules"] as JsonArray ?? new JsonArray();
+        foreach (var rule in fragment.Rules)
+        {
+            if (rule.outbound == Global.ProxyTag)
+            {
+                rule.outbound = mainProxyTag;
+            }
+            else if (rule.outbound.IsNotEmpty() && renames.TryGetValue(rule.outbound, out var renamed))
+            {
+                rule.outbound = renamed;
+            }
+            var node = JsonUtils.SerializeToNode(rule, _mergeNodeOptions);
+            if (node != null)
+            {
+                rules.Add(node);
+            }
+        }
+        route["rules"] = rules;
+        root["route"] = route;
+        return fragment.UnsupportedCustomTargets;
     }
 }
