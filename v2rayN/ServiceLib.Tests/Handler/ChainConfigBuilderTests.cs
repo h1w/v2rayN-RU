@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using ServiceLib.Handler;
 using Xunit;
 
 namespace ServiceLib.Tests.Handler;
@@ -50,6 +49,9 @@ public class ChainConfigBuilderTests
         inbounds[0]!["port"]!.GetValue<int>().Should().Be(34567);
         inbounds[0]!["protocol"]!.GetValue<string>().Should().Be("socks");
         inbounds[0]!["listen"]!.GetValue<string>().Should().Be(Global.Loopback);
+        // xray: protocol/port, НЕ sing-box-форма type/listen_port.
+        inbounds[0]?["type"].Should().BeNull();
+        inbounds[0]?["listen_port"].Should().BeNull();
     }
 
     [Fact]
@@ -74,6 +76,42 @@ public class ChainConfigBuilderTests
         var log = json["log"];
         log.Should().NotBeNull();
         log!["loglevel"]!.GetValue<string>().Should().Be("warning");
+    }
+
+    [Fact]
+    public void Build_xray_preserves_balancers_observatory_and_dns()
+    {
+        // Балансеры, observatory и dns — то, ради чего auto-конфиги (и вся
+        // цепочечная фича) вообще существуют; фикстуры выше их не содержат.
+        const string json = """
+        {
+          "outbounds": [ { "protocol": "vless", "tag": "main-out" } ],
+          "routing": {
+            "rules": [],
+            "balancers": [ { "tag": "balancer-1", "selector": ["main-out"] } ]
+          },
+          "observatory": { "subjectSelector": ["main-out"] },
+          "dns": { "servers": ["8.8.8.8"] }
+        }
+        """;
+
+        var result = ChainConfigBuilder.Build(json, ECoreType.Xray, 34569);
+
+        var parsed = JsonUtils.ParseJson(result);
+        parsed.Should().NotBeNull();
+
+        var balancers = parsed!["routing"]?["balancers"]?.AsArray();
+        balancers.Should().NotBeNull();
+        balancers!.Count.Should().Be(1);
+        balancers[0]!["tag"]!.GetValue<string>().Should().Be("balancer-1");
+
+        var observatory = parsed["observatory"];
+        observatory.Should().NotBeNull();
+        observatory!["subjectSelector"]![0]!.GetValue<string>().Should().Be("main-out");
+
+        var dns = parsed["dns"];
+        dns.Should().NotBeNull();
+        dns!["servers"]![0]!.GetValue<string>().Should().Be("8.8.8.8");
     }
 
     [Fact]
@@ -106,5 +144,7 @@ public class ChainConfigBuilderTests
         ChainConfigBuilder.Build("not json", ECoreType.Xray, 1080).Should().BeNull();
         // Без outbounds цепочке нечем ходить наружу.
         ChainConfigBuilder.Build("""{ "inbounds": [] }""", ECoreType.Xray, 1080).Should().BeNull();
+        // Ключ outbounds есть, но пуст — нечем ходить наружу точно так же.
+        ChainConfigBuilder.Build("""{ "outbounds": [] }""", ECoreType.Xray, 1080).Should().BeNull();
     }
 }
