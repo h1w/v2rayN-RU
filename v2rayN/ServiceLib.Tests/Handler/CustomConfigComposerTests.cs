@@ -125,4 +125,62 @@ public class CustomConfigComposerTests
 
         result.Json.Should().BeNull();
     }
+
+    private const string XrayJsonNoDirect = """
+    {
+      "outbounds": [ { "protocol": "vless", "tag": "main-out" } ],
+      "routing": { "rules": [] }
+    }
+    """;
+
+    [Fact]
+    public void Compose_xray_synthesizes_missing_direct_and_block()
+    {
+        var ctx = EmptyContext(ECoreType.Xray) with
+        {
+            RoutingItem = new RoutingItem
+            {
+                Id = "r1", Remarks = "d", DomainStrategy = Global.AsIs, DomainStrategy4Singbox = string.Empty,
+                RuleSet = """
+                [
+                  { "Id": "r1", "OutboundTag": "direct", "Domain": ["a.example.com"], "Enabled": true },
+                  { "Id": "r2", "OutboundTag": "block", "Domain": ["b.example.com"], "Enabled": true }
+                ]
+                """,
+            },
+        };
+
+        var merged = CustomConfigComposer.Compose(XrayJsonNoDirect, ECoreType.Xray, ctx).Json;
+
+        var outbounds = JsonUtils.ParseJson(merged)?["outbounds"]?.AsArray();
+        outbounds.Should().NotBeNull();
+
+        var direct = outbounds!.SingleOrDefault(o => o?["tag"]?.GetValue<string>() == "direct");
+        direct.Should().NotBeNull();
+        direct!["protocol"]!.GetValue<string>().Should().Be("freedom");
+
+        var block = outbounds.SingleOrDefault(o => o?["tag"]?.GetValue<string>() == "block");
+        block.Should().NotBeNull();
+        block!["protocol"]!.GetValue<string>().Should().Be("blackhole");
+    }
+
+    [Fact]
+    public void Compose_xray_reuses_existing_direct_tag()
+    {
+        var ctx = EmptyContext(ECoreType.Xray) with
+        {
+            RoutingItem = new RoutingItem
+            {
+                Id = "r1", Remarks = "d", DomainStrategy = Global.AsIs, DomainStrategy4Singbox = string.Empty,
+                RuleSet = """[{ "Id": "r1", "OutboundTag": "direct", "Domain": ["a.example.com"], "Enabled": true }]""",
+            },
+        };
+
+        // XrayJson уже содержит freedom/direct — дубля быть не должно.
+        var merged = CustomConfigComposer.Compose(XrayJson, ECoreType.Xray, ctx).Json;
+
+        var outbounds = JsonUtils.ParseJson(merged)?["outbounds"]?.AsArray();
+        outbounds.Should().NotBeNull();
+        outbounds!.Count(o => o?["tag"]?.GetValue<string>() == "direct").Should().Be(1);
+    }
 }
