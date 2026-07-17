@@ -451,6 +451,59 @@ public class CustomConfigComposerTests
         CustomConfigComposer.HasCatchAllLastRule(withNarrowingLastRule, ECoreType.sing_box).Should().BeFalse();
     }
 
+    // Ревью нашло пробел: xray-схема правил знает "source" (source-IP, парный
+    // к "ip" так же, как "sourcePort" парный к "port") — ключ отсутствовал в
+    // _xrayNarrowingKeys, и правило, сужающее трафик только по нему, ложно
+    // считалось catch-all. Метод разбирает сырой пользовательский JSON, а не
+    // модель RulesItem4Ray, поэтому "source" (не смоделированный в RulesItem4Ray,
+    // как и sourcePort/user/attrs) — валидный вход.
+    [Fact]
+    public void HasCatchAllLastRule_xray_treats_source_only_last_rule_as_narrowing()
+    {
+        var withSourceOnlyLastRule = """
+        {
+          "outbounds": [ { "protocol": "vless", "tag": "main-out" } ],
+          "routing": { "rules": [
+            { "type": "field", "outboundTag": "direct", "domain": ["geosite:cn"] },
+            { "type": "field", "outboundTag": "main-out", "source": ["192.168.1.0/24"] }
+          ] }
+        }
+        """;
+
+        // У последнего правила есть сужающее условие (source) — недостижимости нет.
+        CustomConfigComposer.HasCatchAllLastRule(withSourceOnlyLastRule, ECoreType.Xray).Should().BeFalse();
+    }
+
+    // Ревью нашло пробел: несколько реальных, смоделированных в Rule4Sbox
+    // route-rule матчеров отсутствовали в _singboxNarrowingKeys, и правило,
+    // сужающее трафик только одним из них, ложно считалось catch-all —
+    // например, "маршрутизировать только по домашнему Wi-Fi" или "приватные
+    // IP — в обход прокси" — распространённые финальные правила с одним
+    // условием. Каждая строка проверяет ровно один новый ключ в изоляции.
+    [Theory]
+    [InlineData("ip_is_private", "true")]
+    [InlineData("source_ip_is_private", "true")]
+    [InlineData("network_type", """["wifi"]""")]
+    [InlineData("network_is_expensive", "true")]
+    [InlineData("network_is_constrained", "true")]
+    [InlineData("wifi_ssid", """["HomeNet"]""")]
+    [InlineData("wifi_bssid", """["00:11:22:33:44:55"]""")]
+    public void HasCatchAllLastRule_singbox_treats_new_matcher_only_last_rule_as_narrowing(string key, string valueJson)
+    {
+        var withNewMatcherOnlyLastRule = $$"""
+        {
+          "outbounds": [ { "type": "vless", "tag": "main-out" } ],
+          "route": { "rules": [
+            { "outbound": "direct", "domain": ["geosite:cn"] },
+            { "outbound": "main-out", "{{key}}": {{valueJson}} }
+          ] }
+        }
+        """;
+
+        // У последнего правила есть сужающее условие (key) — недостижимости нет.
+        CustomConfigComposer.HasCatchAllLastRule(withNewMatcherOnlyLastRule, ECoreType.sing_box).Should().BeFalse();
+    }
+
     // Сверх брифа: подтверждаем сквозь Compose, что CatchAllDetected читается из
     // исходного rawJson, а не из смерженного результата. Наше собственное правило,
     // дописанное последним, содержит "domain" — если бы флаг считался по дереву

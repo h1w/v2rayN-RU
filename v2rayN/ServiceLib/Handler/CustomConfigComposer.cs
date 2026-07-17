@@ -302,12 +302,13 @@ public static class CustomConfigComposer
     }
 
     private static readonly string[] _xrayNarrowingKeys =
-        ["domain", "ip", "port", "sourcePort", "process", "inboundTag", "protocol", "user", "attrs"];
+        ["domain", "ip", "source", "port", "sourcePort", "process", "inboundTag", "protocol", "user", "attrs"];
 
     private static readonly string[] _singboxNarrowingKeys =
-        ["domain", "domain_suffix", "domain_keyword", "domain_regex", "geosite", "geoip", "ip_cidr",
-         "source_ip_cidr", "port", "port_range", "source_port", "source_port_range", "process_name",
-         "process_path", "inbound", "protocol", "rule_set", "clash_mode", "rules"];
+        ["domain", "domain_suffix", "domain_keyword", "domain_regex", "geosite", "geoip", "ip_cidr", "ip_is_private",
+         "source_ip_cidr", "source_ip_is_private", "port", "port_range", "source_port", "source_port_range",
+         "process_name", "process_path", "inbound", "protocol", "rule_set", "clash_mode", "rules", "network_type",
+         "network_is_expensive", "network_is_constrained", "wifi_ssid", "wifi_bssid"];
 
     /// <summary>
     /// true, если последнее правило конфига не сужает трафик ничем — тогда всё, что
