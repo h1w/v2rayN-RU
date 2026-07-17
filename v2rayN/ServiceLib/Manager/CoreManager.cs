@@ -181,11 +181,12 @@ public class CoreManager
         await StopProcessSafe(_processPreService);
         _processPreService = null;
 
-        foreach (var proc in _processChainServices)
+        var chains = _processChainServices.ToList();
+        _processChainServices.Clear();
+        foreach (var proc in chains)
         {
             await StopProcessSafe(proc);
         }
-        _processChainServices.Clear();
         CleanupChainConfigFiles();
     }
 
@@ -202,11 +203,14 @@ public class CoreManager
         try
         {
             await proc.StopAsync();
-            proc.Dispose();
         }
         catch (Exception ex)
         {
             Logging.SaveLog(_tag, ex);
+        }
+        finally
+        {
+            proc.Dispose();
         }
     }
 
@@ -216,9 +220,20 @@ public class CoreManager
     /// </summary>
     private static void CleanupChainConfigFiles()
     {
+        CleanupChainConfigFiles(Utils.GetBinConfigPath());
+    }
+
+    /// <summary>
+    /// Testable core of the cleanup: deletes configChain*.json in <paramref name="dir"/>.
+    /// Public (not internal) because the project has no InternalsVisibleTo wiring for
+    /// ServiceLib.Tests; exposing otherwise-private pure helpers as public static for testability
+    /// is the established convention here (see ChainConfigBuilder, RoutingRuleExporter,
+    /// CustomSpeedtestConfigBuilder, CustomConfigParser).
+    /// </summary>
+    public static void CleanupChainConfigFiles(string dir)
+    {
         try
         {
-            var dir = Utils.GetBinConfigPath();
             if (!Directory.Exists(dir))
             {
                 return;
