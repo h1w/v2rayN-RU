@@ -372,7 +372,6 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
 
     public void MoveRuleByDrag(RulesItemModel? dragged, RulesItemModel? target, bool insertAfter)
     {
-        Logging.SaveLog($"[DragDbg] MoveRuleByDrag dragged={(dragged?.Remarks.IsNullOrEmpty() == false ? dragged.Remarks : dragged?.OutboundTag)}(ro={dragged?.IsReadonly},edit={dragged?.CanEditCustom}) target={(target?.Remarks.IsNullOrEmpty() == false ? target.Remarks : target?.OutboundTag)}(ro={target?.IsReadonly}) after={insertAfter} flag={_config.UiItem.EnableCustomRuleEditing}");
         if (dragged is null || target is null)
         {
             return;
@@ -388,12 +387,9 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
         {
             if (!_config.UiItem.EnableCustomRuleEditing || !dragged.IsReadonly || !target.IsReadonly)
             {
-                Logging.SaveLog("[DragDbg] JSON branch blocked (flag off or cross-group)");
                 return;
             }
-            var moved = CustomRuleStateHelper.ReorderPaired(_readonlyJsonRules, _readonlyOrdinals, dragged.Id, target.Id, insertAfter);
-            Logging.SaveLog($"[DragDbg] ReorderPaired returned {moved}");
-            if (moved)
+            if (CustomRuleStateHelper.ReorderPaired(_readonlyJsonRules, _readonlyOrdinals, dragged.Id, target.Id, insertAfter))
             {
                 RefreshRulesItems();
             }

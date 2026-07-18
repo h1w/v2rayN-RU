@@ -243,14 +243,12 @@ public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingVie
 
             if (e.GetCurrentPoint(row).Properties.IsLeftButtonPressed)
             {
-                Logging.SaveLog($"[DragDbg] PointerPressed start drag row={(item.Remarks.IsNullOrEmpty() == false ? item.Remarks : item.OutboundTag)} ro={item.IsReadonly} edit={item.CanEditCustom}");
                 var dragData = new DataTransfer();
                 var dataItem = DataTransferItem.Create(LstRulesRowFormat, item);
                 dragData.Add(dataItem);
                 try
                 {
-                    var effect = await DragDrop.DoDragDropAsync(e, dragData, DragDropEffects.Move);
-                    Logging.SaveLog($"[DragDbg] DoDragDropAsync completed effect={effect}");
+                    await DragDrop.DoDragDropAsync(e, dragData, DragDropEffects.Move);
                 }
                 finally
                 {
@@ -333,7 +331,6 @@ public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingVie
         }
         // Match the insertion line shown in DragOver: top half -> before target, bottom half -> after.
         var isTopEdge = e.GetPosition(targetRow).Y < targetRow.Bounds.Height / 2;
-        Logging.SaveLog($"[DragDbg] Drop source ro={sourceItem.IsReadonly} target ro={targetItem.IsReadonly} after={!isTopEdge}");
         ViewModel?.MoveRuleByDrag(sourceItem, targetItem, insertAfter: !isTopEdge);
     }
 
