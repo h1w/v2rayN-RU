@@ -259,8 +259,8 @@ public partial class RoutingRuleSettingWindow
         var targetItem = row?.Item as RulesItemModel;
 
         if (row is null || targetItem is null || _draggedRule is null
-            || targetItem.IsReadonly != _draggedRule.IsReadonly
-            || (_draggedRule.IsReadonly && !_draggedRule.CanEditCustom))
+            || (_draggedRule.IsReadonly && !_draggedRule.CanEditCustom)
+            || (targetItem.IsReadonly && !targetItem.CanEditCustom))
         {
             RemoveInsertionAdorner();
             e.Effects = DragDropEffects.None;

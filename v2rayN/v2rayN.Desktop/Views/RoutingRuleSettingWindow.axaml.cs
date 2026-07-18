@@ -283,8 +283,8 @@ public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingVie
 
         var row = visualTarget.FindAncestorOfType<DataGridRow>(true);
         if (row is not { DataContext: RulesItemModel targetItem } || sourceItem is null
-            || targetItem.IsReadonly != sourceItem.IsReadonly
             || (sourceItem.IsReadonly && !sourceItem.CanEditCustom)
+            || (targetItem.IsReadonly && !targetItem.CanEditCustom)
             || ReferenceEquals(sourceItem, targetItem))
         {
             e.DragEffects = DragDropEffects.None;
