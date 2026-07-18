@@ -11,6 +11,9 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
 
     private List<RulesItem> _rules;
     private List<RulesItem> _readonlyJsonRules = [];
+    private List<int> _readonlyOrdinals = [];
+    private ProfileItem? _activeCustomProfile;
+    private List<CustomRuleStateItem>? _customRuleState;
 
     [Reactive]
     public RoutingItem SelectedRouting { get; set; }
@@ -135,12 +138,26 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
             var json = await File.ReadAllTextAsync(path);
             var coreType = AppManager.Instance.GetCoreType(node, EConfigType.Custom);
             var parsed = CustomConfigParser.ParseDisplayRules(json, coreType);
-            foreach (var r in parsed)
+            _activeCustomProfile = node;
+
+            _customRuleState = _config.UiItem.EnableCustomRuleEditing
+                ? JsonUtils.Deserialize<List<CustomRuleStateItem>>(node.CustomRuleState)
+                : null;
+
+            // ordinal каждого правила = его позиция в parsed (parsed идёт в порядке
+            // не-null правил файла, как ParseDisplayRules). Переупорядочиваем по state;
+            // ordinal несём параллельным списком _readonlyOrdinals (в Remarks не писать).
+            var orderedOrdinals = CustomRuleStateHelper.OrderedOrdinals(parsed.Count, _customRuleState);
+            var ordered = new List<RulesItem>();
+            foreach (var ord in orderedOrdinals)
             {
-                r.Id = Utils.GetGuid(false);   // stable id for selection/lookup
-                r.Enabled = true;
+                var r = parsed[ord];
+                r.Id = Utils.GetGuid(false);            // stable id for selection/lookup
+                r.Enabled = CustomRuleStateHelper.IsEnabled(ord, _customRuleState);
+                ordered.Add(r);
             }
-            _readonlyJsonRules = parsed;
+            _readonlyJsonRules = ordered;
+            _readonlyOrdinals = orderedOrdinals;
             RefreshRulesItems();
         }
         catch (Exception ex)
@@ -154,9 +171,12 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
         RulesItems.Clear();
 
         var models = new List<RulesItemModel>();
-        foreach (var item in _readonlyJsonRules)
+        for (var k = 0; k < _readonlyJsonRules.Count; k++)
         {
-            models.Add(ToRuleModel(item, isReadonly: true));
+            var model = ToRuleModel(_readonlyJsonRules[k], isReadonly: true);
+            model.RawOrdinal = _readonlyOrdinals.ElementAtOrDefault(k);
+            model.CanEditCustom = _config.UiItem.EnableCustomRuleEditing;
+            models.Add(model);
         }
         foreach (var item in _rules)
         {
@@ -331,10 +351,36 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
 
     public void MoveRuleByDrag(RulesItemModel? dragged, RulesItemModel? target, bool insertAfter)
     {
-        if (dragged is null || target is null || dragged.IsReadonly || target.IsReadonly)
+        if (dragged is null || target is null)
         {
             return;
         }
+
+        // JSON-правила: reorder только среди JSON-строк и только при включённом флаге
+        if (dragged.IsReadonly || target.IsReadonly)
+        {
+            if (!_config.UiItem.EnableCustomRuleEditing || !dragged.IsReadonly || !target.IsReadonly)
+            {
+                return;
+            }
+            var fromJ = _readonlyJsonRules.FindIndex(t => t.Id == dragged.Id);
+            var toJ = _readonlyJsonRules.FindIndex(t => t.Id == target.Id);
+            if (fromJ < 0 || toJ < 0)
+            {
+                return;
+            }
+            var itemJ = _readonlyJsonRules[fromJ];
+            var ordJ = _readonlyOrdinals[fromJ];
+            _readonlyJsonRules.RemoveAt(fromJ);
+            _readonlyOrdinals.RemoveAt(fromJ);
+            toJ = _readonlyJsonRules.FindIndex(t => t.Id == target.Id);
+            var insertAt = insertAfter ? toJ + 1 : toJ;
+            _readonlyJsonRules.Insert(insertAt, itemJ);
+            _readonlyOrdinals.Insert(insertAt, ordJ);
+            RefreshRulesItems();
+            return;
+        }
+
         var from = _rules.FindIndex(t => t.Id == dragged.Id);
         var to = _rules.FindIndex(t => t.Id == target.Id);
         if (ConfigHandler.MoveRoutingRuleRelative(_rules, from, to, insertAfter) == 0)
@@ -358,6 +404,16 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
         }
         item.RuleNum = _rules.Count;
         item.RuleSet = JsonUtils.Serialize(_rules, false);
+
+        if (_config.UiItem.EnableCustomRuleEditing && _activeCustomProfile is not null)
+        {
+            var state = RulesItems
+                .Where(m => m.IsReadonly)
+                .Select(m => new CustomRuleStateItem { Index = m.RawOrdinal, Enabled = m.Enabled })
+                .ToList();
+            _activeCustomProfile.CustomRuleState = state.Count > 0 ? JsonUtils.Serialize(state, false) : null;
+            await SQLiteHelper.Instance.UpdateAsync(_activeCustomProfile);
+        }
 
         if (await ConfigHandler.SaveRoutingItem(_config, item) == 0)
         {
