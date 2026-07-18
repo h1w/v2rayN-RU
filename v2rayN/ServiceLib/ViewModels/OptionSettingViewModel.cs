@@ -67,6 +67,8 @@ public class OptionSettingViewModel : MyReactiveObject, ICloseable
     [Reactive] public string Hwid { get; set; }
     [Reactive] public bool HwidGenerateWithoutHyphens { get; set; }
     [Reactive] public string HwidValidationText { get; set; }
+    [Reactive] public bool EnableAdvancedMode { get; set; }
+    [Reactive] public bool EnableCustomRuleEditing { get; set; }
 
     #endregion UI
 
@@ -212,6 +214,8 @@ public class OptionSettingViewModel : MyReactiveObject, ICloseable
         HwidEnabled = _config.HwidItem.Enabled;
         Hwid = _config.HwidItem.Hwid ?? string.Empty;
         HwidGenerateWithoutHyphens = _config.HwidItem.GenerateWithoutHyphens;
+        EnableAdvancedMode = _config.UiItem.EnableAdvancedMode;
+        EnableCustomRuleEditing = _config.UiItem.EnableCustomRuleEditing;
 
         #endregion UI
 
@@ -390,6 +394,8 @@ public class OptionSettingViewModel : MyReactiveObject, ICloseable
         _config.HwidItem.Enabled = HwidEnabled;
         _config.HwidItem.Hwid = Hwid;
         _config.HwidItem.GenerateWithoutHyphens = HwidGenerateWithoutHyphens;
+        _config.UiItem.EnableAdvancedMode = EnableAdvancedMode;
+        _config.UiItem.EnableCustomRuleEditing = EnableCustomRuleEditing;
 
         //systemProxy
         _config.SystemProxyItem.SystemProxyExceptions = SystemProxyExceptions;

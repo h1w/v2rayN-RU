@@ -4907,6 +4907,24 @@ namespace ServiceLib.Resx {
         }
 
         /// <summary>
+        ///   查找类似 Advanced mode 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsAdvancedMode {
+            get {
+                return ResourceManager.GetString("TbSettingsAdvancedMode", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Allow managing JSON L7 rules (toggle and order) 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsEnableCustomRuleEditing {
+            get {
+                return ResourceManager.GetString("TbSettingsEnableCustomRuleEditing", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   查找类似 Please enter a valid HWID (10-64 characters: A-Z, a-z, 0-9, =, -) 的本地化字符串。
         /// </summary>
         public static string FillHwidError {

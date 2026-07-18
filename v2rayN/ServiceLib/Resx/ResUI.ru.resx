@@ -1921,6 +1921,12 @@
   <data name="TbSettingsHwidInvalid" xml:space="preserve">
     <value>Неверный формат (10-64 символа: A-Z a-z 0-9 = -)</value>
   </data>
+  <data name="TbSettingsAdvancedMode" xml:space="preserve">
+    <value>Продвинутый режим</value>
+  </data>
+  <data name="TbSettingsEnableCustomRuleEditing" xml:space="preserve">
+    <value>Разрешить управление JSON L7-правилами (вкл/выкл и порядок)</value>
+  </data>
   <data name="FillHwidError" xml:space="preserve">
     <value>Введите корректный HWID (10-64 символа: A-Z, a-z, 0-9, =, -)</value>
   </data>
