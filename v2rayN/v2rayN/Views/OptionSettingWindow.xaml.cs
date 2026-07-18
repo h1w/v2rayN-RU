@@ -121,6 +121,9 @@ public partial class OptionSettingWindow
             this.Bind(ViewModel, vm => vm.HwidGenerateWithoutHyphens, v => v.togHwidGenerateWithoutHyphens.IsChecked).DisposeWith(disposables);
             this.OneWayBind(ViewModel, vm => vm.HwidValidationText, v => v.txtHwidValidation.Text).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.RegenerateHwidCmd, v => v.btnRegenerateHwid).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.EnableAdvancedMode, v => v.togAdvancedMode.IsChecked).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.EnableCustomRuleEditing, v => v.togEnableCustomRuleEditing.IsChecked).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.EnableAdvancedMode, v => v.grpAdvanced.IsEnabled).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.IPAPIUrl, v => v.cmbIPAPIUrl.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.RootCertProvider, v => v.cmbRootCertificateProvider.Text).DisposeWith(disposables);
 
