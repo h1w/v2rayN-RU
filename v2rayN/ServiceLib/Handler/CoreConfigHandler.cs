@@ -66,6 +66,14 @@ public static class CoreConfigHandler
 
             var rawJson = await File.ReadAllTextAsync(addressFileName);
             var coreType = AppManager.Instance.GetCoreType(node, EConfigType.Custom);
+            if (context.AppConfig.UiItem.EnableCustomRuleEditing)
+            {
+                var ruleState = JsonUtils.Deserialize<List<CustomRuleStateItem>>(node.CustomRuleState);
+                if (ruleState?.Count > 0)
+                {
+                    rawJson = CustomConfigComposer.ApplyCustomRuleState(rawJson, coreType, ruleState);
+                }
+            }
             var composed = CustomConfigComposer.Compose(rawJson, coreType, context);
 
             if (composed.Json.IsNotEmpty())
