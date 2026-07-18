@@ -168,6 +168,17 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
 
     public void RefreshRulesItems()
     {
+        // Persist inline JSON-rule toggles back into the durable store so this
+        // rebuild does not revert an un-saved Enabled change.
+        foreach (var model in RulesItems.Where(m => m.IsReadonly))
+        {
+            var rule = _readonlyJsonRules.FirstOrDefault(r => r.Id == model.Id);
+            if (rule != null)
+            {
+                rule.Enabled = model.Enabled;
+            }
+        }
+
         RulesItems.Clear();
 
         var models = new List<RulesItemModel>();
@@ -368,21 +379,10 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
             {
                 return;
             }
-            var fromJ = _readonlyJsonRules.FindIndex(t => t.Id == dragged.Id);
-            var toJ = _readonlyJsonRules.FindIndex(t => t.Id == target.Id);
-            if (fromJ < 0 || toJ < 0)
+            if (CustomRuleStateHelper.ReorderPaired(_readonlyJsonRules, _readonlyOrdinals, dragged.Id, target.Id, insertAfter))
             {
-                return;
+                RefreshRulesItems();
             }
-            var itemJ = _readonlyJsonRules[fromJ];
-            var ordJ = _readonlyOrdinals[fromJ];
-            _readonlyJsonRules.RemoveAt(fromJ);
-            _readonlyOrdinals.RemoveAt(fromJ);
-            toJ = _readonlyJsonRules.FindIndex(t => t.Id == target.Id);
-            var insertAt = insertAfter ? toJ + 1 : toJ;
-            _readonlyJsonRules.Insert(insertAt, itemJ);
-            _readonlyOrdinals.Insert(insertAt, ordJ);
-            RefreshRulesItems();
             return;
         }
 
