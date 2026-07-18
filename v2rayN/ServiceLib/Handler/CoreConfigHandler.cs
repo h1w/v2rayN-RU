@@ -66,12 +66,14 @@ public static class CoreConfigHandler
 
             var rawJson = await File.ReadAllTextAsync(addressFileName);
             var coreType = AppManager.Instance.GetCoreType(node, EConfigType.Custom);
+            var ruleStateApplied = false;
             if (context.AppConfig.UiItem.EnableCustomRuleEditing)
             {
                 var ruleState = JsonUtils.Deserialize<List<CustomRuleStateItem>>(node.CustomRuleState);
                 if (ruleState?.Count > 0)
                 {
                     rawJson = CustomConfigComposer.ApplyCustomRuleState(rawJson, coreType, ruleState);
+                    ruleStateApplied = true;
                 }
             }
             var composed = CustomConfigComposer.Compose(rawJson, coreType, context);
@@ -85,13 +87,24 @@ public static class CoreConfigHandler
                 return ret;
             }
 
-            // Фолбэк: JSON непригоден для слияния — ведём себя как раньше, дословной копией.
+            // Фолбэк: JSON непригоден для слияния. Если состояние правил уже
+            // перестроило rawJson (rule-state editing включён), пишем именно
+            // перестроенный JSON — иначе правки пользователя (вкл/выкл/порядок)
+            // молча потерялись бы под дословной копией исходника. Если
+            // перестройки не было — ведём себя как раньше, дословной копией.
             if (File.Exists(fileName))
             {
                 File.SetAttributes(fileName, FileAttributes.Normal);
                 File.Delete(fileName);
             }
-            File.Copy(addressFileName, fileName);
+            if (ruleStateApplied)
+            {
+                await File.WriteAllTextAsync(fileName, rawJson);
+            }
+            else
+            {
+                File.Copy(addressFileName, fileName);
+            }
             File.SetAttributes(fileName, FileAttributes.Normal);
 
             if (!File.Exists(fileName))
