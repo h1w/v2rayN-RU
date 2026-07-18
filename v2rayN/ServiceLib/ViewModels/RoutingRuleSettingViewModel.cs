@@ -356,6 +356,11 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
             return;
         }
 
+        if (dragged.Id == target.Id)
+        {
+            return;
+        }
+
         // JSON-правила: reorder только среди JSON-строк и только при включённом флаге
         if (dragged.IsReadonly || target.IsReadonly)
         {
