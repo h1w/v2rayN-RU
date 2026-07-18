@@ -10,10 +10,19 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
     public Interaction<string, string?> SaveRulesFileInteraction { get; } = new();
 
     private List<RulesItem> _rules;
-    private List<RulesItem> _readonlyJsonRules = [];
-    private List<int> _readonlyOrdinals = [];
+    private Dictionary<int, RulesItem> _jsonByOrdinal = [];
     private ProfileItem? _activeCustomProfile;
-    private List<CustomRuleStateItem>? _customRuleState;
+
+    /// <summary>
+    /// Единый порядок отображения/сохранения: смесь JSON-токенов (LocalId == null,
+    /// Index — ordinal в _jsonByOrdinal) и локальных токенов (LocalId — Id записи в
+    /// _rules). Порядок элементов в списке — это порядок строк в RulesItems и то,
+    /// что персистится как ProfileItem.CustomRuleState при включённом
+    /// EnableCustomRuleEditing. Локальный порядок в `_rules` самостоятельного
+    /// значения не имеет — он лишь хранилище содержимого, финальный порядок для
+    /// RuleSet выводится из _displayOrder при сохранении.
+    /// </summary>
+    private List<CustomRuleStateItem> _displayOrder = [];
 
     [Reactive]
     public RoutingItem SelectedRouting { get; set; }
@@ -109,6 +118,11 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
         SelectedRouting = routingItem;
         _rules = routingItem.Id.IsNullOrEmpty() ? [] : JsonUtils.Deserialize<List<RulesItem>>(SelectedRouting.RuleSet);
 
+        // Default display order (used as-is for non-custom/inactive routing items,
+        // and as the base that InitReadonlyJsonRulesAsync rebuilds/reconciles for an
+        // active custom-JSON profile): local rules only, in RuleSet order.
+        _displayOrder = _rules.Select(r => new CustomRuleStateItem { LocalId = r.Id }).ToList();
+
         RefreshRulesItems();
         _ = InitReadonlyJsonRulesAsync();
     }
@@ -140,24 +154,25 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
             var parsed = CustomConfigParser.ParseDisplayRules(json, coreType);
             _activeCustomProfile = node;
 
-            _customRuleState = _config.UiItem.EnableCustomRuleEditing
+            // ordinal каждого JSON-правила = его позиция в parsed (порядок не-null
+            // правил файла, как ParseDisplayRules) — тот же ordinal, что использует
+            // композер конфига (CustomConfigComposer.BuildUnifiedRules).
+            var jsonByOrdinal = new Dictionary<int, RulesItem>();
+            for (var i = 0; i < parsed.Count; i++)
+            {
+                var r = parsed[i];
+                r.Id = Utils.GetGuid(false); // stable per-load id for selection/self-drop guard only
+                jsonByOrdinal[i] = r;
+            }
+            _jsonByOrdinal = jsonByOrdinal;
+
+            var savedState = _config.UiItem.EnableCustomRuleEditing
                 ? JsonUtils.Deserialize<List<CustomRuleStateItem>>(node.CustomRuleState)
                 : null;
 
-            // ordinal каждого правила = его позиция в parsed (parsed идёт в порядке
-            // не-null правил файла, как ParseDisplayRules). Переупорядочиваем по state;
-            // ordinal несём параллельным списком _readonlyOrdinals (в Remarks не писать).
-            var orderedOrdinals = CustomRuleStateHelper.OrderedOrdinals(parsed.Count, _customRuleState);
-            var ordered = new List<RulesItem>();
-            foreach (var ord in orderedOrdinals)
-            {
-                var r = parsed[ord];
-                r.Id = Utils.GetGuid(false);            // stable id for selection/lookup
-                r.Enabled = CustomRuleStateHelper.IsEnabled(ord, _customRuleState);
-                ordered.Add(r);
-            }
-            _readonlyJsonRules = ordered;
-            _readonlyOrdinals = orderedOrdinals;
+            var jsonOrdinals = Enumerable.Range(0, parsed.Count).ToList();
+            _displayOrder = CustomRuleStateHelper.BuildDisplayOrder(savedState, jsonOrdinals, _rules.Select(r => r.Id).ToList());
+
             RefreshRulesItems();
         }
         catch (Exception ex)
@@ -168,30 +183,43 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
 
     public void RefreshRulesItems()
     {
-        // Persist inline JSON-rule toggles back into the durable store so this
-        // rebuild does not revert an un-saved Enabled change.
+        // Persist inline JSON-rule toggles back into _displayOrder so this rebuild
+        // does not revert an un-saved Enabled change.
         foreach (var model in RulesItems.Where(m => m.IsReadonly))
         {
-            var rule = _readonlyJsonRules.FirstOrDefault(r => r.Id == model.Id);
-            if (rule != null)
+            var token = _displayOrder.FirstOrDefault(t => t.LocalId == null && t.Index == model.RawOrdinal);
+            if (token != null)
             {
-                rule.Enabled = model.Enabled;
+                token.Enabled = model.Enabled;
             }
         }
 
         RulesItems.Clear();
 
         var models = new List<RulesItemModel>();
-        for (var k = 0; k < _readonlyJsonRules.Count; k++)
+        foreach (var token in _displayOrder)
         {
-            var model = ToRuleModel(_readonlyJsonRules[k], isReadonly: true);
-            model.RawOrdinal = _readonlyOrdinals.ElementAtOrDefault(k);
-            model.CanEditCustom = _config.UiItem.EnableCustomRuleEditing;
-            models.Add(model);
-        }
-        foreach (var item in _rules)
-        {
-            models.Add(ToRuleModel(item, isReadonly: false));
+            if (token.LocalId == null)
+            {
+                if (!_jsonByOrdinal.TryGetValue(token.Index, out var jsonRule))
+                {
+                    continue; // stale token (shouldn't happen post-reconcile); skip defensively
+                }
+                var model = ToRuleModel(jsonRule, isReadonly: true);
+                model.RawOrdinal = token.Index;
+                model.Enabled = token.Enabled;
+                model.CanEditCustom = _config.UiItem.EnableCustomRuleEditing;
+                models.Add(model);
+            }
+            else
+            {
+                var localRule = _rules.FirstOrDefault(r => r.Id == token.LocalId);
+                if (localRule is null)
+                {
+                    continue; // stale token (shouldn't happen post-reconcile); skip defensively
+                }
+                models.Add(ToRuleModel(localRule, isReadonly: false));
+            }
         }
         RulesItems.AddRange(models);
     }
@@ -219,8 +247,7 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
     {
         if (!blNew && SelectedSource?.IsReadonly == true)
         {
-            var ro = _readonlyJsonRules.FirstOrDefault(t => t.Id == SelectedSource.Id);
-            if (ro is null)
+            if (!_jsonByOrdinal.TryGetValue(SelectedSource.RawOrdinal, out var ro))
             {
                 return;
             }
@@ -230,9 +257,13 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
             var readonlyVm = new RoutingRuleDetailsViewModel(copy, isReadonly: true, canToggleEnabled: canToggle);
             if (await AppManager.Instance.WindowDialog.ShowDialogAsync(readonlyVm) == true && canToggle)
             {
-                // Sync the toggle back onto the durable store and the list checkbox.
+                // Sync the toggle back onto the matching _displayOrder JSON token and the list checkbox.
                 var newEnabled = readonlyVm.SelectedSource.Enabled;
-                ro.Enabled = newEnabled;
+                var token = _displayOrder.FirstOrDefault(t => t.LocalId == null && t.Index == SelectedSource.RawOrdinal);
+                if (token != null)
+                {
+                    token.Enabled = newEnabled;
+                }
                 SelectedSource.Enabled = newEnabled;
                 RefreshRulesItems();
             }
@@ -261,6 +292,7 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
             if (blNew)
             {
                 _rules.Insert(0, edited);
+                InsertNewLocalToken(edited.Id);
             }
             else
             {
@@ -290,14 +322,17 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
         {
             return;
         }
+        var removedIds = new List<string>();
         foreach (var it in SelectedSources ?? [SelectedSource])
         {
             var item = _rules.FirstOrDefault(t => t.Id == it?.Id);
             if (item != null)
             {
                 _rules.Remove(item);
+                removedIds.Add(item.Id);
             }
         }
+        _displayOrder.RemoveAll(t => t.LocalId != null && removedIds.Contains(t.LocalId));
 
         RefreshRulesItems();
     }
@@ -358,50 +393,57 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
             return;
         }
 
-        var item = _rules.FirstOrDefault(t => t.Id == SelectedSource?.Id);
-        if (item == null)
+        // Operates on the local-token slots of _displayOrder directly (not on `_rules`'
+        // own list order, which is content-only now) so this stays consistent with any
+        // prior cross-group drag and with the unified list the user actually sees.
+        if (CustomRuleStateHelper.MoveLocalToken(_displayOrder, SelectedSource.Id, eMove))
+        {
+            RefreshRulesItems();
+        }
+        await Task.CompletedTask;
+    }
+
+    public void MoveRuleByDrag(RulesItemModel? dragged, RulesItemModel? target, bool insertAfter)
+    {
+        if (dragged is null || target is null || dragged.Id == target.Id)
         {
             return;
         }
-        var index = _rules.IndexOf(item);
-        if (await ConfigHandler.MoveRoutingRule(_rules, index, eMove) == 0)
+
+        var from = FindDisplayOrderIndex(dragged);
+        var to = FindDisplayOrderIndex(target);
+        if (from < 0 || to < 0)
+        {
+            return;
+        }
+
+        if (CustomRuleStateHelper.MoveTokenRelative(_displayOrder, from, to, insertAfter))
         {
             RefreshRulesItems();
         }
     }
 
-    public void MoveRuleByDrag(RulesItemModel? dragged, RulesItemModel? target, bool insertAfter)
+    /// <summary>
+    /// Finds the _displayOrder token index matching a row model: a JSON row by its
+    /// RawOrdinal (LocalId == null), a local row by its RulesItem.Id.
+    /// </summary>
+    private int FindDisplayOrderIndex(RulesItemModel model)
     {
-        if (dragged is null || target is null)
-        {
-            return;
-        }
+        return model.IsReadonly
+            ? _displayOrder.FindIndex(t => t.LocalId == null && t.Index == model.RawOrdinal)
+            : _displayOrder.FindIndex(t => t.LocalId == model.Id);
+    }
 
-        if (dragged.Id == target.Id)
-        {
-            return;
-        }
-
-        // JSON-правила: reorder только среди JSON-строк и только при включённом флаге
-        if (dragged.IsReadonly || target.IsReadonly)
-        {
-            if (!_config.UiItem.EnableCustomRuleEditing || !dragged.IsReadonly || !target.IsReadonly)
-            {
-                return;
-            }
-            if (CustomRuleStateHelper.ReorderPaired(_readonlyJsonRules, _readonlyOrdinals, dragged.Id, target.Id, insertAfter))
-            {
-                RefreshRulesItems();
-            }
-            return;
-        }
-
-        var from = _rules.FindIndex(t => t.Id == dragged.Id);
-        var to = _rules.FindIndex(t => t.Id == target.Id);
-        if (ConfigHandler.MoveRoutingRuleRelative(_rules, from, to, insertAfter) == 0)
-        {
-            RefreshRulesItems();
-        }
+    /// <summary>
+    /// Inserts a token for a freshly-added local rule right before the first
+    /// existing local token (mirrors the previous "new rule at top of the local
+    /// block" placement), or at the end of _displayOrder if there is none yet.
+    /// </summary>
+    private void InsertNewLocalToken(string id)
+    {
+        var firstLocalIdx = _displayOrder.FindIndex(t => t.LocalId != null);
+        var insertAt = firstLocalIdx >= 0 ? firstLocalIdx : _displayOrder.Count;
+        _displayOrder.Insert(insertAt, new CustomRuleStateItem { LocalId = id });
     }
 
     private async Task SaveRoutingAsync()
@@ -413,20 +455,62 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
             return;
         }
         var item = SelectedRouting;
+
+        // Stable ids: only assign a fresh Id to a local rule that doesn't have one
+        // yet, so _displayOrder's LocalId tokens (and any persisted CustomRuleState)
+        // keep referencing the right rule across saves.
         foreach (var it in _rules)
         {
-            it.Id = Utils.GetGuid(false);
+            if (it.Id.IsNullOrEmpty())
+            {
+                it.Id = Utils.GetGuid(false);
+            }
         }
+
+        // Reorder `_rules` to match the local-token relative order in _displayOrder,
+        // so RuleSet reflects the mixed list's local order. Any rule not referenced
+        // by a token (should not normally happen — every mutator keeps them paired)
+        // is appended at the end defensively, so nothing is silently dropped.
+        var byId = new Dictionary<string, RulesItem>(StringComparer.Ordinal);
+        foreach (var rule in _rules)
+        {
+            byId.TryAdd(rule.Id, rule);
+        }
+        var reordered = new List<RulesItem>();
+        var used = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var token in _displayOrder)
+        {
+            if (token.LocalId != null && byId.TryGetValue(token.LocalId, out var rule) && used.Add(token.LocalId))
+            {
+                reordered.Add(rule);
+            }
+        }
+        foreach (var rule in _rules)
+        {
+            if (used.Add(rule.Id))
+            {
+                reordered.Add(rule);
+            }
+        }
+        _rules = reordered;
+
         item.RuleNum = _rules.Count;
         item.RuleSet = JsonUtils.Serialize(_rules, false);
 
         if (_config.UiItem.EnableCustomRuleEditing && _activeCustomProfile is not null)
         {
-            var state = RulesItems
-                .Where(m => m.IsReadonly)
-                .Select(m => new CustomRuleStateItem { Index = m.RawOrdinal, Enabled = m.Enabled })
-                .ToList();
-            _activeCustomProfile.CustomRuleState = state.Count > 0 ? JsonUtils.Serialize(state, false) : null;
+            // Sync current inline JSON toggles back into _displayOrder before
+            // persisting (same sync-back RefreshRulesItems does).
+            foreach (var model in RulesItems.Where(m => m.IsReadonly))
+            {
+                var token = _displayOrder.FirstOrDefault(t => t.LocalId == null && t.Index == model.RawOrdinal);
+                if (token != null)
+                {
+                    token.Enabled = model.Enabled;
+                }
+            }
+
+            _activeCustomProfile.CustomRuleState = _displayOrder.Count > 0 ? JsonUtils.Serialize(_displayOrder, false) : null;
             await SQLiteHelper.Instance.UpdateAsync(_activeCustomProfile);
         }
 
@@ -526,12 +610,14 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
 
         if (blReplace)
         {
+            _displayOrder.RemoveAll(t => t.LocalId != null);
             _rules = lstRules;
         }
         else
         {
             _rules.AddRange(lstRules);
         }
+        _displayOrder.AddRange(lstRules.Select(r => new CustomRuleStateItem { LocalId = r.Id }));
         return 0;
     }
 
