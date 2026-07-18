@@ -227,7 +227,7 @@ public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingVie
             }
 
             var row = visualSource.FindAncestorOfType<DataGridRow>(true);
-            if (row?.DataContext is not RulesItemModel { IsEditable: true } item)
+            if (row?.DataContext is not RulesItemModel item || (item.IsReadonly && !item.CanEditCustom))
             {
                 return;
             }
@@ -273,7 +273,10 @@ public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingVie
         }
 
         var row = visualTarget.FindAncestorOfType<DataGridRow>(true);
-        if (row is not { DataContext: RulesItemModel targetItem } || targetItem.IsReadonly || ReferenceEquals(sourceItem, targetItem))
+        if (row is not { DataContext: RulesItemModel targetItem } || sourceItem is null
+            || targetItem.IsReadonly != sourceItem.IsReadonly
+            || (sourceItem.IsReadonly && !sourceItem.CanEditCustom)
+            || ReferenceEquals(sourceItem, targetItem))
         {
             e.DragEffects = DragDropEffects.None;
             RemoveInsertionAdorner();

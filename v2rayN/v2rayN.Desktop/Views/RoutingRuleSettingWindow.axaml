@@ -231,8 +231,8 @@
                                     <CheckBox
                                         HorizontalAlignment="Center"
                                         VerticalAlignment="Center"
-                                        IsChecked="{Binding Enabled}"
-                                        IsEnabled="{Binding IsEditable}" />
+                                        IsChecked="{Binding Enabled, Mode=TwoWay}"
+                                        IsEnabled="{Binding CanToggleInline}" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
