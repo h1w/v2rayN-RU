@@ -224,8 +224,18 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
             {
                 return;
             }
-            var readonlyVm = new RoutingRuleDetailsViewModel(JsonUtils.DeepCopy(ro), isReadonly: true);
-            await AppManager.Instance.WindowDialog.ShowDialogAsync(readonlyVm);
+            var canToggle = _config.UiItem.EnableCustomRuleEditing;
+            var copy = JsonUtils.DeepCopy(ro);
+            copy.Enabled = SelectedSource.Enabled;   // reflect the current list checkbox state (item may be toggled but not yet saved)
+            var readonlyVm = new RoutingRuleDetailsViewModel(copy, isReadonly: true, canToggleEnabled: canToggle);
+            if (await AppManager.Instance.WindowDialog.ShowDialogAsync(readonlyVm) == true && canToggle)
+            {
+                // Sync the toggle back onto the durable store and the list checkbox.
+                var newEnabled = readonlyVm.SelectedSource.Enabled;
+                ro.Enabled = newEnabled;
+                SelectedSource.Enabled = newEnabled;
+                RefreshRulesItems();
+            }
             return;
         }
 
@@ -362,6 +372,7 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
 
     public void MoveRuleByDrag(RulesItemModel? dragged, RulesItemModel? target, bool insertAfter)
     {
+        Logging.SaveLog($"[DragDbg] MoveRuleByDrag dragged={(dragged?.Remarks.IsNullOrEmpty() == false ? dragged.Remarks : dragged?.OutboundTag)}(ro={dragged?.IsReadonly},edit={dragged?.CanEditCustom}) target={(target?.Remarks.IsNullOrEmpty() == false ? target.Remarks : target?.OutboundTag)}(ro={target?.IsReadonly}) after={insertAfter} flag={_config.UiItem.EnableCustomRuleEditing}");
         if (dragged is null || target is null)
         {
             return;
@@ -377,9 +388,12 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
         {
             if (!_config.UiItem.EnableCustomRuleEditing || !dragged.IsReadonly || !target.IsReadonly)
             {
+                Logging.SaveLog("[DragDbg] JSON branch blocked (flag off or cross-group)");
                 return;
             }
-            if (CustomRuleStateHelper.ReorderPaired(_readonlyJsonRules, _readonlyOrdinals, dragged.Id, target.Id, insertAfter))
+            var moved = CustomRuleStateHelper.ReorderPaired(_readonlyJsonRules, _readonlyOrdinals, dragged.Id, target.Id, insertAfter);
+            Logging.SaveLog($"[DragDbg] ReorderPaired returned {moved}");
+            if (moved)
             {
                 RefreshRulesItems();
             }

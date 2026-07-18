@@ -32,8 +32,18 @@ public partial class RoutingRuleDetailsWindow
             this.BindCommand(ViewModel, vm => vm.SelectProfileCmd, v => v.btnSelectProfile).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.SaveCmd, v => v.btnSave).DisposeWith(disposables);
 
-            this.OneWayBind(ViewModel, vm => vm.IsEditable, v => v.btnSave.IsEnabled).DisposeWith(disposables);
-            this.OneWayBind(ViewModel, vm => vm.IsEditable, v => v.gridForm.IsEnabled).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.CanConfirm, v => v.btnSave.IsEnabled).DisposeWith(disposables);
+            // Read-only form: disable each editable control individually (instead of the
+            // whole gridForm) so the enable toggle can stay interactive for JSON rules.
+            this.OneWayBind(ViewModel, vm => vm.IsEditable, v => v.txtRemarks.IsEnabled).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.IsEditable, v => v.cmbRuleType.IsEnabled).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.IsEditable, v => v.cmbOutboundTag.IsEnabled).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.IsEditable, v => v.btnSelectProfile.IsEnabled).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.IsEditable, v => v.txtPort.IsEnabled).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.IsEditable, v => v.clbProtocol.IsEnabled).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.IsEditable, v => v.clbInboundTag.IsEnabled).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.IsEditable, v => v.cmbNetwork.IsEnabled).DisposeWith(disposables);
+            this.OneWayBind(ViewModel, vm => vm.CanToggleEnabled, v => v.togEnabled.IsEnabled).DisposeWith(disposables);
             this.OneWayBind(ViewModel, vm => vm.IsReadonly, v => v.txtDomain.IsReadOnly).DisposeWith(disposables);
             this.OneWayBind(ViewModel, vm => vm.IsReadonly, v => v.txtIP.IsReadOnly).DisposeWith(disposables);
             this.OneWayBind(ViewModel, vm => vm.IsReadonly, v => v.txtProcess.IsReadOnly).DisposeWith(disposables);

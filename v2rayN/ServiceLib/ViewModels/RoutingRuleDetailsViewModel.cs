@@ -30,13 +30,24 @@ public class RoutingRuleDetailsViewModel : MyReactiveObject, ICloseable
 
     public bool IsEditable => !IsReadonly;
 
+    /// <summary>
+    /// Whether the enable/disable toggle is interactive. Editable rules can always
+    /// toggle; a read-only JSON rule can toggle only when custom-rule editing is on.
+    /// </summary>
+    [Reactive]
+    public bool CanToggleEnabled { get; set; }
+
+    /// <summary>Confirm is available when the form is editable OR only the toggle is.</summary>
+    public bool CanConfirm => IsEditable || CanToggleEnabled;
+
     public ReactiveCommand<Unit, Unit> SelectProfileCmd { get; }
     public ReactiveCommand<Unit, Unit> SaveCmd { get; }
 
-    public RoutingRuleDetailsViewModel(RulesItem rulesItem, bool isReadonly = false)
+    public RoutingRuleDetailsViewModel(RulesItem rulesItem, bool isReadonly = false, bool canToggleEnabled = false)
     {
         _config = AppManager.Instance.Config;
         IsReadonly = isReadonly;
+        CanToggleEnabled = !isReadonly || canToggleEnabled;
 
         SelectProfileCmd = ReactiveCommand.CreateFromTask(async () =>
         {
