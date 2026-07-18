@@ -121,7 +121,16 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
         // Default display order (used as-is for non-custom/inactive routing items,
         // and as the base that InitReadonlyJsonRulesAsync rebuilds/reconciles for an
         // active custom-JSON profile): local rules only, in RuleSet order.
-        _displayOrder = _rules.Select(r => new CustomRuleStateItem { LocalId = r.Id }).ToList();
+        // Backfill an id for any rule that lacks one (defensive against a hand-edited
+        // RuleSet) so its token is a valid local token, never a phantom JSON token.
+        _displayOrder = _rules.Select(r =>
+        {
+            if (r.Id.IsNullOrEmpty())
+            {
+                r.Id = Utils.GetGuid(false);
+            }
+            return new CustomRuleStateItem { LocalId = r.Id };
+        }).ToList();
 
         RefreshRulesItems();
         _ = InitReadonlyJsonRulesAsync();
