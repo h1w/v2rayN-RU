@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 namespace ServiceLib.Handler;
 
 /// <summary>
@@ -337,6 +339,70 @@ public static class CustomConfigComposer
         {
             Logging.SaveLog(_tag, ex);
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Пересобирает массив правил custom JSON согласно сохранённому состоянию
+    /// (порядок + вкл/выкл). Ordinal считается среди не-null правил — синхронно
+    /// с CustomConfigParser.ParseDisplayRules. Пустой state / отсутствие правил /
+    /// ошибка — возвращает исходный JSON без изменений.
+    /// </summary>
+    public static string ApplyCustomRuleState(string? rawJson, ECoreType coreType, List<CustomRuleStateItem>? state)
+    {
+        if (state is null || state.Count == 0)
+        {
+            return rawJson ?? string.Empty;
+        }
+        try
+        {
+            var root = JsonUtils.ParseJson(rawJson);
+            var rules = coreType == ECoreType.sing_box
+                ? root?["route"]?["rules"]?.AsArray()
+                : root?["routing"]?["rules"]?.AsArray();
+            if (root is null || rules is null || rules.Count == 0)
+            {
+                return rawJson ?? string.Empty;
+            }
+
+            // ordinal (позиция среди не-null правил) -> узел
+            var byOrdinal = new List<JsonNode>();
+            foreach (var node in rules)
+            {
+                if (node is not null)
+                {
+                    byOrdinal.Add(node);
+                }
+            }
+
+            var newArr = new JsonArray();
+            foreach (var ord in CustomRuleStateHelper.OrderedOrdinals(byOrdinal.Count, state))
+            {
+                if (!CustomRuleStateHelper.IsEnabled(ord, state))
+                {
+                    continue;
+                }
+                var clone = JsonNode.Parse(byOrdinal[ord].ToJsonString());
+                if (clone is not null)
+                {
+                    newArr.Add(clone);
+                }
+            }
+
+            if (coreType == ECoreType.sing_box)
+            {
+                root["route"]!["rules"] = newArr;
+            }
+            else
+            {
+                root["routing"]!["rules"] = newArr;
+            }
+            return root.ToJsonString(_writeOptions);
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog("ApplyCustomRuleState", ex);
+            return rawJson ?? string.Empty;
         }
     }
 }
