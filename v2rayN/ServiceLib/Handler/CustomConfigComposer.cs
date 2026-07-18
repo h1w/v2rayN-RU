@@ -169,7 +169,8 @@ public static class CustomConfigComposer
     private static List<string> MergeXray(JsonNode root, JsonArray outbounds, HashSet<string> tags, string mainProxyTag, CoreConfigContext context)
     {
         var fragment = new CoreConfigV2rayService(context).BuildUserRoutingForCustom();
-        if (fragment.Rules.Count == 0 && fragment.ExtraOutbounds.Count == 0)
+        var unified = context.AppConfig.UiItem.EnableCustomRuleEditing;
+        if (!unified && fragment.Rules.Count == 0 && fragment.ExtraOutbounds.Count == 0)
         {
             return fragment.UnsupportedCustomTargets;
         }
@@ -192,24 +193,59 @@ public static class CustomConfigComposer
         }
 
         var routing = root["routing"] as JsonObject ?? new JsonObject();
-        var rules = routing["rules"] as JsonArray ?? new JsonArray();
-        foreach (var rule in fragment.Rules)
+
+        // Editing-on: собираем единый порядок routing.rules по CustomRuleState
+        // (JSON-ordinal и локальные токены вперемешку) — см. BuildUnifiedRules.
+        // Editing-off: путь ниже (else) не тронут — JSON-правила остаются как
+        // есть, локальные дописываются следом, байт-в-байт как раньше.
+        if (unified)
         {
-            if (rule.outboundTag == Global.ProxyTag)
+            var localNodes = new List<JsonNode>();
+            var localIds = new List<string>();
+            for (var k = 0; k < fragment.Rules.Count; k++)
             {
-                rule.outboundTag = mainProxyTag;
+                var rule = fragment.Rules[k];
+                if (rule.outboundTag == Global.ProxyTag)
+                {
+                    rule.outboundTag = mainProxyTag;
+                }
+                else if (rule.outboundTag.IsNotEmpty() && renames.TryGetValue(rule.outboundTag, out var renamed))
+                {
+                    rule.outboundTag = renamed;
+                }
+                var node = JsonUtils.SerializeToNode(rule, _mergeNodeOptions);
+                if (node == null)
+                {
+                    continue;
+                }
+                localNodes.Add(node);
+                localIds.Add(k < fragment.RuleSourceIds.Count ? fragment.RuleSourceIds[k] : string.Empty);
             }
-            else if (rule.outboundTag.IsNotEmpty() && renames.TryGetValue(rule.outboundTag, out var renamed))
-            {
-                rule.outboundTag = renamed;
-            }
-            var node = JsonUtils.SerializeToNode(rule, _mergeNodeOptions);
-            if (node != null)
-            {
-                rules.Add(node);
-            }
+
+            var tokens = JsonUtils.Deserialize<List<CustomRuleStateItem>>(context.Node.CustomRuleState) ?? [];
+            routing["rules"] = BuildUnifiedRules(routing["rules"] as JsonArray, localNodes, localIds, tokens);
         }
-        routing["rules"] = rules;
+        else
+        {
+            var rules = routing["rules"] as JsonArray ?? new JsonArray();
+            foreach (var rule in fragment.Rules)
+            {
+                if (rule.outboundTag == Global.ProxyTag)
+                {
+                    rule.outboundTag = mainProxyTag;
+                }
+                else if (rule.outboundTag.IsNotEmpty() && renames.TryGetValue(rule.outboundTag, out var renamed))
+                {
+                    rule.outboundTag = renamed;
+                }
+                var node = JsonUtils.SerializeToNode(rule, _mergeNodeOptions);
+                if (node != null)
+                {
+                    rules.Add(node);
+                }
+            }
+            routing["rules"] = rules;
+        }
         root["routing"] = routing;
 
         if (fragment.Balancers?.Count > 0)
@@ -244,7 +280,8 @@ public static class CustomConfigComposer
     private static List<string> MergeSingbox(JsonNode root, JsonArray outbounds, HashSet<string> tags, string mainProxyTag, CoreConfigContext context)
     {
         var fragment = new CoreConfigSingboxService(context).BuildUserRoutingForCustom();
-        if (fragment.Rules.Count == 0 && fragment.ExtraServers.Count == 0)
+        var unified = context.AppConfig.UiItem.EnableCustomRuleEditing;
+        if (!unified && fragment.Rules.Count == 0 && fragment.ExtraServers.Count == 0)
         {
             return fragment.UnsupportedCustomTargets;
         }
@@ -281,26 +318,162 @@ public static class CustomConfigComposer
         }
 
         var route = root["route"] as JsonObject ?? new JsonObject();
-        var rules = route["rules"] as JsonArray ?? new JsonArray();
-        foreach (var rule in fragment.Rules)
+
+        // Как в MergeXray: editing-on собирает единый порядок через
+        // BuildUnifiedRules, editing-off идёт по нетронутому старому пути.
+        if (unified)
         {
-            if (rule.outbound == Global.ProxyTag)
+            var localNodes = new List<JsonNode>();
+            var localIds = new List<string>();
+            for (var k = 0; k < fragment.Rules.Count; k++)
             {
-                rule.outbound = mainProxyTag;
+                var rule = fragment.Rules[k];
+                if (rule.outbound == Global.ProxyTag)
+                {
+                    rule.outbound = mainProxyTag;
+                }
+                else if (rule.outbound.IsNotEmpty() && renames.TryGetValue(rule.outbound, out var renamed))
+                {
+                    rule.outbound = renamed;
+                }
+                var node = JsonUtils.SerializeToNode(rule, _mergeNodeOptions);
+                if (node == null)
+                {
+                    continue;
+                }
+                localNodes.Add(node);
+                localIds.Add(k < fragment.RuleSourceIds.Count ? fragment.RuleSourceIds[k] : string.Empty);
             }
-            else if (rule.outbound.IsNotEmpty() && renames.TryGetValue(rule.outbound, out var renamed))
-            {
-                rule.outbound = renamed;
-            }
-            var node = JsonUtils.SerializeToNode(rule, _mergeNodeOptions);
-            if (node != null)
-            {
-                rules.Add(node);
-            }
+
+            var tokens = JsonUtils.Deserialize<List<CustomRuleStateItem>>(context.Node.CustomRuleState) ?? [];
+            route["rules"] = BuildUnifiedRules(route["rules"] as JsonArray, localNodes, localIds, tokens);
         }
-        route["rules"] = rules;
+        else
+        {
+            var rules = route["rules"] as JsonArray ?? new JsonArray();
+            foreach (var rule in fragment.Rules)
+            {
+                if (rule.outbound == Global.ProxyTag)
+                {
+                    rule.outbound = mainProxyTag;
+                }
+                else if (rule.outbound.IsNotEmpty() && renames.TryGetValue(rule.outbound, out var renamed))
+                {
+                    rule.outbound = renamed;
+                }
+                var node = JsonUtils.SerializeToNode(rule, _mergeNodeOptions);
+                if (node != null)
+                {
+                    rules.Add(node);
+                }
+            }
+            route["rules"] = rules;
+        }
         root["route"] = route;
         return fragment.UnsupportedCustomTargets;
+    }
+
+    /// <summary>
+    /// Строит единый порядок routing/route.rules при EnableCustomRuleEditing==true:
+    /// проходит токены CustomRuleState по порядку — JSON-токен (LocalId==null)
+    /// эмиттит клон правила из файла по ordinal, если включён; локальный токен
+    /// эмиттит все узлы, которые породило локальное правило с этим Id. Правила,
+    /// на которые нет токена вовсе (новые локальные/JSON-правила, добавленные
+    /// уже после последнего сохранения порядка), дописываются в конец: сначала
+    /// непомянутые JSON-ordinal'ы (порядок файла), затем непомянутые локальные
+    /// id (порядок фрагмента) — иначе они молча не попадали бы в core.
+    /// Дубли одного и того же ordinal/Id в state берётся только первое
+    /// вхождение — так же, как CustomRuleStateHelper.OrderedOrdinals.
+    /// </summary>
+    private static JsonArray BuildUnifiedRules(JsonArray? fileRules, List<JsonNode> localNodes, List<string> localIds, List<CustomRuleStateItem> tokens)
+    {
+        var jsonByOrdinal = new List<JsonNode>();
+        if (fileRules != null)
+        {
+            foreach (var node in fileRules)
+            {
+                if (node is null)
+                {
+                    continue;
+                }
+                var clone = JsonNode.Parse(node.ToJsonString());
+                if (clone != null)
+                {
+                    jsonByOrdinal.Add(clone);
+                }
+            }
+        }
+
+        var localById = new Dictionary<string, List<JsonNode>>(StringComparer.Ordinal);
+        var localOrder = new List<string>();
+        for (var k = 0; k < localNodes.Count; k++)
+        {
+            var id = k < localIds.Count ? localIds[k] : string.Empty;
+            if (!localById.TryGetValue(id, out var list))
+            {
+                list = [];
+                localById[id] = list;
+                localOrder.Add(id);
+            }
+            list.Add(localNodes[k]);
+        }
+
+        var result = new JsonArray();
+        var seenJsonOrdinals = new HashSet<int>();
+        var seenLocalIds = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var token in tokens)
+        {
+            if (token.LocalId == null)
+            {
+                if (token.Index < 0 || token.Index >= jsonByOrdinal.Count || !seenJsonOrdinals.Add(token.Index))
+                {
+                    continue;
+                }
+                if (token.Enabled)
+                {
+                    result.Add(jsonByOrdinal[token.Index]);
+                }
+            }
+            else
+            {
+                if (!seenLocalIds.Add(token.LocalId))
+                {
+                    continue;
+                }
+                if (localById.TryGetValue(token.LocalId, out var nodes))
+                {
+                    foreach (var n in nodes)
+                    {
+                        result.Add(n);
+                    }
+                }
+            }
+        }
+
+        // Leftover-ы: не помянуты ни одним токеном вовсе (не путать с
+        // выключенными JSON-токенами — те уже в seenJsonOrdinals и сюда не попадут).
+        for (var i = 0; i < jsonByOrdinal.Count; i++)
+        {
+            if (seenJsonOrdinals.Contains(i))
+            {
+                continue;
+            }
+            result.Add(jsonByOrdinal[i]);
+        }
+        foreach (var id in localOrder)
+        {
+            if (seenLocalIds.Contains(id))
+            {
+                continue;
+            }
+            foreach (var n in localById[id])
+            {
+                result.Add(n);
+            }
+        }
+
+        return result;
     }
 
     private static readonly string[] _xrayNarrowingKeys =
