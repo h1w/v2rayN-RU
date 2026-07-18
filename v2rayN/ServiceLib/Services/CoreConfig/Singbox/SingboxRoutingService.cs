@@ -613,7 +613,12 @@ public partial class CoreConfigSingboxService
                     fragment.UnsupportedCustomTargets.Add(target);
                     continue;
                 }
+                var before = _coreConfig.route.rules.Count;
                 GenRoutingUserRule(item);
+                for (var k = before; k < _coreConfig.route.rules.Count; k++)
+                {
+                    fragment.RuleSourceIds.Add(item.Id);
+                }
             }
 
             fragment.Rules = _coreConfig.route.rules;

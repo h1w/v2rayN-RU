@@ -8,6 +8,14 @@ public class V2rayUserRouting
 {
     public List<RulesItem4Ray> Rules { get; set; } = [];
 
+    /// <summary>
+    /// Остаётся строго параллельным Rules: элемент k — Id локального RulesItem,
+    /// породившего Rules[k]. Заполняется по дельте количества узлов, добавленных
+    /// генератором на локальное правило, поэтому корректен и когда правило не
+    /// породило ни одного узла, и когда породило несколько.
+    /// </summary>
+    public List<string> RuleSourceIds { get; set; } = [];
+
     /// <summary>Выходы, добавленные правилами на конкретные профили (без шаблонных direct/block).</summary>
     public List<Outbounds4Ray> ExtraOutbounds { get; set; } = [];
 
@@ -22,6 +30,14 @@ public class V2rayUserRouting
 public class SingboxUserRouting
 {
     public List<Rule4Sbox> Rules { get; set; } = [];
+
+    /// <summary>
+    /// Остаётся строго параллельным Rules: элемент k — Id локального RulesItem,
+    /// породившего Rules[k]. Заполняется по дельте количества узлов, добавленных
+    /// генератором на локальное правило, поэтому корректен и когда правило не
+    /// породило ни одного узла, и когда породило несколько.
+    /// </summary>
+    public List<string> RuleSourceIds { get; set; } = [];
 
     /// <summary>Outbounds и endpoints, добавленные правилами на конкретные профили (без шаблонного direct).</summary>
     public List<BaseServer4Sbox> ExtraServers { get; set; } = [];
