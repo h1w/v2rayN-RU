@@ -226,6 +226,15 @@ public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingVie
                 return;
             }
 
+            // Don't hijack presses that target an interactive cell control (the enable
+            // checkbox): starting DragDrop here captures the pointer and swallows the
+            // click meant for the checkbox, so it never toggles. Let those through;
+            // dragging still works from any other part of the row.
+            if (visualSource.FindAncestorOfType<CheckBox>(true) is not null)
+            {
+                return;
+            }
+
             var row = visualSource.FindAncestorOfType<DataGridRow>(true);
             if (row?.DataContext is not RulesItemModel item || (item.IsReadonly && !item.CanEditCustom))
             {
@@ -247,9 +256,9 @@ public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingVie
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore
+            Logging.SaveLog("LstRules_PointerPressed drag", ex);
         }
     }
 
