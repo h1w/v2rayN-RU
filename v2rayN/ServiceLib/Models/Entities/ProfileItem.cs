@@ -201,6 +201,7 @@ public class ProfileItem
 
     public string ProtoExtra { get; set; }
     public string TransportExtra { get; set; }
+    public string? CustomRuleState { get; set; }
 
     [Obsolete("Use ProtocolExtraItem.Ports instead.")]
     public string Ports { get; set; }
