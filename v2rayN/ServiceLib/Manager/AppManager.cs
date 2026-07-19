@@ -67,6 +67,8 @@ public sealed class AppManager
             Environment.SetEnvironmentVariable(Global.LocalAppData, "1", EnvironmentVariableTarget.Process);
         }
 
+        MigrateLegacyLocalAppData();
+
         Logging.Setup();
         var config = ConfigHandler.LoadConfig();
         if (config == null)
@@ -93,6 +95,24 @@ public sealed class AppManager
         SQLiteHelper.Instance.CreateTable<ProfileGroupItem>();
 #pragma warning restore CS0618
         return true;
+    }
+
+    private static void MigrateLegacyLocalAppData()
+    {
+        // Одноразовая миграция данных форка: старый v2rayN -> v2rayN-RU.
+        // Только для режима LocalApplicationData; portable-режим хранит данные
+        // рядом с exe и переезжает вместе с папкой приложения.
+        if (Environment.GetEnvironmentVariable(Global.LocalAppData) != "1")
+        {
+            return;
+        }
+        var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var oldDir = Path.Combine(baseDir, "v2rayN");
+        var newDir = Path.Combine(baseDir, "v2rayN-RU");
+        if (Utils.MigrateDirectoryIfTargetMissing(oldDir, newDir))
+        {
+            Logging.SaveLog($"Migrated app data from '{oldDir}' to '{newDir}'");
+        }
     }
 
     public bool InitComponents()
