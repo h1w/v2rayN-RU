@@ -1,10 +1,21 @@
 name: WinGet submission on release
-# based off of https://github.com/nushell/nushell/blob/main/.github/workflows/winget-submission.yml
-# inspired by https://github.com/microsoft/PowerToys/blob/main/.github/workflows/package-submissions.yml
-# Modified by @MerrickZ https://github.com/anpho
+# Submits h1w.v2rayN-RU to the Microsoft winget-pkgs community repo on each stable release.
+#
+# IMPORTANT: the FIRST submission cannot be automated here — `wingetcreate update`
+# only works once the package already exists in winget-pkgs. Do the initial
+# submission manually first (see winget/README.md). After Microsoft merges it,
+# every subsequent stable release is updated automatically by this workflow.
+#
+# Requires repo secret PT_WINGET: a GitHub PAT (classic, scope `public_repo`)
+# used by wingetcreate to fork winget-pkgs and open the update PR.
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release tag to submit (defaults to the latest non-prerelease)'
+        required: false
+        type: string
   release:
     types: [released]
 
@@ -13,32 +24,39 @@ jobs:
     name: Publish winget package
     runs-on: windows-latest
     steps:
-      - name: Submit v2ray package to Windows Package Manager Community Repository
+      - name: Submit v2rayN-RU to winget-pkgs
         run: |
-
-          $wingetPackage = "2dust.v2rayN"
+          $wingetPackage = "h1w.v2rayN-RU"
           $gitToken = "${{ secrets.PT_WINGET }}"
-
-          $github = Invoke-RestMethod -uri "https://api.github.com/repos/2dust/v2rayN/releases" 
-
-          $targetRelease = $github | Where-Object -Property prerelease -match 'False' | Select -First 1
-          
-          $assets = $targetRelease | Select -ExpandProperty assets -First 1
-          $x64InstallerUrl = $assets | Where-Object { $_.name -eq 'v2rayN-windows-64.zip' } | Select -ExpandProperty browser_download_url
-          $arm64InstallerUrl = $assets | Where-Object { $_.name -eq 'v2rayN-windows-arm64.zip' } | Select -ExpandProperty browser_download_url
-
-          if (-not $x64InstallerUrl -or -not $arm64InstallerUrl) {
-            throw "Could not find required installers in release assets."
+          if (-not $gitToken) {
+            throw "Secret PT_WINGET is not set (GitHub PAT, classic, scope public_repo)."
           }
-          
-          $ver = $targetRelease.tag_name
 
-          # getting latest wingetcreate file
+          # Prefer the release that triggered the run, then the manual input,
+          # then the latest non-prerelease release.
+          $ver = "${{ github.event.release.tag_name }}"
+          if (-not $ver) { $ver = "${{ inputs.version }}" }
+
+          $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/h1w/v2rayN-RU/releases"
+          if ($ver) {
+            $targetRelease = $releases | Where-Object { $_.tag_name -eq $ver } | Select-Object -First 1
+          } else {
+            $targetRelease = $releases | Where-Object { -not $_.prerelease } | Select-Object -First 1
+            $ver = $targetRelease.tag_name
+          }
+          if (-not $targetRelease) { throw "Release '$ver' not found in h1w/v2rayN-RU." }
+
+          $assets = $targetRelease.assets
+          $x64   = ($assets | Where-Object { $_.name -eq 'v2rayN-RU-windows-64.zip' }).browser_download_url
+          $arm64 = ($assets | Where-Object { $_.name -eq 'v2rayN-RU-windows-arm64.zip' }).browser_download_url
+          if (-not $x64) {
+            throw "x64 installer 'v2rayN-RU-windows-64.zip' not found in release $ver."
+          }
+
+          $installers = @("$x64|x64")
+          if ($arm64) { $installers += "$arm64|arm64" }
+          else { Write-Host "arm64 asset missing in $ver — submitting x64 only." }
+
           iwr https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
-          
-          Write-Host "Updating with both x64 and arm64 installers"
-          Write-Host "Version: $ver"
-          Write-Host "x64 URL: $x64InstallerUrl"
-          Write-Host "arm64 URL: $arm64InstallerUrl"
-          
-          .\wingetcreate.exe update $wingetPackage -s -v $ver -u "$x64InstallerUrl|x64" "$arm64InstallerUrl|arm64" -t $gitToken
+          Write-Host "Updating $wingetPackage to $ver"
+          .\wingetcreate.exe update $wingetPackage -s -v $ver -u $installers -t $gitToken
