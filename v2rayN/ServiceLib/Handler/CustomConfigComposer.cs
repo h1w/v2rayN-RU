@@ -46,10 +46,6 @@ public static class CustomConfigComposer
                 return result;
             }
 
-            // По исходному rawJson, до вливания локальных правил — иначе последним
-            // правилом окажется наше собственное, а не пользовательское.
-            result.CatchAllDetected = HasCatchAllLastRule(rawJson, coreType);
-
             var tags = CollectTags(outbounds);
             var usedTags = CollectUsedOutboundTags(context);
             if (usedTags.Contains(Global.DirectTag))
@@ -64,6 +60,16 @@ public static class CustomConfigComposer
             result.UnsupportedCustomTargets = coreType == ECoreType.sing_box
                 ? MergeSingbox(root, outbounds, tags, mainProxyTag!, context)
                 : MergeXray(root, outbounds, tags, mainProxyTag!, context);
+
+            // Недосягаемость считаем по ФИНАЛЬНОМУ массиву правил (после сборки), а не
+            // по исходному файлу: при чередовании (unified) порядок задаёт пользователь,
+            // и «catch-all в конце файла» больше не означает, что локальные правила
+            // недосягаемы. Правило недосягаемо, только если стоит ПОСЛЕ catch-all в
+            // итоговом routing.rules / route.rules. Корректно и для append-, и для unified-пути.
+            var finalRules = coreType == ECoreType.sing_box
+                ? root["route"]?["rules"]?.AsArray()
+                : root["routing"]?["rules"]?.AsArray();
+            result.CatchAllDetected = HasRuleAfterCatchAll(finalRules, coreType);
 
             result.Json = root.ToJsonString(_writeOptions);
             return result;
@@ -513,6 +519,29 @@ public static class CustomConfigComposer
             Logging.SaveLog(_tag, ex);
             return false;
         }
+    }
+
+    /// <summary>
+    /// true, если в ИТОГОВОМ массиве правил есть хоть одно правило ПОСЛЕ catch-all
+    /// (правила, не сужающего трафик ни одним ключом) — такие правила недосягаемы.
+    /// Считается по финальной сборке, поэтому верно и для append-, и для unified-порядка:
+    /// «catch-all последним» само по себе недосягаемости не создаёт.
+    /// </summary>
+    private static bool HasRuleAfterCatchAll(JsonArray? rules, ECoreType coreType)
+    {
+        if (rules is null || rules.Count < 2)
+        {
+            return false;
+        }
+        var keys = coreType == ECoreType.sing_box ? _singboxNarrowingKeys : _xrayNarrowingKeys;
+        for (var i = 0; i < rules.Count - 1; i++)
+        {
+            if (rules[i] is JsonObject rule && !keys.Any(k => rule.ContainsKey(k)))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     /// <summary>

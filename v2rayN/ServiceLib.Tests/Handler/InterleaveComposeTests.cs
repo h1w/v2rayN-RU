@@ -48,6 +48,38 @@ public class InterleaveComposeTests
     }
     """;
 
+    // Как TwoRuleJson, но ordinal 1 — catch-all (без единого сужающего ключа):
+    // используется для проверки детекта недосягаемости по ФИНАЛЬНОМУ порядку.
+    private const string XrayCatchAllJson = """
+    {
+      "outbounds": [
+        { "protocol": "vless", "tag": "main-out" },
+        { "protocol": "freedom", "tag": "direct" }
+      ],
+      "routing": {
+        "rules": [
+          { "type": "field", "outboundTag": "direct", "domain": ["j0.example.com"] },
+          { "type": "field", "outboundTag": "direct" }
+        ]
+      }
+    }
+    """;
+
+    private const string SingboxCatchAllJson = """
+    {
+      "outbounds": [
+        { "type": "vless", "tag": "main-out" },
+        { "type": "direct", "tag": "direct" }
+      ],
+      "route": {
+        "rules": [
+          { "outbound": "direct", "domain": ["j0.example.com"] },
+          { "outbound": "direct" }
+        ]
+      }
+    }
+    """;
+
     // Два локальных правила, оба на "proxy" (ремапится на главный JSON-выход
     // main-out) — id "A" и "B", с разными доменами для идентификации в тесте.
     // Домены для xray без префикса (RulesItem.Domain копируется как есть),
@@ -372,5 +404,54 @@ public class InterleaveComposeTests
         var outboundTag = appended!["outboundTag"];
         outboundTag.Should().NotBeNull();
         outboundTag!.GetValue<string>().Should().Be(generatedTag);
+    }
+
+    // Недосягаемость правил считается по ФИНАЛЬНОМУ порядку, а не по последнему
+    // правилу исходного файла: catch-all, оказавшийся последним в едином порядке,
+    // ничего не делает недосягаемым и НЕ должен давать предупреждение (был ложняк
+    // фазы-1 под чередованием).
+    [Theory]
+    [InlineData(ECoreType.Xray)]
+    [InlineData(ECoreType.sing_box)]
+    public void CatchAll_detected_from_final_order_not_source_file(ECoreType coreType)
+    {
+        var json = coreType == ECoreType.sing_box ? SingboxCatchAllJson : XrayCatchAllJson;
+        var ruleSet = coreType == ECoreType.sing_box ? SingboxLocalRuleSet() : XrayLocalRuleSet();
+
+        // Catch-all JSON-правило (ordinal 1) — ПОСЛЕДНЕЕ в едином порядке; локальные
+        // A,B и json0 перед ним. Ничего после catch-all -> недосягаемых нет.
+        var tokensCatchAllLast = new List<CustomRuleStateItem>
+        {
+            new() { LocalId = "A" },
+            new() { LocalId = "B" },
+            new() { Index = 0, Enabled = true },
+            new() { Index = 1, Enabled = true },
+        };
+        var resultLast = CustomConfigComposer.Compose(json, coreType, BuildContext(coreType, ruleSet, editingEnabled: true, tokensCatchAllLast));
+        resultLast.CatchAllDetected.Should().BeFalse();
+
+        // То же catch-all, но теперь ПЕРВЫМ -> всё после него недосягаемо -> предупреждение.
+        var tokensRuleAfter = new List<CustomRuleStateItem>
+        {
+            new() { Index = 1, Enabled = true },
+            new() { LocalId = "A" },
+            new() { LocalId = "B" },
+            new() { Index = 0, Enabled = true },
+        };
+        var resultAfter = CustomConfigComposer.Compose(json, coreType, BuildContext(coreType, ruleSet, editingEnabled: true, tokensRuleAfter));
+        resultAfter.CatchAllDetected.Should().BeTrue();
+    }
+
+    // editing-off (append): локальные правила дописываются после правил файла, поэтому
+    // catch-all в конце файла ДЕЛАЕТ их недосягаемыми -> предупреждение сохраняется.
+    [Theory]
+    [InlineData(ECoreType.Xray)]
+    [InlineData(ECoreType.sing_box)]
+    public void CatchAll_editing_off_append_still_warns_when_file_ends_catch_all(ECoreType coreType)
+    {
+        var json = coreType == ECoreType.sing_box ? SingboxCatchAllJson : XrayCatchAllJson;
+        var ruleSet = coreType == ECoreType.sing_box ? SingboxLocalRuleSet() : XrayLocalRuleSet();
+        var result = CustomConfigComposer.Compose(json, coreType, BuildContext(coreType, ruleSet, editingEnabled: false, tokens: null));
+        result.CatchAllDetected.Should().BeTrue();
     }
 }
