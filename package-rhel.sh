@@ -519,22 +519,22 @@ https://github.com/h1w/v2rayN-RU
 %build
 
 %install
-install -dm0755 %{buildroot}/opt/v2rayN
-cp -a * %{buildroot}/opt/v2rayN/
+install -dm0755 %{buildroot}/opt/v2rayN-RU
+cp -a * %{buildroot}/opt/v2rayN-RU/
 
-find %{buildroot}/opt/v2rayN -type d -exec chmod 0755 {} +
-find %{buildroot}/opt/v2rayN -type f -exec chmod 0644 {} +
-[ -f %{buildroot}/opt/v2rayN/v2rayN ] && chmod 0755 %{buildroot}/opt/v2rayN/v2rayN || :
+find %{buildroot}/opt/v2rayN-RU -type d -exec chmod 0755 {} +
+find %{buildroot}/opt/v2rayN-RU -type f -exec chmod 0644 {} +
+[ -f %{buildroot}/opt/v2rayN-RU/v2rayN-RU ] && chmod 0755 %{buildroot}/opt/v2rayN-RU/v2rayN-RU || :
 
 install -dm0755 %{buildroot}%{_bindir}
 install -m0755 /dev/stdin %{buildroot}%{_bindir}/v2rayn << 'EOF'
 #!/usr/bin/bash
 set -euo pipefail
-DIR="/opt/v2rayN"
+DIR="/opt/v2rayN-RU"
 
-if [[ -x "$DIR/v2rayN" ]]; then exec "$DIR/v2rayN" "$@"; fi
+if [[ -x "$DIR/v2rayN-RU" ]]; then exec "$DIR/v2rayN-RU" "$@"; fi
 
-for dll in v2rayN.Desktop.dll v2rayN.dll; do
+for dll in v2rayN-RU.dll; do
   if [[ -f "$DIR/$dll" ]]; then exec /usr/bin/dotnet "$DIR/$dll" "$@"; fi
 done
 
@@ -547,8 +547,8 @@ install -dm0755 %{buildroot}%{_datadir}/applications
 install -m0644 /dev/stdin %{buildroot}%{_datadir}/applications/v2rayn.desktop << 'EOF'
 [Desktop Entry]
 Type=Application
-Name=v2rayN
-Comment=v2rayN for Red Hat Enterprise Linux
+Name=v2rayN-RU
+Comment=v2rayN-RU for Red Hat Enterprise Linux
 Exec=v2rayn
 Icon=v2rayn
 Terminal=false
@@ -568,7 +568,7 @@ install -m0644 %{_builddir}/__PKGROOT__/v2rayn.png %{buildroot}%{_datadir}/icons
 
 %files
 %{_bindir}/v2rayn
-/opt/v2rayN
+/opt/v2rayN-RU
 %{_datadir}/applications/v2rayn.desktop
 %{_datadir}/icons/hicolor/256x256/apps/v2rayn.png
 SPEC

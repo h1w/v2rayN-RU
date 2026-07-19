@@ -512,14 +512,14 @@ write_launcher_file() {
   install -m 755 /dev/stdin "$stage/usr/bin/v2rayn" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-DIR="/opt/v2rayN"
+DIR="/opt/v2rayN-RU"
 cd "$DIR"
 
-if [[ -x "$DIR/v2rayN" ]]; then
-  exec "$DIR/v2rayN" "$@"
+if [[ -x "$DIR/v2rayN-RU" ]]; then
+  exec "$DIR/v2rayN-RU" "$@"
 fi
 
-for dll in v2rayN.Desktop.dll v2rayN.dll; do
+for dll in v2rayN-RU.dll; do
   if [[ -f "$DIR/$dll" ]]; then
     exec /usr/bin/dotnet "$DIR/$dll" "$@"
   fi
@@ -537,8 +537,8 @@ write_desktop_file() {
   install -m 644 /dev/stdin "$stage/usr/share/applications/v2rayn.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
-Name=v2rayN
-Comment=v2rayN for Debian GNU Linux
+Name=v2rayN-RU
+Comment=v2rayN-RU for Debian GNU Linux
 Exec=v2rayn
 Icon=v2rayn
 Terminal=false
@@ -597,14 +597,14 @@ package_binary() {
   stage="$workdir/${PKGROOT}_${VERSION}_${deb_arch}"
   debian_dir="$stage/DEBIAN"
 
-  mkdir -p "$stage/opt/v2rayN" "$stage/usr/bin" "$stage/usr/share/applications" "$stage/usr/share/icons/hicolor/256x256/apps" "$debian_dir"
-  cp -a "$pubdir/." "$stage/opt/v2rayN/"
+  mkdir -p "$stage/opt/v2rayN-RU" "$stage/usr/bin" "$stage/usr/share/applications" "$stage/usr/share/icons/hicolor/256x256/apps" "$debian_dir"
+  cp -a "$pubdir/." "$stage/opt/v2rayN-RU/"
 
   project_dir="$(cd "$(dirname "$PROJECT")" && pwd)"
   icon_candidate="$project_dir/v2rayN.png"
   [[ -f "$icon_candidate" ]] && cp "$icon_candidate" "$stage/usr/share/icons/hicolor/256x256/apps/v2rayn.png" || true
 
-  stage_runtime_assets "$stage/opt/v2rayN" "$rid"
+  stage_runtime_assets "$stage/opt/v2rayN-RU" "$rid"
   write_launcher_file "$stage"
   write_desktop_file "$stage"
   write_maintainer_scripts "$debian_dir"
@@ -631,14 +631,14 @@ EOF
   : > "$debian_dir/substvars"
 
   mapfile -t ELF_FILES < <(
-    find "$stage/opt/v2rayN" -type f \( -name "*.so*" -o -perm -111 \) ! -name 'libcoreclrtraceptprovider.so'
+    find "$stage/opt/v2rayN-RU" -type f \( -name "*.so*" -o -perm -111 \) ! -name 'libcoreclrtraceptprovider.so'
   )
 
   if [[ "${#ELF_FILES[@]}" -gt 0 ]]; then
     (
       cd "$workdir"
       dpkg-shlibdeps \
-        -l"$stage/opt/v2rayN" \
+        -l"$stage/opt/v2rayN-RU" \
         -l"$sys_libdir" \
         -l"$sys_usrlibdir" \
         -T"$debian_dir/substvars" \
@@ -672,9 +672,9 @@ Description: v2rayN (Avalonia) GUI client for Linux
  Shadowsocks / tuic / WireGuard.
 EOF
 
-  find "$stage/opt/v2rayN" -type d -exec chmod 0755 {} +
-  find "$stage/opt/v2rayN" -type f -exec chmod 0644 {} +
-  [[ -f "$stage/opt/v2rayN/v2rayN" ]] && chmod 0755 "$stage/opt/v2rayN/v2rayN" || true
+  find "$stage/opt/v2rayN-RU" -type d -exec chmod 0755 {} +
+  find "$stage/opt/v2rayN-RU" -type f -exec chmod 0644 {} +
+  [[ -f "$stage/opt/v2rayN-RU/v2rayN-RU" ]] && chmod 0755 "$stage/opt/v2rayN-RU/v2rayN-RU" || true
 
   deb_out="$OUTPUT_DIR/v2rayn_${VERSION}_${deb_arch}.deb"
   dpkg-deb --root-owner-group --build "$stage" "$deb_out"
