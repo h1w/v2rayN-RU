@@ -50,20 +50,20 @@ jobs:
         path: v2rayN-${{ env.Target }}-${{ env.Arch }}
     
     - name: Get v2rayN-core-bin
-      run: wget -nv -O v2rayN-$Target-$Arch.zip "https://github.com/2dust/v2rayN-core-bin/raw/refs/heads/master/v2rayN-$Target-$Arch.zip"
-    
-    - name: Package zip archive
-      run: 7z a -tZip v2rayN-$Target-$Arch.zip v2rayN-$Target-$Arch -mx1
+      run: wget -nv -O v2rayN-RU-$Target-$Arch.zip "https://github.com/2dust/v2rayN-core-bin/raw/refs/heads/master/v2rayN-$Target-$Arch.zip"
 
-    - name: Rename windows-desktop 
+    - name: Package zip archive
+      run: 7z a -tZip v2rayN-RU-$Target-$Arch.zip v2rayN-$Target-$Arch -mx1
+
+    - name: Rename windows-desktop
       if: inputs.target == 'windows-desktop'
-      run: mv "v2rayN-$Target-$Arch.zip" "v2rayN-$Target-$Arch-desktop.zip"
-    
+      run: mv "v2rayN-RU-$Target-$Arch.zip" "v2rayN-RU-$Target-$Arch-desktop.zip"
+
     - name: Upload zip artifact
       uses: actions/upload-artifact@v7
       with:
         name: release-${{ inputs.target }}-${{ matrix.arch }}
-        path: v2rayN*.zip
+        path: v2rayN-RU*.zip
         if-no-files-found: error
 
   release:

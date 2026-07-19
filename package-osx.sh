@@ -66,5 +66,5 @@ create-dmg \
     --icon "v2rayN-RU.app" 160 185 \
     --hide-extension "v2rayN-RU.app" \
     --app-drop-link 500 185 \
-    "v2rayN-${Arch}.dmg" \
+    "v2rayN-RU-${Arch}.dmg" \
     "$PackagePath/v2rayN-RU.app"
