@@ -1227,6 +1227,38 @@ public class Utils
         }
     }
 
+    public static bool MigrateDirectoryIfTargetMissing(string source, string target)
+    {
+        try
+        {
+            if (Directory.Exists(target) || !Directory.Exists(source))
+            {
+                return false;
+            }
+            CopyDirectoryRecursive(source, target);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog("MigrateDirectoryIfTargetMissing", ex);
+            return false;
+        }
+    }
+
+    public static void CopyDirectoryRecursive(string source, string target)
+    {
+        Directory.CreateDirectory(target);
+        foreach (var file in Directory.GetFiles(source))
+        {
+            var dest = Path.Combine(target, Path.GetFileName(file));
+            File.Copy(file, dest, true);
+        }
+        foreach (var dir in Directory.GetDirectories(source))
+        {
+            CopyDirectoryRecursive(dir, Path.Combine(target, Path.GetFileName(dir)));
+        }
+    }
+
     #endregion TempPath
 
     #region Platform
