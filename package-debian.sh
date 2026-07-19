@@ -163,7 +163,7 @@ choose_channel() {
   fi
 
   if [[ -t 0 ]]; then
-    echo "[?] Choose v2rayN release channel:" >&2
+    echo "[?] Choose v2rayN-RU release channel:" >&2
     echo "    1) Latest (stable)  [default]" >&2
     echo "    2) Pre-release (preview)" >&2
     echo "    3) Keep current (do nothing)" >&2
@@ -422,7 +422,7 @@ populate_assets_zip_mode() {
 
   url="$(bundle_url_for_rid "$rid")" || { echo "[!] Bundle unsupported RID: $rid"; return 1; }
 
-  echo "[+] Try v2rayN bundle archive: $url"
+  echo "[+] Try v2rayN-RU bundle archive: $url"
 
   tmp="$(mktemp -d)"
   curl -fL "$url" -o "$tmp/v2rayn.zip" || { echo "[!] Bundle download failed"; rm -rf "$tmp"; return 1; }
@@ -476,7 +476,7 @@ stage_runtime_assets() {
 
   if [[ "$FORCE_NETCORE" -eq 0 ]]; then
     if populate_assets_zip_mode "$outroot" "$rid"; then
-      echo "[*] Using v2rayN bundle bin assets."
+      echo "[*] Using v2rayN-RU bundle bin assets."
     else
       echo "[*] Bundle failed, fallback to separate core + rules."
       populate_assets_netcore_mode "$outroot" "$rid"
@@ -525,7 +525,7 @@ for dll in v2rayN-RU.dll; do
   fi
 done
 
-echo "v2rayN launcher: no executable found in $DIR" >&2
+echo "v2rayN-RU launcher: no executable found in $DIR" >&2
 ls -l "$DIR" >&2 || true
 exit 1
 EOF
@@ -613,15 +613,15 @@ package_binary() {
 
   mkdir -p "$workdir/debian"
   cat > "$workdir/debian/control" <<EOF
-Source: v2rayn
+Source: v2rayn-ru
 Section: net
 Priority: optional
 Maintainer: 2dust <noreply@github.com>
 Standards-Version: 4.7.0
 
-Package: v2rayn
+Package: v2rayn-ru
 Architecture: ${deb_arch}
-Description: v2rayN
+Description: v2rayN-RU
 EOF
 
   multiarch="$(dpkg-architecture -a"$deb_arch" -qDEB_HOST_MULTIARCH)"
@@ -659,15 +659,18 @@ EOF
   fi
 
   cat > "$debian_dir/control" <<EOF
-Package: v2rayn
+Package: v2rayn-ru
 Version: ${VERSION}
 Architecture: ${deb_arch}
 Maintainer: 2dust <noreply@github.com>
 Homepage: https://github.com/h1w/v2rayN-RU
 Section: net
 Priority: optional
+Replaces: v2rayn
+Conflicts: v2rayn
+Provides: v2rayn
 Depends: ${final_depends}
-Description: v2rayN (Avalonia) GUI client for Linux
+Description: v2rayN-RU (Avalonia) GUI client for Linux
  Support vless / vmess / Trojan / http / socks / Anytls / Hysteria2 /
  Shadowsocks / tuic / WireGuard.
 EOF
@@ -676,7 +679,7 @@ EOF
   find "$stage/opt/v2rayN-RU" -type f -exec chmod 0644 {} +
   [[ -f "$stage/opt/v2rayN-RU/v2rayN-RU" ]] && chmod 0755 "$stage/opt/v2rayN-RU/v2rayN-RU" || true
 
-  deb_out="$OUTPUT_DIR/v2rayn_${VERSION}_${deb_arch}.deb"
+  deb_out="$OUTPUT_DIR/v2rayn-ru_${VERSION}_${deb_arch}.deb"
   dpkg-deb --root-owner-group --build "$stage" "$deb_out"
 
   echo "Build done for $short. DEB at:"
