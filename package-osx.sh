@@ -10,13 +10,13 @@ wget -nv -O $FileName "https://github.com/2dust/v2rayN-core-bin/raw/refs/heads/m
 cp -rf v2rayN-${Arch}/* $OutputPath
 
 PackagePath="v2rayN-Package-${Arch}"
-mkdir -p "$PackagePath/v2rayN.app/Contents/Resources"
-cp -rf "$OutputPath" "$PackagePath/v2rayN.app/Contents/MacOS"
-cp -f "$PackagePath/v2rayN.app/Contents/MacOS/v2rayN.icns" "$PackagePath/v2rayN.app/Contents/Resources/AppIcon.icns"
-echo "When this file exists, app will not store configs under this folder" > "$PackagePath/v2rayN.app/Contents/MacOS/NotStoreConfigHere.txt"
-chmod +x "$PackagePath/v2rayN.app/Contents/MacOS/v2rayN"
+mkdir -p "$PackagePath/v2rayN-RU.app/Contents/Resources"
+cp -rf "$OutputPath" "$PackagePath/v2rayN-RU.app/Contents/MacOS"
+cp -f "$PackagePath/v2rayN-RU.app/Contents/MacOS/v2rayN.icns" "$PackagePath/v2rayN-RU.app/Contents/Resources/AppIcon.icns"
+echo "When this file exists, app will not store configs under this folder" > "$PackagePath/v2rayN-RU.app/Contents/MacOS/NotStoreConfigHere.txt"
+chmod +x "$PackagePath/v2rayN-RU.app/Contents/MacOS/v2rayN-RU"
 
-cat >"$PackagePath/v2rayN.app/Contents/Info.plist" <<-EOF
+cat >"$PackagePath/v2rayN-RU.app/Contents/Info.plist" <<-EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -34,17 +34,17 @@ cat >"$PackagePath/v2rayN.app/Contents/Info.plist" <<-EOF
     <string>hu</string>
   </array>
   <key>CFBundleDisplayName</key>
-  <string>v2rayN</string>
+  <string>v2rayN-RU</string>
   <key>CFBundleExecutable</key>
-  <string>v2rayN</string>
+  <string>v2rayN-RU</string>
   <key>CFBundleIconFile</key>
   <string>AppIcon</string>
   <key>CFBundleIconName</key>
   <string>AppIcon</string>
   <key>CFBundleIdentifier</key>
-  <string>2dust.v2rayN</string>
+  <string>h1w.v2rayN-RU</string>
   <key>CFBundleName</key>
-  <string>v2rayN</string>
+  <string>v2rayN-RU</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
@@ -60,11 +60,11 @@ cat >"$PackagePath/v2rayN.app/Contents/Info.plist" <<-EOF
 EOF
 
 create-dmg \
-    --volname "v2rayN Installer" \
+    --volname "v2rayN-RU Installer" \
     --window-size 700 420 \
     --icon-size 100 \
-    --icon "v2rayN.app" 160 185 \
-    --hide-extension "v2rayN.app" \
+    --icon "v2rayN-RU.app" 160 185 \
+    --hide-extension "v2rayN-RU.app" \
     --app-drop-link 500 185 \
     "v2rayN-${Arch}.dmg" \
-    "$PackagePath/v2rayN.app"
+    "$PackagePath/v2rayN-RU.app"

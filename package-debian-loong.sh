@@ -155,7 +155,7 @@ choose_channel() {
   fi
 
   if [[ -t 0 ]]; then
-    echo "[?] Choose v2rayN release channel:" >&2
+    echo "[?] Choose v2rayN-RU release channel:" >&2
     echo "    1) Latest (stable)  [default]" >&2
     echo "    2) Pre-release (preview)" >&2
     echo "    3) Keep current (do nothing)" >&2
@@ -411,7 +411,7 @@ populate_assets_zip_mode() {
 
   url="$(bundle_url_for_rid "$rid")" || { echo "[!] Bundle unsupported RID: $rid"; return 1; }
 
-  echo "[+] Try v2rayN bundle archive: $url"
+  echo "[+] Try v2rayN-RU bundle archive: $url"
 
   tmp="$(mktemp -d)"
   curl -fL "$url" -o "$tmp/v2rayn.zip" || { echo "[!] Bundle download failed"; rm -rf "$tmp"; return 1; }
@@ -465,7 +465,7 @@ stage_runtime_assets() {
 
   if [[ "$FORCE_NETCORE" -eq 0 ]]; then
     if populate_assets_zip_mode "$outroot" "$rid"; then
-      echo "[*] Using v2rayN bundle archive."
+      echo "[*] Using v2rayN-RU bundle archive."
     else
       echo "[*] Bundle failed, fallback to separate core + rules."
       populate_assets_netcore_mode "$outroot" "$rid"
@@ -500,20 +500,20 @@ write_launcher_file() {
   install -m 755 /dev/stdin "$stage/usr/bin/v2rayn" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-DIR="/opt/v2rayN"
+DIR="/opt/v2rayN-RU"
 cd "$DIR"
 
-if [[ -x "$DIR/v2rayN" ]]; then
-  exec "$DIR/v2rayN" "$@"
+if [[ -x "$DIR/v2rayN-RU" ]]; then
+  exec "$DIR/v2rayN-RU" "$@"
 fi
 
-for dll in v2rayN.Desktop.dll v2rayN.dll; do
+for dll in v2rayN-RU.dll; do
   if [[ -f "$DIR/$dll" ]]; then
     exec /usr/bin/dotnet "$DIR/$dll" "$@"
   fi
 done
 
-echo "v2rayN launcher: no executable found in $DIR" >&2
+echo "v2rayN-RU launcher: no executable found in $DIR" >&2
 ls -l "$DIR" >&2 || true
 exit 1
 EOF
@@ -525,8 +525,8 @@ write_desktop_file() {
   install -m 644 /dev/stdin "$stage/usr/share/applications/v2rayn.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
-Name=v2rayN
-Comment=v2rayN for Debian GNU Linux
+Name=v2rayN-RU
+Comment=v2rayN-RU for Debian GNU Linux
 Exec=v2rayn
 Icon=v2rayn
 Terminal=false
@@ -585,14 +585,14 @@ package_binary() {
   stage="$workdir/${PKGROOT}_${VERSION}_${deb_arch}"
   debian_dir="$stage/DEBIAN"
 
-  mkdir -p "$stage/opt/v2rayN" "$stage/usr/bin" "$stage/usr/share/applications" "$stage/usr/share/icons/hicolor/256x256/apps" "$debian_dir"
-  cp -a "$pubdir/." "$stage/opt/v2rayN/"
+  mkdir -p "$stage/opt/v2rayN-RU" "$stage/usr/bin" "$stage/usr/share/applications" "$stage/usr/share/icons/hicolor/256x256/apps" "$debian_dir"
+  cp -a "$pubdir/." "$stage/opt/v2rayN-RU/"
 
   project_dir="$(cd "$(dirname "$PROJECT")" && pwd)"
   icon_candidate="$project_dir/v2rayN.png"
   [[ -f "$icon_candidate" ]] && cp "$icon_candidate" "$stage/usr/share/icons/hicolor/256x256/apps/v2rayn.png" || true
 
-  stage_runtime_assets "$stage/opt/v2rayN" "$rid"
+  stage_runtime_assets "$stage/opt/v2rayN-RU" "$rid"
   write_launcher_file "$stage"
   write_desktop_file "$stage"
   write_maintainer_scripts "$debian_dir"
@@ -601,15 +601,15 @@ package_binary() {
   
   mkdir -p "$workdir/debian"
   cat > "$workdir/debian/control" <<EOF
-Source: v2rayn
+Source: v2rayn-ru
 Section: net
 Priority: optional
 Maintainer: 2dust <noreply@github.com>
 Standards-Version: 4.7.0
 
-Package: v2rayn
+Package: v2rayn-ru
 Architecture: ${deb_arch}
-Description: v2rayN
+Description: v2rayN-RU
 EOF
 
   multiarch="$(dpkg-architecture -a"$deb_arch" -qDEB_HOST_MULTIARCH)"
@@ -619,14 +619,14 @@ EOF
   : > "$debian_dir/substvars"
 
   mapfile -t ELF_FILES < <(
-    find "$stage/opt/v2rayN" -type f \( -name "*.so*" -o -perm -111 \) ! -name 'libcoreclrtraceptprovider.so'
+    find "$stage/opt/v2rayN-RU" -type f \( -name "*.so*" -o -perm -111 \) ! -name 'libcoreclrtraceptprovider.so'
   )
 
   if [[ "${#ELF_FILES[@]}" -gt 0 ]]; then
     (
       cd "$workdir"
       dpkg-shlibdeps \
-        -l"$stage/opt/v2rayN" \
+        -l"$stage/opt/v2rayN-RU" \
         -l"$sys_libdir" \
         -l"$sys_usrlibdir" \
         -T"$debian_dir/substvars" \
@@ -647,24 +647,27 @@ EOF
   fi
 
   cat > "$debian_dir/control" <<EOF
-Package: v2rayn
+Package: v2rayn-ru
 Version: ${VERSION}
 Architecture: ${deb_arch}
 Maintainer: 2dust <noreply@github.com>
 Homepage: https://github.com/h1w/v2rayN-RU
 Section: net
 Priority: optional
+Replaces: v2rayn
+Conflicts: v2rayn
+Provides: v2rayn
 Depends: ${final_depends}
-Description: v2rayN (Avalonia) GUI client for Linux
+Description: v2rayN-RU (Avalonia) GUI client for Linux
  Support vless / vmess / Trojan / http / socks / Anytls / Hysteria2 /
  Shadowsocks / tuic / WireGuard.
 EOF
 
-  find "$stage/opt/v2rayN" -type d -exec chmod 0755 {} +
-  find "$stage/opt/v2rayN" -type f -exec chmod 0644 {} +
-  [[ -f "$stage/opt/v2rayN/v2rayN" ]] && chmod 0755 "$stage/opt/v2rayN/v2rayN" || true
+  find "$stage/opt/v2rayN-RU" -type d -exec chmod 0755 {} +
+  find "$stage/opt/v2rayN-RU" -type f -exec chmod 0644 {} +
+  [[ -f "$stage/opt/v2rayN-RU/v2rayN-RU" ]] && chmod 0755 "$stage/opt/v2rayN-RU/v2rayN-RU" || true
 
-  deb_out="$OUTPUT_DIR/v2rayn_${VERSION}_${deb_arch}.deb"
+  deb_out="$OUTPUT_DIR/v2rayn-ru_${VERSION}_${deb_arch}.deb"
   dpkg-deb --root-owner-group --build "$stage" "$deb_out"
 
   echo "Build done for $short. DEB at:"

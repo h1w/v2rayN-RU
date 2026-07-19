@@ -1092,7 +1092,7 @@ public class Utils
 #else
         if (Environment.GetEnvironmentVariable(Global.LocalAppData) == "1")
         {
-            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "v2rayN");
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "v2rayN-RU");
         }
 
         return GetBaseDirectory();
@@ -1224,6 +1224,38 @@ public class Utils
         else
         {
             return Path.Combine(tempPath, filename);
+        }
+    }
+
+    public static bool MigrateDirectoryIfTargetMissing(string source, string target)
+    {
+        try
+        {
+            if (Directory.Exists(target) || !Directory.Exists(source))
+            {
+                return false;
+            }
+            CopyDirectoryRecursive(source, target);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog("MigrateDirectoryIfTargetMissing", ex);
+            return false;
+        }
+    }
+
+    public static void CopyDirectoryRecursive(string source, string target)
+    {
+        Directory.CreateDirectory(target);
+        foreach (var file in Directory.GetFiles(source))
+        {
+            var dest = Path.Combine(target, Path.GetFileName(file));
+            File.Copy(file, dest, true);
+        }
+        foreach (var dir in Directory.GetDirectories(source))
+        {
+            CopyDirectoryRecursive(dir, Path.Combine(target, Path.GetFileName(dir)));
         }
     }
 

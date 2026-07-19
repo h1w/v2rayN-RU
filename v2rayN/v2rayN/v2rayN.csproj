@@ -11,6 +11,9 @@
 		<SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<CETCompat>false</CETCompat>
+		<AssemblyName>v2rayN-RU</AssemblyName>
+		<Product>v2rayN-RU</Product>
+		<AssemblyTitle>v2rayN-RU</AssemblyTitle>
 	</PropertyGroup>
 
 	<ItemGroup>

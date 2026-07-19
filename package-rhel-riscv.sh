@@ -150,7 +150,7 @@ choose_channel() {
   fi
 
   if [[ -t 0 ]]; then
-    echo "[?] Choose v2rayN release channel:" >&2
+    echo "[?] Choose v2rayN-RU release channel:" >&2
     echo "    1) Latest (stable)  [default]" >&2
     echo "    2) Pre-release (preview)" >&2
     echo "    3) Keep current (do nothing)" >&2
@@ -406,7 +406,7 @@ populate_assets_zip_mode() {
 
   url="$(bundle_url_for_rid "$rid")" || { echo "[!] Bundle unsupported RID: $rid"; return 1; }
 
-  echo "[+] Try v2rayN bundle archive: $url"
+  echo "[+] Try v2rayN-RU bundle archive: $url"
 
   tmp="$(mktemp -d)"
   curl -fL "$url" -o "$tmp/v2rayn.zip" || { echo "[!] Bundle download failed"; rm -rf "$tmp"; return 1; }
@@ -460,7 +460,7 @@ stage_runtime_assets() {
 
   if [[ "$FORCE_NETCORE" -eq 0 ]]; then
     if populate_assets_zip_mode "$outroot" "$rid"; then
-      echo "[*] Using v2rayN bundle archive."
+      echo "[*] Using v2rayN-RU bundle archive."
     else
       echo "[*] Bundle failed, fallback to separate core + rules."
       populate_assets_netcore_mode "$outroot" "$rid"
@@ -498,15 +498,18 @@ write_spec_file() {
 %undefine _debugsource_packages
 %global __requires_exclude ^liblttng-ust\.so\..*$
 
-Name:           v2rayN
+Name:           v2rayN-RU
 Version:        __VERSION__
 Release:        1%{?dist}
-Summary:        v2rayN (Avalonia) GUI client for Linux
+Summary:        v2rayN-RU (Avalonia) GUI client for Linux
 License:        GPL-3.0-only
 URL:            https://github.com/h1w/v2rayN-RU
 BugURL:         https://github.com/h1w/v2rayN-RU/issues
 ExclusiveArch:  riscv64
 Source0:        __PKGROOT__.tar.gz
+
+Obsoletes:      v2rayN < %{version}-%{release}
+Provides:       v2rayN = %{version}-%{release}
 
 Requires:       cairo, pango, openssl, mesa-libEGL, mesa-libGL
 Requires:       glibc >= 2.39
@@ -518,7 +521,7 @@ Requires:       bash >= 5.2.21
 Requires:       freetype >= 2.13
 
 %description
-v2rayN Linux for Red Hat Enterprise Linux
+v2rayN-RU Linux for Red Hat Enterprise Linux
 Support vless / vmess / Trojan / http / socks / Anytls / Hysteria2 / Shadowsocks / tuic / WireGuard
 Support Red Hat Enterprise Linux / Fedora Linux / Rocky Linux / AlmaLinux / CentOS
 For more information, Please visit our website
@@ -530,26 +533,26 @@ https://github.com/h1w/v2rayN-RU
 %build
 
 %install
-install -dm0755 %{buildroot}/opt/v2rayN
-cp -a * %{buildroot}/opt/v2rayN/
+install -dm0755 %{buildroot}/opt/v2rayN-RU
+cp -a * %{buildroot}/opt/v2rayN-RU/
 
-find %{buildroot}/opt/v2rayN -type d -exec chmod 0755 {} +
-find %{buildroot}/opt/v2rayN -type f -exec chmod 0644 {} +
-[ -f %{buildroot}/opt/v2rayN/v2rayN ] && chmod 0755 %{buildroot}/opt/v2rayN/v2rayN || :
+find %{buildroot}/opt/v2rayN-RU -type d -exec chmod 0755 {} +
+find %{buildroot}/opt/v2rayN-RU -type f -exec chmod 0644 {} +
+[ -f %{buildroot}/opt/v2rayN-RU/v2rayN-RU ] && chmod 0755 %{buildroot}/opt/v2rayN-RU/v2rayN-RU || :
 
 install -dm0755 %{buildroot}%{_bindir}
 install -m0755 /dev/stdin %{buildroot}%{_bindir}/v2rayn << 'EOF'
 #!/usr/bin/bash
 set -euo pipefail
-DIR="/opt/v2rayN"
+DIR="/opt/v2rayN-RU"
 
-if [[ -x "$DIR/v2rayN" ]]; then exec "$DIR/v2rayN" "$@"; fi
+if [[ -x "$DIR/v2rayN-RU" ]]; then exec "$DIR/v2rayN-RU" "$@"; fi
 
-for dll in v2rayN.Desktop.dll v2rayN.dll; do
+for dll in v2rayN-RU.dll; do
   if [[ -f "$DIR/$dll" ]]; then exec /usr/bin/dotnet "$DIR/$dll" "$@"; fi
 done
 
-echo "v2rayN launcher: no executable found in $DIR" >&2
+echo "v2rayN-RU launcher: no executable found in $DIR" >&2
 ls -l "$DIR" >&2 || true
 exit 1
 EOF
@@ -558,8 +561,8 @@ install -dm0755 %{buildroot}%{_datadir}/applications
 install -m0644 /dev/stdin %{buildroot}%{_datadir}/applications/v2rayn.desktop << 'EOF'
 [Desktop Entry]
 Type=Application
-Name=v2rayN
-Comment=v2rayN for Red Hat Enterprise Linux
+Name=v2rayN-RU
+Comment=v2rayN-RU for Red Hat Enterprise Linux
 Exec=v2rayn
 Icon=v2rayn
 Terminal=false
@@ -579,7 +582,7 @@ install -m0644 %{_builddir}/__PKGROOT__/v2rayn.png %{buildroot}%{_datadir}/icons
 
 %files
 %{_bindir}/v2rayn
-/opt/v2rayN
+/opt/v2rayN-RU
 %{_datadir}/applications/v2rayn.desktop
 %{_datadir}/icons/hicolor/256x256/apps/v2rayn.png
 SPEC
@@ -630,7 +633,7 @@ package_binary() {
   rpmbuild -ba "$specfile" --target "$rpm_target"
 
   echo "Build done for $short. RPM at:"
-  for f in "${RPM_TOPDIR}/RPMS/${archdir}/v2rayN-${VERSION}-1"*.rpm; do
+  for f in "${RPM_TOPDIR}/RPMS/${archdir}/v2rayN-RU-${VERSION}-1"*.rpm; do
     [[ -e "$f" ]] || continue
     echo "  $f"
     BUILT_RPMS+=("$f")
