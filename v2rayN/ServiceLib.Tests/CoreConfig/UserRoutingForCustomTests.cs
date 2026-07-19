@@ -82,6 +82,29 @@ public class UserRoutingForCustomTests
     }
 
     [Fact]
+    public void Xray_BuildUserRoutingForCustom_RuleSourceIds_stays_parallel_to_Rules()
+    {
+        // r1 — Domain и Ip одновременно: GenRoutingUserRule породит из него ДВА
+        // узла routing.rules, поэтому в RuleSourceIds "r1" должен встретиться дважды.
+        // r2 — обычное правило с одним узлом. r3 выключено — из выборки исключается
+        // ещё до вызова генератора, дельты по нему нет вовсе.
+        var ruleSet = """
+        [
+          { "Id": "r1", "OutboundTag": "direct", "Domain": ["example.com"], "Ip": ["8.8.8.8/32"], "Enabled": true },
+          { "Id": "r2", "OutboundTag": "proxy", "Domain": ["proxy.example.com"], "Enabled": true },
+          { "Id": "r3", "OutboundTag": "block", "Domain": ["ads.example.com"], "Enabled": false }
+        ]
+        """;
+
+        var fragment = new CoreConfigV2rayService(BuildContext(ruleSet)).BuildUserRoutingForCustom();
+
+        fragment.RuleSourceIds.Count.Should().Be(fragment.Rules.Count);
+        var enabledIds = new HashSet<string> { "r1", "r2" };
+        fragment.RuleSourceIds.Should().OnlyContain(id => enabledIds.Contains(id));
+        fragment.RuleSourceIds.Should().Equal("r1", "r1", "r2");
+    }
+
+    [Fact]
     public void Xray_BuildUserRoutingForCustom_excludes_dns_rules()
     {
         // RuleType = DNS (2) не должен попадать в пользовательский фрагмент,
@@ -199,6 +222,27 @@ public class UserRoutingForCustomTests
         fragment.Rules[0].outbound.Should().BeNull();
         fragment.Rules[1].outbound.Should().Be("direct");
         fragment.ExtraServers.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Singbox_BuildUserRoutingForCustom_RuleSourceIds_stays_parallel_to_Rules()
+    {
+        // Тот же сценарий, что и для Xray: r1 (Domain + Ip) даёт два узла route.rules,
+        // r2 — один, r3 выключено и в выборку не попадает вовсе.
+        var ruleSet = """
+        [
+          { "Id": "r1", "OutboundTag": "direct", "Domain": ["example.com"], "Ip": ["8.8.8.8/32"], "Enabled": true },
+          { "Id": "r2", "OutboundTag": "proxy", "Domain": ["proxy.example.com"], "Enabled": true },
+          { "Id": "r3", "OutboundTag": "block", "Domain": ["ads.example.com"], "Enabled": false }
+        ]
+        """;
+
+        var fragment = new CoreConfigSingboxService(BuildSingboxContext(ruleSet)).BuildUserRoutingForCustom();
+
+        fragment.RuleSourceIds.Count.Should().Be(fragment.Rules.Count);
+        var enabledIds = new HashSet<string> { "r1", "r2" };
+        fragment.RuleSourceIds.Should().OnlyContain(id => enabledIds.Contains(id));
+        fragment.RuleSourceIds.Should().Equal("r1", "r1", "r2");
     }
 
     [Fact]

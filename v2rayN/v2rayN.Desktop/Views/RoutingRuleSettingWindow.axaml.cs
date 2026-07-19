@@ -226,8 +226,17 @@ public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingVie
                 return;
             }
 
+            // Don't hijack presses that target an interactive cell control (the enable
+            // checkbox): starting DragDrop here captures the pointer and swallows the
+            // click meant for the checkbox, so it never toggles. Let those through;
+            // dragging still works from any other part of the row.
+            if (visualSource.FindAncestorOfType<CheckBox>(true) is not null)
+            {
+                return;
+            }
+
             var row = visualSource.FindAncestorOfType<DataGridRow>(true);
-            if (row?.DataContext is not RulesItemModel { IsEditable: true } item)
+            if (row?.DataContext is not RulesItemModel item || (item.IsReadonly && !item.CanEditCustom))
             {
                 return;
             }
@@ -247,9 +256,9 @@ public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingVie
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore
+            Logging.SaveLog("LstRules_PointerPressed drag", ex);
         }
     }
 
@@ -273,7 +282,10 @@ public partial class RoutingRuleSettingWindow : WindowBase<RoutingRuleSettingVie
         }
 
         var row = visualTarget.FindAncestorOfType<DataGridRow>(true);
-        if (row is not { DataContext: RulesItemModel targetItem } || targetItem.IsReadonly || ReferenceEquals(sourceItem, targetItem))
+        if (row is not { DataContext: RulesItemModel targetItem } || sourceItem is null
+            || (sourceItem.IsReadonly && !sourceItem.CanEditCustom)
+            || (targetItem.IsReadonly && !targetItem.CanEditCustom)
+            || ReferenceEquals(sourceItem, targetItem))
         {
             e.DragEffects = DragDropEffects.None;
             RemoveInsertionAdorner();

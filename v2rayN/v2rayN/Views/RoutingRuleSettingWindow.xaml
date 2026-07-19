@@ -337,9 +337,9 @@
                                     <CheckBox
                                         HorizontalAlignment="Center"
                                         VerticalAlignment="Center"
-                                        IsChecked="{Binding Enabled, Mode=OneWay}"
-                                        IsEnabled="{Binding IsEditable}"
-                                        IsHitTestVisible="{Binding IsEditable}" />
+                                        IsChecked="{Binding Enabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        IsEnabled="{Binding CanToggleInline}"
+                                        IsHitTestVisible="{Binding CanToggleInline}" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>

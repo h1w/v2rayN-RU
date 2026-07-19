@@ -44,6 +44,7 @@
 
         <Grid x:Name="gridContent" RowDefinitions="Auto,*">
         <Grid
+            x:Name="gridForm"
             Grid.Row="0"
             Margin="{StaticResource Margin4}"
             ColumnDefinitions="Auto,Auto,*"

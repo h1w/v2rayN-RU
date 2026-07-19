@@ -327,7 +327,12 @@ public partial class CoreConfigV2rayService
                     continue;
                 }
                 var item2 = JsonUtils.Deserialize<RulesItem4Ray>(JsonUtils.Serialize(item));
+                var before = _coreConfig.routing.rules.Count;
                 GenRoutingUserRule(item2);
+                for (var k = before; k < _coreConfig.routing.rules.Count; k++)
+                {
+                    fragment.RuleSourceIds.Add(item.Id);
+                }
             }
 
             // Тот же пост-проход, что и в GenRouting: правила на группы уходят на балансер.

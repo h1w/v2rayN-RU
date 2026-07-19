@@ -17,4 +17,14 @@ public class RulesItemModel : RulesItem
     /// active custom JSON config are tagged, user rules are left blank.
     /// </summary>
     public string RuleSource { get; set; }
+
+    public int RawOrdinal { get; set; }
+    public bool CanEditCustom { get; set; }
+
+    /// <summary>
+    /// Можно ли переключать инлайн-чекбокс этой строки. Локальные правила —
+    /// как прежде (по IsEditable); JSON-правила — только при разрешённом
+    /// управлении (CanEditCustom). Так поведение обычных правил не меняется.
+    /// </summary>
+    public bool CanToggleInline => IsReadonly ? CanEditCustom : IsEditable;
 }

@@ -66,6 +66,16 @@ public static class CoreConfigHandler
 
             var rawJson = await File.ReadAllTextAsync(addressFileName);
             var coreType = AppManager.Instance.GetCoreType(node, EConfigType.Custom);
+
+            // Compose ВСЕГДА получает исходный rawJson нетронутым. При
+            // EnableCustomRuleEditing==true unified-сборка внутри Compose
+            // (CustomConfigComposer.BuildUnifiedRules) сама делает reorder+filter
+            // JSON-правил по CustomRuleState — ordinal'ы токенов считаются от
+            // файла. Если бы здесь сначала прогонялся ApplyCustomRuleState, а
+            // потом этот уже перестроенный JSON шёл в Compose, ordinal'ы токенов
+            // и позиции в предобработанном массиве разъехались бы — правила
+            // задваивались/терялись бы (double-processing). Поэтому
+            // ApplyCustomRuleState здесь больше не вызывается.
             var composed = CustomConfigComposer.Compose(rawJson, coreType, context);
 
             if (composed.Json.IsNotEmpty())
@@ -77,13 +87,40 @@ public static class CoreConfigHandler
                 return ret;
             }
 
-            // Фолбэк: JSON непригоден для слияния — ведём себя как раньше, дословной копией.
+            // Фолбэк: JSON непригоден для слияния (Compose вернул null — нет
+            // outbounds/proxy-выхода и т.п.), unified-сборке в этом случае
+            // нечем оперировать (нет главного proxy-тега для ремапа). Чтобы
+            // правки пользователя (вкл/выкл/порядок JSON-правил) не терялись
+            // молча под дословной копией исходника, для фолбэк-записи отдельно
+            // пересобираем rawJson через ApplyCustomRuleState — но только по
+            // JSON-токенам (LocalId == null): без outbounds локальным правилам
+            // всё равно некуда маршрутизировать, а сам ApplyCustomRuleState не
+            // умеет работать со смешанными (LocalId!=null) токенами.
+            var ruleStateApplied = false;
+            if (context.AppConfig.UiItem.EnableCustomRuleEditing)
+            {
+                var ruleState = JsonUtils.Deserialize<List<CustomRuleStateItem>>(node.CustomRuleState)
+                    ?.Where(t => t.LocalId == null).ToList();
+                if (ruleState?.Count > 0)
+                {
+                    rawJson = CustomConfigComposer.ApplyCustomRuleState(rawJson, coreType, ruleState);
+                    ruleStateApplied = true;
+                }
+            }
+
             if (File.Exists(fileName))
             {
                 File.SetAttributes(fileName, FileAttributes.Normal);
                 File.Delete(fileName);
             }
-            File.Copy(addressFileName, fileName);
+            if (ruleStateApplied)
+            {
+                await File.WriteAllTextAsync(fileName, rawJson);
+            }
+            else
+            {
+                File.Copy(addressFileName, fileName);
+            }
             File.SetAttributes(fileName, FileAttributes.Normal);
 
             if (!File.Exists(fileName))

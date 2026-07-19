@@ -227,7 +227,8 @@ public partial class RoutingRuleSettingWindow
 
     private void lstRules_MouseMove(object sender, MouseEventArgs e)
     {
-        if (e.LeftButton != MouseButtonState.Pressed || _draggedRule is null || _draggedRule.IsReadonly)
+        if (e.LeftButton != MouseButtonState.Pressed || _draggedRule is null
+            || (_draggedRule.IsReadonly && !_draggedRule.CanEditCustom))
         {
             return;
         }
@@ -257,7 +258,9 @@ public partial class RoutingRuleSettingWindow
         var row = (e.OriginalSource as DependencyObject).TryFindParent<DataGridRow>();
         var targetItem = row?.Item as RulesItemModel;
 
-        if (row is null || targetItem is null || targetItem.IsReadonly || _draggedRule is null || _draggedRule.IsReadonly)
+        if (row is null || targetItem is null || _draggedRule is null
+            || (_draggedRule.IsReadonly && !_draggedRule.CanEditCustom)
+            || (targetItem.IsReadonly && !targetItem.CanEditCustom))
         {
             RemoveInsertionAdorner();
             e.Effects = DragDropEffects.None;

@@ -780,6 +780,12 @@
   <data name="TbSettingsHwidInvalid" xml:space="preserve">
     <value>Invalid format (10-64 characters: A-Z a-z 0-9 = -)</value>
   </data>
+  <data name="TbSettingsAdvancedMode" xml:space="preserve">
+    <value>Advanced mode</value>
+  </data>
+  <data name="TbSettingsEnableCustomRuleEditing" xml:space="preserve">
+    <value>Allow managing JSON L7 rules (toggle and order)</value>
+  </data>
   <data name="FillHwidError" xml:space="preserve">
     <value>Please enter a valid HWID (10-64 characters: A-Z, a-z, 0-9, =, -)</value>
   </data>
