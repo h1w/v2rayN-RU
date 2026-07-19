@@ -46,7 +46,7 @@ exists in winget-pkgs, so the **first** version must be submitted by hand.
    ```powershell
    wingetcreate new https://github.com/h1w/v2rayN-RU/releases/download/1.2.2/v2rayN-RU-windows-64.zip
    ```
-   (then fill the prompts; identifier `h1w.v2rayN-RU`, nested exe `v2rayN-windows-64\v2rayN-RU.exe`.)
+   (then fill the prompts; identifier `h1w.v2rayN-RU`, nested exe `v2rayN-RU-windows-64\v2rayN-RU.exe`.)
 
 Microsoft moderators review the PR; once merged, the package is live.
 
@@ -63,5 +63,5 @@ present. You can also run it manually via **workflow_dispatch** with a version i
   runtime dependency (unlike upstream `2dust.v2rayN`, which depends on the .NET Desktop
   Runtime).
 - `RequireExplicitUpgrade: true` — the app self-updates, so winget won't auto-upgrade it.
-- The nested exe path is `v2rayN-windows-64\v2rayN-RU.exe` (arm64: `v2rayN-windows-arm64\…`);
-  the zip's internal folder name is intentionally kept as `v2rayN-windows-<arch>`.
+- The nested exe path is `v2rayN-RU-windows-64\v2rayN-RU.exe` (arm64: `v2rayN-RU-windows-arm64\…`);
+  the zip's single top-level folder is `v2rayN-RU-windows-<arch>` (app + `bin/` cores merged).
