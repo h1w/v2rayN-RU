@@ -68,7 +68,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: release-dmg-${{ matrix.arch }}
-        path: v2rayN*.dmg
+        path: v2rayN-RU*.dmg
         if-no-files-found: error
 
   release-dmg:

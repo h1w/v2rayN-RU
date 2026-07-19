@@ -23,10 +23,10 @@ jobs:
         include:
           - flavor: wpf
             project: ./v2rayN/v2rayN/v2rayN.csproj
-            zip_name: v2rayN-windows-86.zip
+            zip_name: v2rayN-RU-windows-86.zip
           - flavor: desktop
             project: ./v2rayN/v2rayN.Desktop/v2rayN.Desktop.csproj
-            zip_name: v2rayN-windows-86-desktop.zip
+            zip_name: v2rayN-RU-windows-86-desktop.zip
 
     steps:
       - name: Checkout

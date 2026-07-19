@@ -54,8 +54,8 @@ jobs:
       run: |
         mkdir -p "$GITHUB_WORKSPACE/dist/deb"
         rsync -av "$HOME/debbuild/" "$GITHUB_WORKSPACE/dist/deb/" || true
-        find "$GITHUB_WORKSPACE/dist/deb" -name "v2rayn_*_amd64.deb" -exec mv {} "$GITHUB_WORKSPACE/dist/deb/v2rayN-linux-64.deb" \; || true
-        find "$GITHUB_WORKSPACE/dist/deb" -name "v2rayn_*_arm64.deb" -exec mv {} "$GITHUB_WORKSPACE/dist/deb/v2rayN-linux-arm64.deb" \; || true
+        find "$GITHUB_WORKSPACE/dist/deb" -name "v2rayn-ru_*_amd64.deb" -exec mv {} "$GITHUB_WORKSPACE/dist/deb/v2rayN-RU-linux-64.deb" \; || true
+        find "$GITHUB_WORKSPACE/dist/deb" -name "v2rayn-ru_*_arm64.deb" -exec mv {} "$GITHUB_WORKSPACE/dist/deb/v2rayN-RU-linux-arm64.deb" \; || true
         echo "==== Dist tree ===="
         ls -R "$GITHUB_WORKSPACE/dist/deb" || true
     - name: Upload DEB artifact
@@ -113,8 +113,8 @@ jobs:
       run: |
         mkdir -p "$GITHUB_WORKSPACE/dist/rpm"
         rsync -av "$HOME/rpmbuild/RPMS/" "$GITHUB_WORKSPACE/dist/rpm/" || true
-        find "$GITHUB_WORKSPACE/dist/rpm" -name "v2rayN-*-1*.x86_64.rpm"  -exec mv {} "$GITHUB_WORKSPACE/dist/rpm/v2rayN-linux-rhel-64.rpm" \;  || true
-        find "$GITHUB_WORKSPACE/dist/rpm" -name "v2rayN-*-1*.aarch64.rpm" -exec mv {} "$GITHUB_WORKSPACE/dist/rpm/v2rayN-linux-rhel-arm64.rpm" \; || true
+        find "$GITHUB_WORKSPACE/dist/rpm" -name "v2rayN-*-1*.x86_64.rpm"  -exec mv {} "$GITHUB_WORKSPACE/dist/rpm/v2rayN-RU-linux-rhel-64.rpm" \;  || true
+        find "$GITHUB_WORKSPACE/dist/rpm" -name "v2rayN-*-1*.aarch64.rpm" -exec mv {} "$GITHUB_WORKSPACE/dist/rpm/v2rayN-RU-linux-rhel-arm64.rpm" \; || true
         echo "==== Dist tree ===="
         ls -R "$GITHUB_WORKSPACE/dist/rpm" || true
     - name: Upload RPM artifact
@@ -154,7 +154,7 @@ jobs:
       run: |
         mkdir -p "$GITHUB_WORKSPACE/dist/rpm-riscv64"
         rsync -av "$HOME/rpmbuild/RPMS/" "$GITHUB_WORKSPACE/dist/rpm-riscv64/" || true
-        find "$GITHUB_WORKSPACE/dist/rpm-riscv64" -name "*.riscv64.rpm" -exec mv {} "$GITHUB_WORKSPACE/dist/rpm-riscv64/v2rayN-linux-rhel-riscv64.rpm" \; || true
+        find "$GITHUB_WORKSPACE/dist/rpm-riscv64" -name "*.riscv64.rpm" -exec mv {} "$GITHUB_WORKSPACE/dist/rpm-riscv64/v2rayN-RU-linux-rhel-riscv64.rpm" \; || true
         echo "==== Dist tree ===="
         ls -R "$GITHUB_WORKSPACE/dist/rpm-riscv64" || true
     - name: Upload RPM artifact
@@ -195,7 +195,7 @@ jobs:
       run: |
         mkdir -p "$GITHUB_WORKSPACE/dist/deb-riscv64"
         rsync -av "$HOME/debbuild/" "$GITHUB_WORKSPACE/dist/deb-riscv64/" || true
-        find "$GITHUB_WORKSPACE/dist/deb-riscv64" -name "*.deb" -exec mv {} "$GITHUB_WORKSPACE/dist/deb-riscv64/v2rayN-linux-riscv64.deb" \; || true
+        find "$GITHUB_WORKSPACE/dist/deb-riscv64" -name "*.deb" -exec mv {} "$GITHUB_WORKSPACE/dist/deb-riscv64/v2rayN-RU-linux-riscv64.deb" \; || true
         echo "==== Dist tree ===="
         ls -R "$GITHUB_WORKSPACE/dist/deb-riscv64" || true
     - name: Upload DEB artifact
@@ -345,7 +345,7 @@ jobs:
       run: |
         set -euo pipefail
         mkdir -p "$GITHUB_WORKSPACE/dist/deb-loong64"
-        find "$GITHUB_WORKSPACE/dist/deb-loong64" -name "*.deb" -exec mv {} "$GITHUB_WORKSPACE/dist/deb-loong64/v2rayN-linux-loong64.deb" \; || true
+        find "$GITHUB_WORKSPACE/dist/deb-loong64" -name "*.deb" -exec mv {} "$GITHUB_WORKSPACE/dist/deb-loong64/v2rayN-RU-linux-loong64.deb" \; || true
         echo "==== Dist tree ===="
         ls -R "$GITHUB_WORKSPACE/dist/deb-loong64"
     - name: Upload DEB artifact
@@ -495,7 +495,7 @@ jobs:
       run: |
         set -euo pipefail
         mkdir -p "$GITHUB_WORKSPACE/dist/rpm-loong64"
-        find "$GITHUB_WORKSPACE/dist/rpm-loong64" -name "*.loongarch64.rpm" -exec mv {} "$GITHUB_WORKSPACE/dist/rpm-loong64/v2rayN-linux-rhel-loong64.rpm" \; || true
+        find "$GITHUB_WORKSPACE/dist/rpm-loong64" -name "*.loongarch64.rpm" -exec mv {} "$GITHUB_WORKSPACE/dist/rpm-loong64/v2rayN-RU-linux-rhel-loong64.rpm" \; || true
         echo "==== Dist tree ===="
         ls -R "$GITHUB_WORKSPACE/dist/rpm-loong64"
     - name: Upload RPM artifact
