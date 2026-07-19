@@ -1092,7 +1092,7 @@ public class Utils
 #else
         if (Environment.GetEnvironmentVariable(Global.LocalAppData) == "1")
         {
-            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "v2rayN");
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "v2rayN-RU");
         }
 
         return GetBaseDirectory();
