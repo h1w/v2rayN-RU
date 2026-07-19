@@ -63,7 +63,7 @@ jobs:
         file: dist/${{ inputs.file_pattern }}
         tag: ${{ inputs.release_tag }}
         file_glob: true
-        prerelease: true
+        prerelease: false
         overwrite: true
 
     - name: Upload release signatures
@@ -72,5 +72,5 @@ jobs:
         file: dist/${{ inputs.file_pattern }}.sig
         tag: ${{ inputs.release_tag }}
         file_glob: true
-        prerelease: true
+        prerelease: false
         overwrite: true

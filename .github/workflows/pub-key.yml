@@ -44,5 +44,5 @@ jobs:
       with:
         file: v2rayN-RU-public-key.asc
         tag: ${{ inputs.release_tag }}
-        prerelease: true
+        prerelease: false
         overwrite: true
