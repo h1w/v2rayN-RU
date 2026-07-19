@@ -47,13 +47,20 @@ jobs:
       uses: actions/download-artifact@v8
       with:
         name: ${{ matrix.arch }}
-        path: v2rayN-${{ env.Target }}-${{ env.Arch }}
-    
-    - name: Get v2rayN-core-bin
-      run: wget -nv -O v2rayN-RU-$Target-$Arch.zip "https://github.com/2dust/v2rayN-core-bin/raw/refs/heads/master/v2rayN-$Target-$Arch.zip"
+        path: app
+
+    - name: Get and merge v2rayN-core-bin
+      run: |
+        # Core-bin (from 2dust) extracts to a top-level folder "v2rayN-$Target-$Arch".
+        # Merge the app on top of the cores, then rename that single top folder to the
+        # -RU name so the archive contains "v2rayN-RU-$Target-$Arch/" (app + bin/ cores).
+        wget -nv -O core-bin.zip "https://github.com/2dust/v2rayN-core-bin/raw/refs/heads/master/v2rayN-$Target-$Arch.zip"
+        7z x -y core-bin.zip
+        cp -rf app/. "v2rayN-$Target-$Arch/"
+        mv "v2rayN-$Target-$Arch" "v2rayN-RU-$Target-$Arch"
 
     - name: Package zip archive
-      run: 7z a -tZip v2rayN-RU-$Target-$Arch.zip v2rayN-$Target-$Arch -mx1
+      run: 7z a -tZip v2rayN-RU-$Target-$Arch.zip v2rayN-RU-$Target-$Arch -mx1
 
     - name: Rename windows-desktop
       if: inputs.target == 'windows-desktop'
