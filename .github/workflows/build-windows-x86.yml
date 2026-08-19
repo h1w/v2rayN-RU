@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   package-x86:
-    name: build and release windows x86 WPF & Avalonia
+    name: build and release windows x86
     if: inputs.release_tag != ''
     runs-on: windows-latest
 
@@ -21,13 +21,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - flavor: wpf
-            project: ./v2rayN/v2rayN/v2rayN.csproj
-            zip_name: v2rayN-RU-windows-86.zip
           - flavor: desktop
             project: ./v2rayN/v2rayN.Desktop/v2rayN.Desktop.csproj
-            zip_name: v2rayN-RU-windows-86-desktop.zip
-
+            zip_name: v2rayN-RU-windows-86.zip
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -237,8 +233,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        flavor: [ wpf, desktop ]
-    uses: ./.github/workflows/upload-sign.yml
+        flavor: [ desktop ]
     with:
       release_tag: ${{ inputs.release_tag }}
       artifact_name: release-windows-x86-${{ matrix.flavor }}

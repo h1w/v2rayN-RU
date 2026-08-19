@@ -6,7 +6,7 @@ on:
       release_tag:
         required: true
         type: string
-      target: # windows linux macos windows-desktop
+      target: # windows linux macos
         required: true
         type: string
     secrets:
@@ -25,13 +25,7 @@ jobs:
         arch: [ x64, arm64 ]
     runs-on: ubuntu-latest
     env:
-      Target: |- 
-        ${{
-          case(
-            inputs.target == 'windows-desktop', 'windows',
-            inputs.target
-          )
-        }}
+      Target: ${{ inputs.target }}
       Arch: |-
         ${{
           case(
@@ -62,9 +56,6 @@ jobs:
     - name: Package zip archive
       run: 7z a -tZip v2rayN-RU-$Target-$Arch.zip v2rayN-RU-$Target-$Arch -mx1
 
-    - name: Rename windows-desktop
-      if: inputs.target == 'windows-desktop'
-      run: mv "v2rayN-RU-$Target-$Arch.zip" "v2rayN-RU-$Target-$Arch-desktop.zip"
 
     - name: Upload zip artifact
       uses: actions/upload-artifact@v7
