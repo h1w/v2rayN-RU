@@ -11,6 +11,8 @@ public class AddServer2ViewModel : MyReactiveObject, ICloseable
     [Reactive]
     public string? CoreType { get; set; }
 
+    [Reactive]
+    public bool IsSingboxEndpoint { get; set; }
     public ReactiveCommand<Unit, Unit> BrowseServerCmd { get; }
     public ReactiveCommand<Unit, Unit> EditServerCmd { get; }
     public ReactiveCommand<Unit, Unit> SaveServerCmd { get; }
@@ -39,7 +41,10 @@ public class AddServer2ViewModel : MyReactiveObject, ICloseable
         });
 
         SelectedSource = profileItem.IndexId.IsNullOrEmpty() ? profileItem : JsonUtils.DeepCopy(profileItem);
-        CoreType = SelectedSource?.CoreType?.ToString();
+        var coreStr = SelectedSource?.CoreType?.ToString();
+        coreStr = coreStr.IsNullOrEmpty() ? Global.CoreTypes.FirstOrDefault() : coreStr;
+        CoreType = coreStr;
+        IsSingboxEndpoint = SelectedSource?.GetProtocolExtra()?.IsSingboxEndpoint ?? false;
     }
 
     private async Task SaveServerAsync()
@@ -57,6 +62,10 @@ public class AddServer2ViewModel : MyReactiveObject, ICloseable
             return;
         }
         SelectedSource.CoreType = CoreType.IsNullOrEmpty() ? null : Enum.Parse<ECoreType>(CoreType);
+        SelectedSource.SetProtocolExtra(SelectedSource?.GetProtocolExtra() with
+        {
+            IsSingboxEndpoint = IsSingboxEndpoint ? true : null,
+        });
 
         if (await ConfigHandler.EditCustomServer(_config, SelectedSource) == 0)
         {
@@ -79,7 +88,8 @@ public class AddServer2ViewModel : MyReactiveObject, ICloseable
         var item = await AppManager.Instance.GetProfileItem(SelectedSource.IndexId);
         item ??= SelectedSource;
         item.Address = fileName;
-        if (await ConfigHandler.AddCustomServer(_config, item, false) == 0)
+        var result = item.ConfigType == EConfigType.Outbound ? await ConfigHandler.AddCustomOutboundServer(_config, item, false) : await ConfigHandler.AddCustomServer(_config, item, false);
+        if (result == 0)
         {
             NoticeManager.Instance.Enqueue(ResUI.SuccessfullyImportedCustomServer);
             if (item.IndexId.IsNotEmpty())

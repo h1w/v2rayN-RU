@@ -34,7 +34,7 @@
         </StackPanel>
         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
 
-            <Grid ColumnDefinitions="Auto,400,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+            <Grid ColumnDefinitions="Auto,400,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
 
                 <TextBlock
                     Grid.Row="0"
@@ -241,10 +241,24 @@
                     Grid.Column="0"
                     Margin="{StaticResource Margin4}"
                     VerticalAlignment="Center"
+                    Text="{x:Static resx:ResUI.LvCustomCoreType}" />
+                <ComboBox
+                    x:Name="cmbCustomCoreType"
+                    Grid.Row="11"
+                    Grid.Column="1"
+                    Width="200"
+                    Margin="{StaticResource Margin4}"
+                    HorizontalAlignment="Left" />
+
+                <TextBlock
+                    Grid.Row="12"
+                    Grid.Column="0"
+                    Margin="{StaticResource Margin4}"
+                    VerticalAlignment="Center"
                     Text="{x:Static resx:ResUI.TbPreSocksPort4Sub}" />
                 <TextBox
                     x:Name="txtPreSocksPort"
-                    Grid.Row="11"
+                    Grid.Row="12"
                     Grid.Column="1"
                     Width="200"
                     Margin="{StaticResource Margin4}"
@@ -253,19 +267,18 @@
                     PlaceholderText="{x:Static resx:ResUI.TipPreSocksPort}" />
 
                 <TextBlock
-                    Grid.Row="12"
+                    Grid.Row="13"
                     Grid.Column="0"
                     Margin="{StaticResource Margin4}"
                     VerticalAlignment="Center"
                     Text="{x:Static resx:ResUI.LvMemo}" />
                 <TextBox
                     x:Name="txtMemo"
-                    Grid.Row="12"
+                    Grid.Row="13"
                     Grid.Column="1"
                     Margin="{StaticResource Margin4}"
                     VerticalAlignment="Center"
                     TextWrapping="Wrap" />
-
             </Grid>
         </ScrollViewer>
     </DockPanel>

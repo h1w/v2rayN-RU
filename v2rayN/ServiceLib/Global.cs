@@ -2,8 +2,6 @@ namespace ServiceLib;
 
 public class Global
 {
-    #region const
-
     public const string AppName = "v2rayN-RU";
     public const string GithubUrl = "https://github.com";
     public const string GithubApiUrl = "https://api.github.com/repos";
@@ -745,5 +743,29 @@ public class Global
         MozillaRootProvider,
     ];
 
-    #endregion const
+    public static readonly IReadOnlyList<string> TunIPv4Address =
+    [
+        "172.18.0.1/30",
+        "172.31.0.1/30",
+        "172.20.0.1/30",
+        "172.16.0.1/30",
+        "192.168.100.1/30",
+        "10.10.14.1/30",
+        "10.1.0.1/30",
+        "10.0.0.1/30",
+    ];
+
+    // Prefixes must leave room for a peer address (max /126); the sing-box system
+    // stack derives a gateway from the first prefix and rejects single-address prefixes.
+    public static readonly IReadOnlyList<string> TunIPv6Address =
+    [
+        "fc00::172:18:0:1/126",
+        "fc00::172:31:0:1/126",
+        "fc00::172:20:0:1/126",
+        "fc00::172:16:0:1/126",
+        "fc00::192:168:100:1/126",
+        "fc00::10:10:14:1/126",
+        "fc00::10:1:0:1/126",
+        "fc00::10:0:0:1/126",
+    ];
 }

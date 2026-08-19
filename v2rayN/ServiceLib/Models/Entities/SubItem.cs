@@ -46,4 +46,6 @@ public class SubItem
     // True when Remarks is auto-managed from the server's Profile-Title.
     // Default false => existing groups are treated as manually named.
     public bool AutoRemark { get; set; }
+
+    public ECoreType? CustomCoreType { get; set; }
 }

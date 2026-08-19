@@ -1936,4 +1936,22 @@
   <data name="MsgHwidMaxDevicesReached" xml:space="preserve">
     <value>Достигнут лимит устройств для этой подписки</value>
   </data>
+  <data name="TbIpv6Address" xml:space="preserve">
+    <value>Адрес IPv6</value>
+  </data>
+  <data name="TbIpv4Address" xml:space="preserve">
+    <value>Адрес IPv4</value>
+  </data>
+  <data name="menuAddCustomOutboundServer" xml:space="preserve">
+    <value>Добавить пользовательский outbound</value>
+  </data>
+  <data name="MsgCustomOutboundFileNotFound" xml:space="preserve">
+    <value>Файл пользовательского outbound {0} не найден: {1}</value>
+  </data>
+  <data name="TbCustomOutboundTip" xml:space="preserve">
+    <value>Для xray/sing-box поддерживается только один outbound/endpoint</value>
+  </data>
+  <data name="LvCustomCoreType" xml:space="preserve">
+    <value>Ядро пользовательской конфигурации</value>
+  </data>
 </root>

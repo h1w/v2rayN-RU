@@ -35,6 +35,7 @@ public class MainWindowViewModel : MyReactiveObject
     public ReactiveCommand<Unit, Unit> AddAnytlsServerCmd { get; }
     public ReactiveCommand<Unit, Unit> AddNaiveServerCmd { get; }
     public ReactiveCommand<Unit, Unit> AddCustomServerCmd { get; }
+    public ReactiveCommand<Unit, Unit> AddCustomOutboundServerCmd { get; }
     public ReactiveCommand<Unit, Unit> AddPolicyGroupServerCmd { get; }
     public ReactiveCommand<Unit, Unit> AddProxyChainServerCmd { get; }
     public ReactiveCommand<Unit, Unit> AddServerViaClipboardCmd { get; }
@@ -144,6 +145,10 @@ public class MainWindowViewModel : MyReactiveObject
         AddCustomServerCmd = ReactiveCommand.CreateFromTask(async () =>
         {
             await AddServerAsync(EConfigType.Custom);
+        });
+        AddCustomOutboundServerCmd = ReactiveCommand.CreateFromTask(async () =>
+        {
+            await AddServerAsync(EConfigType.Outbound);
         });
         AddPolicyGroupServerCmd = ReactiveCommand.CreateFromTask(async () =>
         {
@@ -435,7 +440,7 @@ public class MainWindowViewModel : MyReactiveObject
         };
 
         bool? ret = false;
-        if (eConfigType == EConfigType.Custom)
+        if (eConfigType is EConfigType.Custom or EConfigType.Outbound)
         {
             var addServer2ViewModel = new AddServer2ViewModel(item);
             ret = await AppManager.Instance.WindowDialog.ShowDialogAsync(addServer2ViewModel);

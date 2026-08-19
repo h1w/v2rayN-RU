@@ -5544,5 +5544,41 @@ namespace ServiceLib.Resx {
                 return ResourceManager.GetString("CustomTestAllFailed", resourceCulture);
             }
         }
+
+        public static string LvCustomCoreType {
+            get {
+                return ResourceManager.GetString("LvCustomCoreType", resourceCulture);
+            }
+        }
+
+        public static string menuAddCustomOutboundServer {
+            get {
+                return ResourceManager.GetString("menuAddCustomOutboundServer", resourceCulture);
+            }
+        }
+
+        public static string MsgCustomOutboundFileNotFound {
+            get {
+                return ResourceManager.GetString("MsgCustomOutboundFileNotFound", resourceCulture);
+            }
+        }
+
+        public static string TbCustomOutboundTip {
+            get {
+                return ResourceManager.GetString("TbCustomOutboundTip", resourceCulture);
+            }
+        }
+
+        public static string TbIpv4Address {
+            get {
+                return ResourceManager.GetString("TbIpv4Address", resourceCulture);
+            }
+        }
+
+        public static string TbIpv6Address {
+            get {
+                return ResourceManager.GetString("TbIpv6Address", resourceCulture);
+            }
+        }
     }
 }

@@ -9,6 +9,9 @@ public class SubEditViewModel : MyReactiveObject, ICloseable
     [Reactive]
     public SubItem SelectedSource { get; set; }
 
+    [Reactive]
+    public string CustomCoreType { get; set; }
+
     public ReactiveCommand<Unit, Unit> SelectPrevProfileCmd { get; }
     public ReactiveCommand<Unit, Unit> SelectNextProfileCmd { get; }
     public ReactiveCommand<Unit, Unit> SaveCmd { get; }
@@ -42,6 +45,7 @@ public class SubEditViewModel : MyReactiveObject, ICloseable
 
         _originalRemarks = subItem.Remarks ?? string.Empty;
         SelectedSource = subItem.Id.IsNullOrEmpty() ? subItem : JsonUtils.DeepCopy(subItem);
+        CustomCoreType = SelectedSource.CustomCoreType?.ToString() ?? string.Empty;
     }
 
     private async Task SaveSubAsync()
@@ -79,6 +83,7 @@ public class SubEditViewModel : MyReactiveObject, ICloseable
                 //return;
             }
         }
+        SelectedSource.CustomCoreType = Enum.TryParse<ECoreType>(CustomCoreType, out var coreType) ? coreType : null;
 
         if (await ConfigHandler.AddSubItem(_config, SelectedSource) == 0)
         {

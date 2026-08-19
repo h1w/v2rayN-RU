@@ -7,6 +7,7 @@ public record CoreConfigContext
     public RoutingItem? RoutingItem { get; init; }
     public DNSItem? RawDnsItem { get; init; }
     public SimpleDNSItem SimpleDnsItem { get; init; } = new();
+    public Dictionary<string, string> CustomOutboundContent { get; init; } = new();
     public Dictionary<string, ProfileItem> AllProxiesMap { get; init; } = new();
     /// <summary>
     /// Цепочечные ядра, которые надо поднять для правил, указывающих на .json-профили.
@@ -18,6 +19,9 @@ public record CoreConfigContext
 
     // Test ServerTestItem Map
     public Dictionary<string, string> ServerTestItemMap { get; init; } = new();
+
+    // Generation Context
+    public Dictionary<object, string> CustomOutboundMap { get; init; } = new();
 
     // TUN Compatibility
     public bool IsTunEnabled { get; init; } = false;

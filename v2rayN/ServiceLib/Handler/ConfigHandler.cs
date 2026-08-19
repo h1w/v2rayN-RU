@@ -386,6 +386,13 @@ public static class ConfigHandler
                 {
                 }
             }
+            else if (profileItem.ConfigType == EConfigType.Outbound)
+            {
+                profileItem.Address = Utils.GetConfigPath(profileItem.Address);
+                if (await AddCustomOutboundServer(config, profileItem, false) == 0)
+                {
+                }
+            }
             else
             {
                 await AddServerCommon(config, profileItem, true);
@@ -583,6 +590,43 @@ public static class ConfigHandler
         return 0;
     }
 
+    public static async Task<int> AddCustomOutboundServer(Config config, ProfileItem profileItem, bool blDelete, bool toFile = true)
+    {
+        var fileName = profileItem.Address;
+        if (!File.Exists(fileName))
+        {
+            return -1;
+        }
+        var ext = Path.GetExtension(fileName);
+        var newFileName = $"{Utils.GetGuid()}{ext}";
+        //newFileName = Path.Combine(Utile.GetTempPath(), newFileName);
+
+        try
+        {
+            File.Copy(fileName, Utils.GetConfigPath(newFileName));
+            if (blDelete)
+            {
+                File.Delete(fileName);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+            return -1;
+        }
+
+        profileItem.Address = newFileName;
+        profileItem.ConfigType = EConfigType.Outbound;
+        if (profileItem.Remarks.IsNullOrEmpty())
+        {
+            profileItem.Remarks = $"import custom outbound@{DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss")}";
+        }
+
+        await AddServerCommon(config, profileItem, toFile);
+
+        return 0;
+    }
+
     /// <summary>
     /// Edit an existing custom server configuration
     /// Updates the server's properties without changing the file
@@ -604,6 +648,8 @@ public static class ConfigHandler
             item.CoreType = profileItem.CoreType;
             item.DisplayLog = profileItem.DisplayLog;
             item.PreSocksPort = profileItem.PreSocksPort;
+
+            item.ProtoExtra = profileItem.ProtoExtra;
         }
 
         if (await SQLiteHelper.Instance.UpdateAsync(item) > 0)
@@ -1679,68 +1725,198 @@ public static class ConfigHandler
         }
 
         var subItem = await AppManager.Instance.GetSubItem(subid);
+
+        if (subItem?.CustomCoreType is null)
+        {
+            return await AddBatchServersDefaultCustom(config, strData, subid, isSub, subItem);
+        }
+
+        return await AddBatchServersSpecificCustom(config, strData, subid, isSub, subItem);
+    }
+
+    private static async Task<int> AddBatchServersDefaultCustom(
+        Config config,
+        string strData,
+        string subid,
+        bool isSub,
+        SubItem? subItem)
+    {
         var subRemarks = subItem?.Remarks;
-        var preSocksPort = subItem?.PreSocksPort;
-
-        List<ProfileItem>? lstProfiles = null;
-        //Is sing-box array configuration
-        if (lstProfiles is null || lstProfiles.Count <= 0)
+        // Prioritize using complete custom parsing, followed by custom outbound parsing.
+        var lstProfiles = V2rayFmt.ResolveToCustom(strData, subRemarks);
+        if (lstProfiles.Count == 0)
         {
-            lstProfiles = SingboxFmt.ResolveFullArray(strData, subRemarks);
+            lstProfiles = SingboxFmt.ResolveToCustom(strData, subRemarks);
         }
-        //Is v2ray array configuration
-        if (lstProfiles is null || lstProfiles.Count <= 0)
+        if (lstProfiles.Count == 0)
         {
-            lstProfiles = V2rayFmt.ResolveFullArray(strData, subRemarks);
+            lstProfiles = V2rayFmt.ResolveToCustomOutbound(strData, subRemarks);
         }
-        if (lstProfiles is { Count: > 0 })
+        if (lstProfiles.Count == 0)
         {
-            var count = 0;
-            foreach (var it in lstProfiles)
-            {
-                it.Subid = subid;
-                it.IsSub = isSub;
-                it.PreSocksPort = preSocksPort;
-                if (await AddCustomServer(config, it, true) == 0)
-                {
-                    count++;
-                }
-            }
-            if (count > 0)
-            {
-                return count;
-            }
+            lstProfiles = SingboxFmt.ResolveToCustomOutbound(strData, subRemarks);
         }
-
-        ProfileItem? profileItem = null;
-        //Is sing-box configuration
-        profileItem ??= SingboxFmt.ResolveFull(strData, subRemarks);
-        //Is v2ray configuration
-        profileItem ??= V2rayFmt.ResolveFull(strData, subRemarks);
-        //Is Html Page
-        if (profileItem is null && HtmlPageFmt.IsHtmlPage(strData))
+        if (lstProfiles.Count == 0)
         {
             return -1;
         }
-        //Is Clash configuration
-        profileItem ??= ClashFmt.ResolveFull(strData, subRemarks);
-        //Is hysteria configuration
-        profileItem ??= Hysteria2Fmt.ResolveFull2(strData, subRemarks);
-        if (profileItem is null || profileItem.Address.IsNullOrEmpty())
+
+        var count = await AddBatchCustomServers(config, lstProfiles, subid, isSub);
+        if (count > 0)
+        {
+            return count;
+        }
+
+        if (HtmlPageFmt.IsHtmlPage(strData))
+        {
+            return -1;
+        }
+
+        var profileItem = ClashFmt.ResolveFull(strData, subRemarks)
+            ?? Hysteria2Fmt.ResolveFull2(strData, subRemarks);
+
+        if (profileItem == null)
         {
             return -1;
         }
 
         profileItem.Subid = subid;
         profileItem.IsSub = isSub;
-        profileItem.PreSocksPort = preSocksPort;
-        if (await AddCustomServer(config, profileItem, true) == 0)
+        profileItem.PreSocksPort = subItem?.PreSocksPort;
+
+        return await AddCustomServer(config, profileItem, true) == 0 ? 1 : -1;
+    }
+
+    private static async Task<int> AddBatchServersSpecificCustom(
+        Config config,
+        string strData,
+        string subid,
+        bool isSub,
+        SubItem subItem)
+    {
+        var subRemarks = subItem.Remarks;
+        var customCoreType = subItem.CustomCoreType!.Value;
+
+        var lstProfiles = customCoreType switch
         {
-            return 1;
+            ECoreType.Xray => V2rayFmt.ResolveToCustom(strData, subRemarks),
+            ECoreType.sing_box => SingboxFmt.ResolveToCustom(strData, subRemarks),
+            _ => null
+        };
+
+        if (lstProfiles is not null)
+        {
+            if (lstProfiles.Count == 0)
+            {
+                return -1;
+            }
+
+            var count = await AddBatchCustomServers(config, lstProfiles, subid, isSub);
+            if (count > 0)
+            {
+                return count;
+            }
         }
-        else
+
+        return await SaveCustomRawFileServer(config, strData, subid, isSub, subItem, customCoreType);
+    }
+
+    private static async Task<int> AddBatchCustomServers(
+        Config config,
+        List<ProfileItem> lstProfiles,
+        string subid,
+        bool isSub)
+    {
+        var count = 0;
+        foreach (var it in lstProfiles)
         {
-            return -1;
+            it.Subid = subid;
+            it.IsSub = isSub;
+
+            if (it.ConfigType == EConfigType.Custom)
+            {
+                if (await AddCustomServer(config, it, true) == 0)
+                {
+                    count++;
+                }
+            }
+            else
+            {
+                if (await AddCustomOutboundServer(config, it, true) == 0)
+                {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    private static async Task<int> SaveCustomRawFileServer(
+        Config config,
+        string strData,
+        string subid,
+        bool isSub,
+        SubItem subItem,
+        ECoreType customCoreType)
+    {
+        var ext = DetectFileExtension(strData);
+        var fileName = Utils.GetTempPath($"{Utils.GetGuid(false)}{ext}");
+        await File.WriteAllTextAsync(fileName, strData);
+
+        var profileItem = new ProfileItem
+        {
+            CoreType = customCoreType,
+            ConfigType = EConfigType.Custom,
+            Address = fileName,
+            Remarks = subItem.Remarks ?? customCoreType.ToString(),
+            Subid = subid,
+            IsSub = isSub,
+            PreSocksPort = subItem.PreSocksPort,
+        };
+
+        return await AddCustomServer(config, profileItem, true) == 0 ? 1 : -1;
+
+        static string DetectFileExtension(string data)
+        {
+            var trimmed = data.AsSpan().TrimStart();
+            if (trimmed.IsEmpty)
+            {
+                return string.Empty;
+            }
+
+            if (trimmed[0] is '{' or '[')
+            {
+                return ".json";
+            }
+
+            if (trimmed.StartsWith("---"))
+            {
+                return ".yaml";
+            }
+
+            foreach (var line in trimmed.EnumerateLines())
+            {
+                var lineTrimmed = line.TrimStart();
+                if (lineTrimmed.IsEmpty || lineTrimmed.StartsWith("#"))
+                {
+                    continue;
+                }
+
+                var colonIndex = lineTrimmed.IndexOf(':');
+                if (colonIndex > 0)
+                {
+                    var keySpan = lineTrimmed[..colonIndex];
+                    if (!keySpan.Contains(' ') && !keySpan.Contains('\t'))
+                    {
+                        if (colonIndex == lineTrimmed.Length - 1 || lineTrimmed[colonIndex + 1] is ' ' or '\t' or '\r' or '\n')
+                        {
+                            return ".yaml";
+                        }
+                    }
+                }
+            }
+
+            return string.Empty;
         }
     }
 

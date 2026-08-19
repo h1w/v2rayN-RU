@@ -461,14 +461,14 @@ public class CoreConfigContextBuilder
         {
             return await RegisterGroupNodeAsync(context, node);
         }
-        return RegisterSingleNodeAsync(context, node);
+        return await RegisterSingleNodeAsync(context, node);
     }
 
     /// <summary>
     ///     Validates a single (non-group) node and, on success, adds it to the proxy map
     ///     and records any domain addresses that should bypass the proxy.
     /// </summary>
-    private static NodeValidatorResult RegisterSingleNodeAsync(CoreConfigContext context, ProfileItem node)
+    private static async Task<NodeValidatorResult> RegisterSingleNodeAsync(CoreConfigContext context, ProfileItem node)
     {
         if (node.ConfigType.IsGroupType())
         {
@@ -476,6 +476,28 @@ public class CoreConfigContextBuilder
         }
 
         var nodeValidatorResult = NodeValidator.Validate(node, context.RunCoreType);
+
+        if (node.ConfigType == EConfigType.Outbound)
+        {
+            var addressFileName = node.Address;
+            if (!File.Exists(addressFileName))
+            {
+                addressFileName = Utils.GetConfigPath(addressFileName);
+            }
+            if (!File.Exists(addressFileName))
+            {
+                nodeValidatorResult.Errors.Add(string.Format(ResUI.MsgCustomOutboundFileNotFound, node.Remarks, addressFileName));
+            }
+            try
+            {
+                var fileContent = await File.ReadAllTextAsync(addressFileName);
+                context.CustomOutboundContent[node.IndexId] = fileContent;
+            }
+            catch
+            {
+                nodeValidatorResult.Errors.Add(string.Format(ResUI.MsgCustomOutboundFileNotFound, node.Remarks, addressFileName));
+            }
+        }
         var msgs = new List<string>([.. nodeValidatorResult.Errors, .. nodeValidatorResult.Warnings]);
         if (msgs.Count > 0)
         {
@@ -577,7 +599,7 @@ public class CoreConfigContextBuilder
 
             if (!childNode.ConfigType.IsGroupType())
             {
-                var childNodeResult = RegisterSingleNodeAsync(context, childNode);
+                var childNodeResult = await RegisterSingleNodeAsync(context, childNode);
                 childNodeValidatorResult.Warnings.AddRange(childNodeResult.Warnings.Select(w =>
                     string.Format(ResUI.MsgGroupChildNodeWarning, node.Remarks, childNode.Remarks, w)));
                 childNodeValidatorResult.Errors.AddRange(childNodeResult.Errors.Select(e =>
