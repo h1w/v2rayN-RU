@@ -194,12 +194,23 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
     {
         // Persist inline JSON-rule toggles back into _displayOrder so this rebuild
         // does not revert an un-saved Enabled change.
-        foreach (var model in RulesItems.Where(m => m.IsReadonly))
+        foreach (var model in RulesItems)
         {
-            var token = _displayOrder.FirstOrDefault(t => t.LocalId == null && t.Index == model.RawOrdinal);
-            if (token != null)
+            if (model.IsReadonly)
             {
-                token.Enabled = model.Enabled;
+                var token = _displayOrder.FirstOrDefault(t => t.LocalId == null && t.Index == model.RawOrdinal);
+                if (token != null)
+                {
+                    token.Enabled = model.Enabled;
+                }
+            }
+            else
+            {
+                var rule = _rules.FirstOrDefault(r => r.Id == model.Id);
+                if (rule != null)
+                {
+                    rule.Enabled = model.Enabled;
+                }
             }
         }
 
@@ -483,6 +494,11 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
         var byId = new Dictionary<string, RulesItem>(StringComparer.Ordinal);
         foreach (var rule in _rules)
         {
+            var uiModel = RulesItems.FirstOrDefault(m => !m.IsReadonly && m.Id == rule.Id);
+            if (uiModel != null)
+            {
+                rule.Enabled = uiModel.Enabled;
+            }
             byId.TryAdd(rule.Id, rule);
         }
         var reordered = new List<RulesItem>();
