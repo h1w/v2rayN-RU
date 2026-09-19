@@ -1954,4 +1954,43 @@
   <data name="LvCustomCoreType" xml:space="preserve">
     <value>Ядро пользовательской конфигурации</value>
   </data>
+  <data name="TbSettingsEnableUpdateViaProxy" xml:space="preserve">
+    <value>Обновлять через прокси</value>
+  </data>
+  <data name="TbSettingsMux4RayConcurrency" xml:space="preserve">
+    <value>Лимит дочерних соединений Mux для Xray</value>
+  </data>
+  <data name="TbSettingsMux4RayXudpConcurrency" xml:space="preserve">
+    <value>Лимит дочерних XUDP-соединений Mux для Xray</value>
+  </data>
+  <data name="TbSettingsMux4RayXudpProxyUDP443" xml:space="preserve">
+    <value>Обработка UDP443 (QUIC) в Mux для Xray</value>
+  </data>
+  <data name="TbXrayOnly" xml:space="preserve">
+    <value>Только Xray</value>
+  </data>
+  <data name="TbBlockAAAAQueries" xml:space="preserve">
+    <value>Блокировать запросы AAAA</value>
+  </data>
+  <data name="TbBlockAAAAQueriesTips" xml:space="preserve">
+    <value>При включении блокирует DNS-запросы IPv6</value>
+  </data>
+  <data name="TbDNS" xml:space="preserve">
+    <value>DNS</value>
+  </data>
+  <data name="TbSettingsMux4Ray" xml:space="preserve">
+    <value>Настройки Mux для Xray</value>
+  </data>
+  <data name="LvRequestHeaders" xml:space="preserve">
+    <value>HTTP-заголовки (JSON)</value>
+  </data>
+  <data name="SubRequestHeadersTips" xml:space="preserve">
+    <value>Необязательно. Пример: {"X-hwid": "my_device"}. Заданные значения переопределяют заголовки по умолчанию для всех URL этой группы, включая сервис конвертации подписок</value>
+  </data>
+  <data name="SubRequestHeadersInvalid" xml:space="preserve">
+    <value>Некорректные HTTP-заголовки. Используйте JSON-объект с уникальными именами заголовков и строковыми значениями. Имена и значения заголовков не должны содержать переносов строк</value>
+  </data>
+  <data name="TbSortingProcess" xml:space="preserve">
+    <value>Процесс</value>
+  </data>
 </root>

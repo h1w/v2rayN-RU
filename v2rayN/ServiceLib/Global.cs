@@ -97,12 +97,22 @@ public class Global
     public const string StringTrue = "true";
     public const string StringFalse = "false";
     public const int SqliteMaxBatchSize = 10000;
+    public static readonly TimeSpan LocalFetch = TimeSpan.FromSeconds(5);
+    public static readonly TimeSpan DirectFetch = TimeSpan.FromSeconds(10);
+    public static readonly TimeSpan ProxyFetch  = TimeSpan.FromSeconds(30);
+    public static readonly TimeSpan DirectDownloadConnect = TimeSpan.FromSeconds(5);
+    public static readonly TimeSpan ProxyDownloadConnect = TimeSpan.FromSeconds(10);
 
-    public const string SingboxDirectDNSTag = "direct_dns";
-    public const string SingboxRemoteDNSTag = "remote_dns";
-    public const string SingboxLocalDNSTag = "local_local";
-    public const string SingboxHostsDNSTag = "hosts_dns";
-    public const string SingboxFakeDNSTag = "fake_dns";
+    public const string SingboxDirectDNSTagPrefix = "direct-dns-";
+    public const string SingboxRemoteDNSTagPrefix = "remote-dns-";
+    public const string SingboxDirectDNSTag = "direct-dns-1";
+    public const string SingboxRemoteDNSTag = "remote-dns-1";
+    public const string SingboxDirectDNSTagTemplate = "direct-dns-{0}";
+    public const string SingboxRemoteDNSTagTemplate = "remote-dns-{0}";
+    public const string SingboxLocalDNSTag = "local-local";
+    public const string SingboxHostsDNSTag = "hosts-dns";
+    public const string SingboxFakeDNSTag = "fake-dns";
+    public const string SingboxSrsDownloadHttpClientTag = "srs-download-http-client";
 
     public const int Hysteria2DefaultHopInt = 30;
 
@@ -442,6 +452,12 @@ public class Global
         "stream-one"
     ];
 
+    public static readonly List<string> FakeIPRanges =
+    [
+        "198.18.0.0/15",
+        "11.0.0.0/8",
+    ];
+
     public static readonly List<string> DomainStrategy =
     [
         "AsIs",
@@ -487,16 +503,22 @@ public class Global
         "localhost"
     ];
 
+    public static readonly List<LanguageOption> LanguageOptions =
+    [
+        new("zh-Hans", "简体中文"),
+        new("zh-Hant", "繁體中文"),
+        new("en", "English"),
+        new("fa", "فارسی"),
+        new("fr", "Français"),
+        new("ru", "Русский"),
+        new("hu", "Magyar"),
+        new("id", "Bahasa Indonesia"),
+        new("az", "Azərbaycan dili")
+    ];
+
     public static readonly List<string> Languages =
     [
-        "zh-Hans",
-        "zh-Hant",
-        "en",
-        "fa",
-        "fr",
-        "ru",
-        "hu",
-        "id"
+        .. LanguageOptions.Select(t => t.Value)
     ];
 
     public static readonly List<string> Alpns =

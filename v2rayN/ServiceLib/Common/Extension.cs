@@ -134,4 +134,19 @@ public static class Extension
                     .Replace("\r", replacement)
                     .Replace("\n", replacement);
     }
+
+    public static IObservable<TOutput> HandleSafe<TInput, TOutput>(
+        this Interaction<TInput, TOutput> interaction,
+        TInput input)
+    {
+        return Observable.Defer(() => interaction.Handle(input))
+            .Catch<TOutput, UnhandledInteractionException<TInput, TOutput>>(_ => Observable.Empty<TOutput>());
+    }
+
+    public static IDisposable SubscribeAsync<T>(this IObservable<T> source, Func<T, Task> onNextAsync)
+    {
+        return source.Select(x => Observable.FromAsync(() => onNextAsync(x)))
+            .Concat()
+            .Subscribe();
+    }
 }

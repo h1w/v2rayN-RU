@@ -142,7 +142,7 @@ jobs:
           $xrayTag = "v$xrayVer"
           $singTag = "v$singVer"
 
-          $xrayUrl = "https://github.com/autorepobot/Xray/releases/download/$xrayTag/Xray-windows-32.zip"
+          $xrayUrl = "https://github.com/XTLS/Xray-core/releases/download/$xrayTag/Xray-windows-32.zip"
           $singUrl = "https://github.com/SagerNet/sing-box/releases/download/$singTag/sing-box-$singVer-windows-386.zip"
 
           Write-Host "Bundled Xray version: $xrayVer"
@@ -234,6 +234,7 @@ jobs:
       fail-fast: false
       matrix:
         flavor: [ desktop ]
+    uses: ./.github/workflows/upload-sign.yml
     with:
       release_tag: ${{ inputs.release_tag }}
       artifact_name: release-windows-x86-${{ matrix.flavor }}

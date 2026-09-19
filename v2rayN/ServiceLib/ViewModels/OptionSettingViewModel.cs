@@ -22,6 +22,9 @@ public class OptionSettingViewModel : MyReactiveObject, ICloseable
     [Reactive] public string DefUserAgent { get; set; }
     [Reactive] public string SendThrough { get; set; }
     [Reactive] public string BindInterface { get; set; }
+    [Reactive] public int? Mux4RayConcurrency { get; set; }
+    [Reactive] public int? Mux4RayXudpConcurrency { get; set; }
+    [Reactive] public string Mux4RayXudpProxyUDP443 { get; set; }
     [Reactive] public string Mux4SboxProtocol { get; set; }
     [Reactive] public bool EnableCacheFile4Sbox { get; set; }
     [Reactive] public int? HyUpMbps { get; set; }
@@ -170,6 +173,9 @@ public class OptionSettingViewModel : MyReactiveObject, ICloseable
         DefUserAgent = _config.CoreBasicItem.DefUserAgent;
         SendThrough = _config.CoreBasicItem.SendThrough ?? string.Empty;
         BindInterface = _config.CoreBasicItem.BindInterface ?? string.Empty;
+        Mux4RayConcurrency = _config.Mux4RayItem.Concurrency;
+        Mux4RayXudpConcurrency = _config.Mux4RayItem.XudpConcurrency;
+        Mux4RayXudpProxyUDP443 = _config.Mux4RayItem.XudpProxyUDP443 ?? string.Empty;
         Mux4SboxProtocol = _config.Mux4SboxItem.Protocol;
         EnableCacheFile4Sbox = _config.CoreBasicItem.EnableCacheFile4Sbox;
         HyUpMbps = _config.HysteriaItem.UpMbps;
@@ -353,6 +359,9 @@ public class OptionSettingViewModel : MyReactiveObject, ICloseable
         _config.CoreBasicItem.DefUserAgent = DefUserAgent;
         _config.CoreBasicItem.SendThrough = SendThrough.TrimEx();
         _config.CoreBasicItem.BindInterface = BindInterface.TrimEx();
+        _config.Mux4RayItem.Concurrency = Mux4RayConcurrency > 0 ? Mux4RayConcurrency : null;
+        _config.Mux4RayItem.XudpConcurrency = Mux4RayXudpConcurrency > 0 ? Mux4RayXudpConcurrency : null;
+        _config.Mux4RayItem.XudpProxyUDP443 = Mux4RayXudpProxyUDP443.NullIfEmpty();
         _config.Mux4SboxItem.Protocol = Mux4SboxProtocol;
         _config.CoreBasicItem.EnableCacheFile4Sbox = EnableCacheFile4Sbox;
         _config.HysteriaItem.UpMbps = HyUpMbps ?? 0;

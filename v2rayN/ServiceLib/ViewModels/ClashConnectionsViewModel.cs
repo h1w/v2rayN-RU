@@ -39,12 +39,42 @@ public class ClashConnectionsViewModel : MyReactiveObject
             await ClashConnectionClose(true);
         });
 
-        _ = Init();
+        this.WhenActivated(disposables =>
+        {
+            var cts = new CancellationTokenSource();
+            Disposable.Create(() =>
+            {
+                cts.Cancel();
+                cts.Dispose();
+            }).DisposeWith(disposables);
+
+            _ = GetClashConnectionsTask(cts.Token);
+        });
     }
 
-    private async Task Init()
+    private async Task GetClashConnectionsTask(CancellationToken token = default)
     {
-        await DelayTestTask();
+        var numOfExecuted = 1;
+        while (!token.IsCancellationRequested)
+        {
+            await Task.Delay(1000 * 5, token);
+            numOfExecuted++;
+            if (!(AutoRefresh && AppManager.Instance.ShowInTaskbar && AppManager.Instance.IsRunningCore(ECoreType.sing_box)))
+            {
+                continue;
+            }
+
+            if (_config.ClashUIItem.ConnectionsRefreshInterval <= 0)
+            {
+                continue;
+            }
+
+            if (numOfExecuted % _config.ClashUIItem.ConnectionsRefreshInterval != 0)
+            {
+                continue;
+            }
+            await GetClashConnections();
+        }
     }
 
     private async Task GetClashConnections()
@@ -70,7 +100,20 @@ public class ClashConnectionsViewModel : MyReactiveObject
         var lstModel = new List<ClashConnectionModel>();
         foreach (var item in connections ?? [])
         {
-            var host = $"{(item.metadata.host.IsNullOrEmpty() ? item.metadata.destinationIP : item.metadata.host)}:{item.metadata.destinationPort}";
+            if (item.metadata == null)
+            {
+                continue;
+            }
+            var dest = item.metadata.host.IsNullOrEmpty() ? item.metadata.destinationIP : item.metadata.host;
+            var hostSb = new StringBuilder();
+            hostSb.Append(dest);
+            hostSb.Append($":{item.metadata.destinationPort}");
+            if (!string.IsNullOrEmpty(item.metadata.sniffHost) &&
+                dest?.Equals(item.metadata.sniffHost, StringComparison.OrdinalIgnoreCase) == false)
+            {
+                hostSb.Append($" ({item.metadata.sniffHost})");
+            }
+            var host = hostSb.ToString();
             if (HostFilter.IsNotEmpty() && !host.Contains(HostFilter))
             {
                 continue;
@@ -84,7 +127,8 @@ public class ClashConnectionsViewModel : MyReactiveObject
                 Host = host,
                 Time = (dtNow - item.start).TotalSeconds < 0 ? 1 : (dtNow - item.start).TotalSeconds,
                 Elapsed = (dtNow - item.start).ToString(@"hh\:mm\:ss"),
-                Chain = $"{item.rule} , {string.Join("->", item.chains ?? [])}"
+                Chain = $"{item.rule} , {string.Join("->", item.chains ?? [])}",
+                ProcessPath = item.metadata.processPath,
             };
 
             lstModel.Add(model);
@@ -116,35 +160,5 @@ public class ClashConnectionsViewModel : MyReactiveObject
         }
         await ClashApiManager.Instance.ClashConnectionClose(id);
         await GetClashConnections();
-    }
-
-    public async Task DelayTestTask()
-    {
-        _ = Task.Run(async () =>
-        {
-            var numOfExecuted = 1;
-            while (true)
-            {
-                await Task.Delay(1000 * 5);
-                numOfExecuted++;
-                if (!(AutoRefresh && AppManager.Instance.ShowInTaskbar && AppManager.Instance.IsRunningCore(ECoreType.sing_box)))
-                {
-                    continue;
-                }
-
-                if (_config.ClashUIItem.ConnectionsRefreshInterval <= 0)
-                {
-                    continue;
-                }
-
-                if (numOfExecuted % _config.ClashUIItem.ConnectionsRefreshInterval != 0)
-                {
-                    continue;
-                }
-                await GetClashConnections();
-            }
-        });
-
-        await Task.CompletedTask;
     }
 }

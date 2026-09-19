@@ -58,6 +58,7 @@ public class CoreConfigContextBuilder
             RoutingItem = await ConfigHandler.GetDefaultRouting(config),
             IsWindows = Utils.IsWindows(),
             IsMacOS = Utils.IsMacOS(),
+            HasGlobalIPv6Address = Utils.HasGlobalIPv6Address(),
         };
         var validatorResult = NodeValidatorResult.Empty();
         var (actNode, nodeValidatorResult) = await ResolveNodeAsync(context, node);
@@ -539,7 +540,7 @@ public class CoreConfigContextBuilder
         {
             var echQuerySni = node.Sni;
             if (node.StreamSecurity == Global.StreamSecurity
-                && node.EchConfigList?.Contains("://") == true)
+                && node.EchConfigList.Contains("://"))
             {
                 var idx = node.EchConfigList.IndexOf('+');
                 echQuerySni = idx > 0 ? node.EchConfigList[..idx] : node.Sni;

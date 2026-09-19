@@ -83,6 +83,12 @@ public class SubEditViewModel : MyReactiveObject, ICloseable
                 //return;
             }
         }
+        if (!HttpRequestHeadersHelper.TryParse(SelectedSource.RequestHeaders, out _))
+        {
+            NoticeManager.Instance.Enqueue(ResUI.SubRequestHeadersInvalid);
+            return;
+        }
+
         SelectedSource.CustomCoreType = Enum.TryParse<ECoreType>(CustomCoreType, out var coreType) ? coreType : null;
 
         if (await ConfigHandler.AddSubItem(_config, SelectedSource) == 0)
