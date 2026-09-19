@@ -154,12 +154,12 @@ public class UserRoutingForCustomTests
     }
 
     [Fact]
-    public void Xray_BuildUserRoutingForCustom_rule_to_custom_profile_without_chain_is_skipped()
+    public void Xray_BuildUserRoutingForCustom_rule_to_custom_profile_without_chain_is_blocked()
     {
         // Правило нацелено на профиль типа Custom. В проде такой узел остаётся в
         // AllProxiesMap, только если цепочку для него собрать не удалось — здесь это
         // смоделировано напрямую: ремарка уходит в UnsupportedCustomTargets, а правило
-        // в fragment.Rules не появляется.
+        // сохраняет условия совпадения, но блокируется вместо fallthrough.
         var customNode = new ProfileItem
         {
             IndexId = "n-custom",
@@ -181,7 +181,9 @@ public class UserRoutingForCustomTests
         var fragment = new CoreConfigV2rayService(context).BuildUserRoutingForCustom();
 
         fragment.UnsupportedCustomTargets.Should().ContainSingle().Which.Should().Be(customNode.Remarks);
-        fragment.Rules.Should().BeEmpty();
+        fragment.Rules.Should().ContainSingle();
+        fragment.Rules[0].outboundTag.Should().Be(Global.BlockTag);
+        fragment.Rules[0].domain.Should().Equal("custom.example.com");
     }
 
     private static CoreConfigContext BuildSingboxContext(string ruleSetJson)
@@ -294,12 +296,12 @@ public class UserRoutingForCustomTests
     }
 
     [Fact]
-    public void Singbox_BuildUserRoutingForCustom_rule_to_custom_profile_without_chain_is_skipped()
+    public void Singbox_BuildUserRoutingForCustom_rule_to_custom_profile_without_chain_is_blocked()
     {
         // Правило нацелено на профиль типа Custom. В проде такой узел остаётся в
         // AllProxiesMap, только если цепочку для него собрать не удалось — здесь это
         // смоделировано напрямую: ремарка уходит в UnsupportedCustomTargets, а правило
-        // в fragment.Rules не появляется.
+        // сохраняет условия совпадения, но блокируется вместо fallthrough.
         var customNode = new ProfileItem
         {
             IndexId = "n-custom",
@@ -321,6 +323,9 @@ public class UserRoutingForCustomTests
         var fragment = new CoreConfigSingboxService(context).BuildUserRoutingForCustom();
 
         fragment.UnsupportedCustomTargets.Should().ContainSingle().Which.Should().Be(customNode.Remarks);
-        fragment.Rules.Should().BeEmpty();
+        fragment.Rules.Should().ContainSingle();
+        fragment.Rules[0].action.Should().Be("reject");
+        fragment.Rules[0].outbound.Should().BeNull();
+        fragment.Rules[0].domain_keyword.Should().Equal("custom.example.com");
     }
 }

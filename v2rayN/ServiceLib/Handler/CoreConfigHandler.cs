@@ -78,6 +78,11 @@ public static class CoreConfigHandler
             // ApplyCustomRuleState здесь больше не вызывается.
             var composed = CustomConfigComposer.Compose(rawJson, coreType, context);
 
+            if (composed.Error != null || (context.SharedRoutingPort != null && composed.Json == null))
+            {
+                ret.Msg = composed.Error ?? "Unable to prepare shared native routing.";
+                return ret;
+            }
             if (composed.Json.IsNotEmpty())
             {
                 ret.Msg = string.Format(ResUI.SuccessfulConfiguration, "");

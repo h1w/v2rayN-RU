@@ -14,6 +14,8 @@ public record CoreConfigContext
     /// Наполняется CoreConfigContextBuilder, исполняется CoreManager.
     /// </summary>
     public List<ChainCoreDescriptor> ChainCores { get; init; } = [];
+    /// <summary>Own-only SOCKS ingress in the active native process, never a child process.</summary>
+    public int? SharedRoutingPort { get; set; }
     public Config AppConfig { get; init; } = new();
     public FullConfigTemplateItem? FullConfigTemplate { get; init; } = new();
 

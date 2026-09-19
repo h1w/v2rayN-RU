@@ -7,6 +7,92 @@ namespace ServiceLib.Tests.Handler;
 
 public class CustomConfigComposerTests
 {
+    // Section 6 safety regressions: resource isolation/rejection and fail-closed targets.
+    [Theory]
+    [InlineData("clash_api", "external_controller", "127.0.0.1:31003")]
+    [InlineData("cache_file", "path", "selector-state.db")]
+    public void Section6_probe_duplicated_router_must_isolate_resources_or_reject(
+        string section, string key, string originalValue)
+    {
+        const string raw = """
+        {
+          "outbounds": [
+            { "type": "selector", "tag": "pick", "outbounds": ["a", "b"], "default": "a" },
+            { "type": "socks", "tag": "a", "server": "127.0.0.1", "server_port": 31001 },
+            { "type": "socks", "tag": "b", "server": "127.0.0.1", "server_port": 31002 }
+          ],
+          "route": { "final": "pick" },
+          "experimental": {
+            "clash_api": { "external_controller": "127.0.0.1:31003" },
+            "cache_file": { "enabled": true, "path": "selector-state.db" }
+          }
+        }
+        """;
+        var child = ChainConfigBuilder.Build(raw, ECoreType.sing_box, 31004, ownedConfigs: [raw]);
+        if (child == null)
+        {
+            return; // Explicit rejection is safer than a second conflicting listener.
+        }
+        var parsed = JsonUtils.ParseJson(child)!;
+        parsed["experimental"]?[section]?[key]?.GetValue<string>()
+            .Should().NotBe(originalValue, "A-front already owns this resource");
+    }
+
+    [Theory]
+    [InlineData(ECoreType.Xray)]
+    [InlineData(ECoreType.sing_box)]
+    public void Section6_probe_unsupported_custom_target_must_not_disappear(ECoreType coreType)
+    {
+        var ctx = EmptyContext(coreType) with
+        {
+            RoutingItem = new RoutingItem
+            {
+                Id = "routing", Remarks = "probe", DomainStrategy = Global.AsIs,
+                DomainStrategy4Singbox = string.Empty,
+                RuleSet = """[{ "Id": "explicit", "Enabled": true, "OutboundTag": "missing-child", "Domain": ["full:target.test"] }]""",
+            },
+        };
+        ctx.AllProxiesMap["remark:missing-child"] = new ProfileItem
+        {
+            IndexId = "child", Remarks = "missing-child", ConfigType = EConfigType.Custom,
+        };
+        var raw = coreType == ECoreType.Xray
+            ? """{"outbounds":[{"protocol":"socks","tag":"native","settings":{"servers":[{"address":"127.0.0.1","port":31001}]}}],"routing":{"rules":[]}}"""
+            : """{"outbounds":[{"type":"socks","tag":"native","server":"127.0.0.1","server_port":31001}],"route":{"final":"native","rules":[]}}""";
+        var result = CustomConfigComposer.Compose(raw, coreType, ctx);
+        result.UnsupportedCustomTargets.Should().Contain("missing-child");
+        if (result.Json == null)
+        {
+            return;
+        }
+        var root = JsonUtils.ParseJson(result.Json)!;
+        var rules = root[coreType == ECoreType.Xray ? "routing" : "route"]!["rules"]!.AsArray();
+        rules.Should().NotBeEmpty("a warning alone permits the explicitly selected target to fall through to native");
+    }
+
+    [Fact]
+    public void Unavailable_target_uses_blackhole_despite_native_block_tag_collision()
+    {
+        var ctx = EmptyContext(ECoreType.Xray) with
+        {
+            RoutingItem = new RoutingItem
+            {
+                Id = "r", DomainStrategy = Global.AsIs, DomainStrategy4Singbox = string.Empty,
+                RuleSet = """[{"Id":"r","Enabled":true,"OutboundTag":"missing","Domain":["target.test"]},{"Id":"ok","Enabled":true,"OutboundTag":"direct","Domain":["safe.test"]}]""",
+            },
+        };
+        ctx.AllProxiesMap["remark:missing"] = new ProfileItem { ConfigType = EConfigType.Custom };
+        var result = CustomConfigComposer.Compose("""{"outbounds":[{"protocol":"socks","tag":"block"}],"routing":{"rules":[]}}""", ECoreType.Xray, ctx);
+        var root = JsonUtils.ParseJson(result.Json)!;
+        var rules = root["routing"]!["rules"]!.AsArray();
+        rules.Should().HaveCount(2);
+        var tag = rules[0]!["outboundTag"]!.GetValue<string>();
+        root["outbounds"]!.AsArray().Single(o => o!["tag"]!.GetValue<string>() == tag)!["protocol"]!.GetValue<string>()
+            .Should().Be("blackhole");
+        rules[1]!["outboundTag"]!.GetValue<string>().Should().Be("direct");
+        root["outbounds"]![0]!["protocol"]!.GetValue<string>().Should().Be("socks");
+    }
+
     private const string XrayJson = """
     {
       "inbounds": [{ "port": 10808, "protocol": "socks" }],

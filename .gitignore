@@ -405,3 +405,6 @@ FodyWeavers.xsd
 
 # Local planning/design docs — never pushed
 docs/
+
+# Local testing cores — never pushed
+local-cores/

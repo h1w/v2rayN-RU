@@ -39,14 +39,35 @@ public static class CustomConfigComposer
                 return result;
             }
 
-            var mainProxyTag = ResolveMainProxyTag(rawJson, coreType);
+            JsonArray? ownRules = null;
+            if (context.SharedRoutingPort != null)
+            {
+                var section = coreType == ECoreType.sing_box ? "route" : "routing";
+                var state = context.AppConfig.UiItem.EnableCustomRuleEditing
+                    ? JsonUtils.Deserialize<List<CustomRuleStateItem>>(context.Node.CustomRuleState) : null;
+                var ownRoot = JsonUtils.ParseJson(ApplyCustomRuleState(rawJson, coreType, state))!;
+                ownRules = ownRoot[section]?["rules"]?.DeepClone() as JsonArray ?? [];
+                ValidateSharedRules(ownRules, coreType);
+                context = NormalizeSelfTargets(context);
+            }
+            var tags = CollectTags(outbounds);
+            if (root["endpoints"] is JsonArray nativeEndpoints)
+            {
+                tags.UnionWith(CollectTags(nativeEndpoints));
+            }
+            var mainProxyTag = context.SharedRoutingPort != null
+                ? MakeUniqueTag("v2rayn-own-out", tags)
+                : ResolveMainProxyTag(rawJson, coreType);
             if (mainProxyTag.IsNullOrEmpty())
             {
                 Logging.SaveLog($"{_tag}: в custom JSON не найден proxy-выход, слияние пропущено");
                 return result;
             }
 
-            var tags = CollectTags(outbounds);
+            if (context.SharedRoutingPort != null)
+            {
+                tags.Add(mainProxyTag!); // Reserve before merging generated local outbounds.
+            }
             var usedTags = CollectUsedOutboundTags(context);
             if (usedTags.Contains(Global.DirectTag))
             {
@@ -71,6 +92,10 @@ public static class CustomConfigComposer
                 : root["routing"]?["rules"]?.AsArray();
             result.CatchAllDetected = HasRuleAfterCatchAll(finalRules, coreType);
 
+            if (ownRules != null)
+            {
+                PrepareSharedRouting(root, coreType, context, ownRules, mainProxyTag!);
+            }
             result.Json = root.ToJsonString(_writeOptions);
             return result;
         }
@@ -78,11 +103,143 @@ public static class CustomConfigComposer
         {
             Logging.SaveLog(_tag, ex);
             result.Json = null;
+            if (context.SharedRoutingPort != null)
+            {
+                result.Error = ex.Message;
+            }
             return result;
         }
     }
 
-    /// <summary>Главный proxy-выход JSON — первый непроходной выход, найденный существующим парсером.</summary>
+    private static CoreConfigContext NormalizeSelfTargets(CoreConfigContext context)
+    {
+        var rules = JsonUtils.Deserialize<List<RulesItem>>(context.RoutingItem?.RuleSet) ?? [];
+        foreach (var rule in rules)
+        {
+            if (!Global.OutboundTags.Contains(rule.OutboundTag)
+                && (rule.OutboundTag == context.Node.Remarks
+                    || context.AllProxiesMap.GetValueOrDefault($"remark:{rule.OutboundTag}")?.IndexId == context.Node.IndexId))
+            {
+                rule.OutboundTag = Global.ProxyTag;
+            }
+        }
+        if (context.RoutingItem == null)
+        {
+            return context;
+        }
+        var routing = JsonUtils.DeepCopy(context.RoutingItem);
+        routing.RuleSet = JsonUtils.Serialize(rules);
+        return context with { RoutingItem = routing };
+    }
+
+    private static void ValidateSharedRules(JsonArray rules, ECoreType coreType)
+    {
+        // SOCKS creates a new connection: these predicates cannot be preserved.
+        string[] forbidden = coreType == ECoreType.Xray
+            ? ["inboundTag", "source", "sourceIP", "sourcePort", "localIP", "localPort", "process", "user", "vlessRoute", "protocol", "attrs"]
+            : ["inbound", "source_ip_cidr", "source_ip_is_private", "source_port", "source_port_range", "source_geoip",
+               "process_name", "process_path", "process_path_regex", "auth_user", "user", "user_id", "package_name", "package_name_regex",
+               "source_mac_address", "source_hostname", "protocol", "client"];
+        foreach (var rule in rules.OfType<JsonObject>())
+        {
+            var unsupported = forbidden.FirstOrDefault(rule.ContainsKey);
+            if (unsupported != null)
+            {
+                throw new InvalidOperationException($"Shared native routing cannot preserve '{unsupported}' across SOCKS.");
+            }
+            if (coreType == ECoreType.sing_box)
+            {
+                var action = rule["action"]?.GetValue<string>() ?? "route";
+                if (action is not ("route" or "reject" or "hijack-dns"))
+                {
+                    throw new InvalidOperationException($"Shared native routing does not preserve nonterminal/context-dependent action '{action}'.");
+                }
+                if (rule["rules"] is JsonArray nested)
+                {
+                    ValidateSharedRules(nested, coreType);
+                }
+            }
+        }
+    }
+
+    private static void PrepareSharedRouting(JsonNode root, ECoreType coreType, CoreConfigContext context,
+        JsonArray ownRules, string loopTag)
+    {
+        const string frontTag = "v2rayn-front-in";
+        const string ownTag = "v2rayn-own-in";
+        var port = context.SharedRoutingPort!.Value;
+        var frontPort = context.Node.PreSocksPort is > 0 and <= 65535
+            ? context.Node.PreSocksPort.Value : context.AppConfig.Inbound.First().LocalPort;
+        if (frontPort == port)
+        {
+            throw new InvalidOperationException("Front and own routing listeners require distinct ports.");
+        }
+        JsonObject Inbound(string tag, int listenPort) => coreType == ECoreType.sing_box
+            ? new JsonObject { ["type"] = "socks", ["tag"] = tag, ["listen"] = Global.Loopback, ["listen_port"] = listenPort }
+            : new JsonObject { ["protocol"] = "socks", ["tag"] = tag, ["listen"] = Global.Loopback, ["port"] = listenPort,
+                ["settings"] = new JsonObject { ["udp"] = true, ["auth"] = "noauth" } };
+        root["inbounds"] = new JsonArray(Inbound(frontTag, frontPort), Inbound(ownTag, port));
+        if (ChainConfigBuilder.HasConflictingResources(root))
+        {
+            throw new InvalidOperationException("Shared native routing has conflicting listener or state resources.");
+        }
+        if (coreType == ECoreType.Xray && root["routing"]?["balancers"] is JsonArray balancers
+            && balancers.OfType<JsonObject>().Any(b => b["selector"] is JsonArray selectors
+                && selectors.Any(s => loopTag.StartsWith(s!.GetValue<string>(), StringComparison.Ordinal))))
+        {
+            throw new InvalidOperationException("Shared routing balancer selector includes the own-routing loopback outbound.");
+        }
+        var outbounds = root["outbounds"]!.AsArray();
+        outbounds.Add(coreType == ECoreType.sing_box
+            ? new JsonObject { ["type"] = "socks", ["tag"] = loopTag, ["server"] = Global.Loopback, ["server_port"] = port, ["version"] = "5" }
+            : new JsonObject { ["protocol"] = "socks", ["tag"] = loopTag,
+                ["settings"] = new JsonObject { ["servers"] = new JsonArray(new JsonObject { ["address"] = Global.Loopback, ["port"] = port }) } });
+        var section = coreType == ECoreType.sing_box ? "route" : "routing";
+        root[section] ??= new JsonObject();
+        var frontRules = root[section]!["rules"] as JsonArray ?? [];
+        var combined = new JsonArray();
+        foreach (var rule in frontRules.OfType<JsonObject>())
+        {
+            combined.Add(GuardRule(rule, frontTag, coreType));
+        }
+        foreach (var rule in ownRules.OfType<JsonObject>())
+        {
+            combined.Add(GuardRule(rule, ownTag, coreType));
+        }
+        root[section]!["rules"] = combined;
+        // No catch-all is added: preserving native default also preserves Xray's
+        // IPIfNonMatch second pass, which a synthetic catch-all would suppress.
+    }
+
+    private static JsonObject GuardRule(JsonObject rule, string inbound, ECoreType coreType)
+    {
+        var clone = (JsonObject)rule.DeepClone();
+        if (coreType == ECoreType.Xray)
+        {
+            if (clone.ContainsKey("inboundTag"))
+            {
+                throw new InvalidOperationException("Xray inboundTag intersection is unsupported in shared routing.");
+            }
+            clone["inboundTag"] = new JsonArray(inbound);
+            return clone;
+        }
+        // Action fields belong on the outer logical rule, never on a predicate child.
+        string[] actionFields = ["action", "outbound", "method", "no_drop", "override_address", "override_port",
+            "network_strategy", "fallback_network_type", "fallback_delay", "udp_disable_domain_unmapping", "udp_connect",
+            "udp_timeout", "tls_fragment", "tls_fragment_fallback_delay", "tls_record_fragment", "tls_spoof", "tls_spoof_method"];
+        var guarded = new JsonObject { ["type"] = "logical", ["mode"] = "and" };
+        foreach (var key in actionFields)
+        {
+            if (clone.Remove(key, out var value))
+            {
+                guarded[key] = value;
+            }
+        }
+        guarded["rules"] = new JsonArray(new JsonObject { ["inbound"] = new JsonArray(inbound) }, clone);
+        return guarded;
+    }
+
+    /// <summary>Legacy composition only; runtime shared routing never uses the test-outbound parser.</summary>
     private static string? ResolveMainProxyTag(string? rawJson, ECoreType coreType)
     {
         var targets = CustomConfigParser.ParseTestableOutbounds(rawJson, coreType);
@@ -175,6 +332,24 @@ public static class CustomConfigComposer
     private static List<string> MergeXray(JsonNode root, JsonArray outbounds, HashSet<string> tags, string mainProxyTag, CoreConfigContext context)
     {
         var fragment = new CoreConfigV2rayService(context).BuildUserRoutingForCustom();
+        // Only generated local rules are remapped. Native rules/outbounds retain their tags.
+        if (fragment.Rules.Any(r => r.outboundTag == Global.BlockTag))
+        {
+            var blackhole = outbounds.FirstOrDefault(o =>
+                o?["tag"]?.GetValue<string>() == Global.BlockTag
+                && o?["protocol"]?.GetValue<string>() == "blackhole");
+            var blockTag = Global.BlockTag;
+            if (blackhole == null)
+            {
+                blockTag = MakeUniqueTag(Global.BlockTag, tags);
+                outbounds.Add(new JsonObject { ["protocol"] = "blackhole", ["tag"] = blockTag });
+                tags.Add(blockTag);
+            }
+            foreach (var rule in fragment.Rules.Where(r => r.outboundTag == Global.BlockTag))
+            {
+                rule.outboundTag = blockTag;
+            }
+        }
         var unified = context.AppConfig.UiItem.EnableCustomRuleEditing;
         if (!unified && fragment.Rules.Count == 0 && fragment.ExtraOutbounds.Count == 0)
         {
