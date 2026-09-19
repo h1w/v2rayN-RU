@@ -31,10 +31,10 @@ public class SharedCustomRoutingTests
     [Theory]
     [InlineData(ECoreType.Xray, "inboundTag", "[\"old-in\"]")]
     [InlineData(ECoreType.Xray, "sourceIP", "[\"192.0.2.1\"]")]
+    [InlineData(ECoreType.Xray, "process", "[\"app.exe\"]")]
     [InlineData(ECoreType.sing_box, "inbound", "[\"old-in\"]")]
+    [InlineData(ECoreType.sing_box, "process_name", "[\"app.exe\"]")]
     [InlineData(ECoreType.sing_box, "action", "\"route-options\"")]
-    [InlineData(ECoreType.sing_box, "action", "\"sniff\"")]
-    [InlineData(ECoreType.sing_box, "action", "\"resolve\"")]
     public async Task Shared_router_rejects_unpreservable_context(ECoreType core, string key, string value)
     {
         var ctx = Context(core);
@@ -44,6 +44,107 @@ public class SharedCustomRoutingTests
         var result = CustomConfigComposer.Compose(root.ToJsonString(), core, ctx);
         result.Json.Should().BeNull();
         result.Error.Should().NotBeNullOrEmpty();
+    }
+
+    /// <summary>
+    /// `protocol` приходит из сниффинга полезной нагрузки, а нагрузка через loopback-SOCKS
+    /// проходит без изменений — значит предикат сохраняется. Это самое частое правило
+    /// в JSON подписок ({"protocol":["bittorrent"],"outboundTag":"direct"}), и отказ
+    /// на нём делал такие профили неработоспособными целиком.
+    /// </summary>
+    [Fact]
+    public async Task Shared_xray_preserves_protocol_predicate_by_sniffing_managed_inbounds()
+    {
+        var ctx = Context(ECoreType.Xray);
+        ctx.AppConfig.Inbound[0].SniffingEnabled = true;
+        ctx.AppConfig.Inbound[0].DestOverride = ["http", "tls"];
+        await CoreConfigContextBuilder.ResolveRuleTargetsAsync(ctx, NodeValidatorResult.Empty(), true, () => 31011);
+        var root = JsonUtils.ParseJson(Source(ECoreType.Xray))!;
+        root["routing"]!["rules"]![0]!["protocol"] = System.Text.Json.Nodes.JsonNode.Parse("""["bittorrent"]""");
+
+        var result = CustomConfigComposer.Compose(root.ToJsonString(), ECoreType.Xray, ctx);
+
+        result.Error.Should().BeNull();
+        var composed = JsonUtils.ParseJson(result.Json)!;
+        var inbounds = composed["inbounds"]!.AsArray();
+        inbounds.Should().HaveCount(2);
+        foreach (var inbound in inbounds)
+        {
+            inbound!["sniffing"]!["enabled"]!.GetValue<bool>().Should().BeTrue();
+            inbound["sniffing"]!["destOverride"]!.AsArray().Should().NotBeEmpty();
+        }
+        // Own side must not rewrite the address its own outbounds receive.
+        inbounds[1]!["sniffing"]!["routeOnly"]!.GetValue<bool>().Should().BeTrue();
+        composed["routing"]!["rules"]!.AsArray()
+            .Count(r => r?["protocol"] is not null).Should().Be(2, "front and own copies both keep the predicate");
+    }
+
+    /// <summary>
+    /// У sing-box сниффинг задаётся правилом, а не входом: без него `protocol` молча
+    /// перестал бы совпадать, поэтому отказ сохраняется именно в этом случае.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Shared_singbox_protocol_requires_its_own_sniff_action(bool declaresSniff)
+    {
+        var ctx = Context(ECoreType.sing_box);
+        await CoreConfigContextBuilder.ResolveRuleTargetsAsync(ctx, NodeValidatorResult.Empty(), true, () => 31011);
+        var root = JsonUtils.ParseJson(Source(ECoreType.sing_box))!;
+        var rules = root["route"]!["rules"]!.AsArray();
+        rules[0]!["protocol"] = System.Text.Json.Nodes.JsonNode.Parse("""["bittorrent"]""");
+        if (declaresSniff)
+        {
+            rules.Insert(0, System.Text.Json.Nodes.JsonNode.Parse("""{"action":"sniff"}""")!);
+        }
+
+        var result = CustomConfigComposer.Compose(root.ToJsonString(), ECoreType.sing_box, ctx);
+
+        if (declaresSniff)
+        {
+            result.Error.Should().BeNull();
+            result.Json.Should().NotBeNull();
+        }
+        else
+        {
+            result.Json.Should().BeNull();
+            result.Error.Should().Contain("sniff");
+        }
+    }
+
+    /// <summary>
+    /// Общий роутинг сам заменяет входы JSON, поэтому предикат, целиком указывающий
+    /// на них, означал «трафик клиентских входов» — то есть ровно то, что теперь
+    /// приходит на управляемый вход. Такое правило должно сохраниться, а не отклонить
+    /// профиль. Ссылка на незнакомый тег по-прежнему отклоняется.
+    /// </summary>
+    [Theory]
+    [InlineData(ECoreType.Xray, true)]
+    [InlineData(ECoreType.Xray, false)]
+    [InlineData(ECoreType.sing_box, true)]
+    [InlineData(ECoreType.sing_box, false)]
+    public async Task Shared_router_keeps_rules_naming_only_the_inbounds_it_replaces(ECoreType core, bool onlyReplaced)
+    {
+        var ctx = Context(core);
+        await CoreConfigContextBuilder.ResolveRuleTargetsAsync(ctx, NodeValidatorResult.Empty(), true, () => 31011);
+        var root = JsonUtils.ParseJson(Source(core))!;
+        var key = core == ECoreType.Xray ? "inboundTag" : "inbound";
+        var tags = onlyReplaced ? """["discard"]""" : """["discard","somewhere-else"]""";
+        root[core == ECoreType.Xray ? "routing" : "route"]!["rules"]![0]![key] =
+            System.Text.Json.Nodes.JsonNode.Parse(tags);
+
+        var result = CustomConfigComposer.Compose(root.ToJsonString(), core, ctx);
+
+        if (onlyReplaced)
+        {
+            result.Error.Should().BeNull();
+            result.Json.Should().NotBeNull();
+        }
+        else
+        {
+            result.Json.Should().BeNull();
+            result.Error.Should().NotBeNullOrEmpty();
+        }
     }
 
     [Theory]

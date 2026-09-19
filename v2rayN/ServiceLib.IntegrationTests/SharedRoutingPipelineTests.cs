@@ -183,6 +183,59 @@ public sealed class SharedRoutingPipelineTests
         finally { field.SetValue(AppManager.Instance, previous); }
     }
 
+    /// <summary>
+    /// `protocol` вычисляется сниффингом полезной нагрузки, поэтому обязан совпадать и
+    /// после loopback-SOCKS. Локальное правило уводит трафик на own-вход по IP, так что
+    /// сработать может только собственное protocol-правило JSON уже за хопом: если
+    /// управляемый вход не сниффит, трафик уйдёт в дефолт на a вместо b.
+    /// </summary>
+    [Theory]
+    [InlineData(ECoreType.Xray)]
+    [InlineData(ECoreType.sing_box)]
+    public async Task Own_side_protocol_rule_matches_behind_the_socks_hop(ECoreType type)
+    {
+        var executable = CoreProcessFixture.RequireExecutable(type);
+        await using var destination = new LoopbackTargetServer(IPAddress.Loopback);
+        await using var a = new LoopbackProxyFixture([destination.Endpoint]);
+        await using var b = new LoopbackProxyFixture([destination.Endpoint]);
+        using var front = Reserve();
+        using var own = Reserve();
+        var field = typeof(AppManager).GetField("_config", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var previous = field.GetValue(AppManager.Instance);
+        try
+        {
+            var config = CoreConfigTestFactory.CreateConfig(type);
+            config.UiItem.EnableCustomRuleEditing = true;
+            CoreConfigTestFactory.BindAppManagerConfig(config);
+            var node = new ProfileItem { IndexId = "active", Remarks = "active", ConfigType = EConfigType.Custom,
+                CoreType = type, PreSocksPort = Port(front),
+                CustomRuleState = type == ECoreType.Xray
+                    ? """[{"LocalId":"local","Enabled":true},{"Index":0,"Enabled":true}]"""
+                    : """[{"LocalId":"local","Enabled":true},{"Index":0,"Enabled":true},{"Index":1,"Enabled":true}]""" };
+            var ctx = CoreConfigTestFactory.CreateContext(config, node, type) with
+            {
+                SharedRoutingPort = Port(own),
+                RoutingItem = new RoutingItem { DomainStrategy = Global.AsIs, DomainStrategy4Singbox = "",
+                    RuleSet = JsonUtils.Serialize(new[] { new RulesItem { Id = "local", Enabled = true,
+                        OutboundTag = "proxy", Ip = ["127.0.0.1/32"] } }) }
+            };
+            // Default/final is a; only a matching protocol predicate can reach b.
+            var source = type == ECoreType.Xray
+                ? $$$"""{"outbounds":[{"tag":"a","protocol":"socks","settings":{"servers":[{"address":"127.0.0.1","port":{{{a.Port}}}}]}},{"tag":"b","protocol":"socks","settings":{"servers":[{"address":"127.0.0.1","port":{{{b.Port}}}}]}}],"routing":{"rules":[{"type":"field","protocol":["http"],"outboundTag":"b"}]}}"""
+                : $$$"""{"outbounds":[{"tag":"a","type":"socks","server":"127.0.0.1","server_port":{{{a.Port}}}},{"tag":"b","type":"socks","server":"127.0.0.1","server_port":{{{b.Port}}}}],"route":{"final":"a","rules":[{"action":"sniff"},{"protocol":["http"],"action":"route","outbound":"b"}]}}""";
+
+            var result = CustomConfigComposer.Compose(source, type, ctx);
+            Assert.Null(result.Error);
+            Assert.NotNull(result.Json);
+            var frontPort = Port(front);
+            front.Stop(); own.Stop();
+            await using var process = await CoreProcessFixture.StartAsync(executable, type, result.Json, frontPort);
+            await RoutingPipelineTests.AssertRouteAsync(frontPort, destination, b, a);
+            process.AssertRunning();
+        }
+        finally { field.SetValue(AppManager.Instance, previous); }
+    }
+
     private static TcpListener Reserve() { var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); return listener; }
     private static int Port(TcpListener listener) => ((IPEndPoint)listener.LocalEndpoint).Port;
     private static string Native(ECoreType type, int a, int b)
