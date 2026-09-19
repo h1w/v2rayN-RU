@@ -80,6 +80,25 @@ public class CoreManager
             return;
         }
 
+        // Prepare the future pre-core before starting any children: its listeners/cache
+        // must participate in the same resource claims as the main configuration.
+        if (preContext != null)
+        {
+            var preResult = await CoreConfigHandler.GenerateClientConfig(preContext, Utils.GetBinConfigPath(Global.CorePreConfigFileName));
+            if (!preResult.Success)
+            {
+                await UpdateFunc(true, preResult.Msg);
+                return;
+            }
+            if (!ChainConfigBuilder.AreLaunchResourcesCompatible([
+                await File.ReadAllTextAsync(fileName),
+                await File.ReadAllTextAsync(Utils.GetBinConfigPath(Global.CorePreConfigFileName))]))
+            {
+                await UpdateFunc(true, "Main and pre-core configurations have conflicting resources.");
+                return;
+            }
+        }
+
         await UpdateFunc(false, $"{node.GetSummary()}");
         await UpdateFunc(false, $"{Utils.GetRuntimeInfo()}");
         await UpdateFunc(false, string.Format(ResUI.StartService, DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss")));
@@ -92,8 +111,13 @@ public class CoreManager
             await WindowsUtils.RemoveTunDevice();
         }
 
-        await CoreStartChainServices(mainContext);
+        await CoreStartChainServices(mainContext, preContext);
         await CoreStart(mainContext);
+        if (_processService == null)
+        {
+            await CoreStop();
+            return;
+        }
         await WaitForProxyPort(preContext);
         await CoreStartPreService(preContext);
 
@@ -210,7 +234,8 @@ public class CoreManager
         }
         finally
         {
-            proc.Dispose();
+            try { proc.Dispose(); }
+            catch (Exception ex) { Logging.SaveLog(_tag, ex); }
         }
     }
 
@@ -263,11 +288,21 @@ public class CoreManager
     /// Каждое отдаёт socks на своём порту; главный конфиг ходит к ним обычными socks-выходами.
     /// Вызывается ДО старта главного ядра, чтобы его выходам было кого слушать.
     /// </summary>
-    private async Task CoreStartChainServices(CoreConfigContext? mainContext)
+    private async Task CoreStartChainServices(CoreConfigContext? mainContext, CoreConfigContext? preContext)
     {
         if (mainContext?.ChainCores is not { Count: > 0 })
         {
             return;
+        }
+        var ownedConfigs = new List<string>();
+        var mainPath = Utils.GetBinConfigPath(Global.CoreConfigFileName);
+        if (File.Exists(mainPath))
+        {
+            ownedConfigs.Add(await File.ReadAllTextAsync(mainPath));
+        }
+        if (preContext != null)
+        {
+            ownedConfigs.Add(await File.ReadAllTextAsync(Utils.GetBinConfigPath(Global.CorePreConfigFileName)));
         }
         foreach (var descriptor in mainContext.ChainCores)
         {
@@ -284,7 +319,8 @@ public class CoreManager
                     continue;
                 }
                 var rawJson = await File.ReadAllTextAsync(sourcePath);
-                var chainConfig = ChainConfigBuilder.Build(rawJson, descriptor.CoreType, descriptor.Port);
+                var chainConfig = ChainConfigBuilder.Build(rawJson, descriptor.CoreType, descriptor.Port,
+                    descriptor.Node.CustomRuleState, _config.UiItem.EnableCustomRuleEditing, ownedConfigs);
                 if (chainConfig.IsNullOrEmpty())
                 {
                     await UpdateFunc(false, string.Format(ResUI.MsgChainCoreStartFailed, descriptor.Node.Remarks));
@@ -296,13 +332,20 @@ public class CoreManager
                 var coreInfo = CoreInfoManager.Instance.GetCoreInfo(descriptor.CoreType);
                 // Без sudo и без проброса логов: цепочка не занимается TUN, а её вывод
                 // смешался бы с выводом главного ядра — ProcessService не помечает источник.
-                var proc = await RunProcess(coreInfo, descriptor.ConfigFileName, false, false);
+                var proc = await ChainCoreLifecycle.StartReadyAsync(
+                    () => RunProcess(coreInfo, descriptor.ConfigFileName, false, false),
+                    process => ChainCoreLifecycle.WaitReadyAsync(() => process.HasExited,
+                        token => ChainCoreLifecycle.ProbeSocksAsync(descriptor.Port, token),
+                        TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(50)),
+                    StopProcessSafe,
+                    () => { File.Delete(Utils.GetBinConfigPath(descriptor.ConfigFileName)); return Task.CompletedTask; });
                 if (proc is null)
                 {
                     await UpdateFunc(false, string.Format(ResUI.MsgChainCoreStartFailed, descriptor.Node.Remarks));
                     continue;
                 }
                 _processChainServices.Add(proc);
+                ownedConfigs.Add(chainConfig!);
             }
             catch (Exception ex)
             {
@@ -332,9 +375,8 @@ public class CoreManager
         if (_processService is { HasExited: false } && preContext != null)
         {
             var preCoreType = preContext?.Node?.CoreType ?? ECoreType.sing_box;
-            var fileName = Utils.GetBinConfigPath(Global.CorePreConfigFileName);
-            var result = await CoreConfigHandler.GenerateClientConfig(preContext, fileName);
-            if (result.Success)
+            // Use the exact configuration whose resource claims were checked before startup.
+            if (File.Exists(Utils.GetBinConfigPath(Global.CorePreConfigFileName)))
             {
                 var coreInfo = CoreInfoManager.Instance.GetCoreInfo(preCoreType);
                 var proc = await RunProcess(coreInfo, Global.CorePreConfigFileName, true, true);
@@ -474,17 +516,22 @@ public class CoreManager
             updateFunc: _updateFunc
         );
 
-        await procService.StartAsync();
-
-        await Task.Delay(100);
-
-        if (procService is null or { HasExited: true })
+        try
         {
-            throw new Exception(ResUI.FailedToRunCore);
+            await procService.StartAsync();
+            await Task.Delay(100);
+            if (procService.HasExited)
+            {
+                throw new Exception(ResUI.FailedToRunCore);
+            }
+            AddProcessJob(procService.Handle);
+            return procService;
         }
-        AddProcessJob(procService.Handle);
-
-        return procService;
+        catch
+        {
+            await StopProcessSafe(procService);
+            throw;
+        }
     }
 
     private void AddProcessJob(nint processHandle)

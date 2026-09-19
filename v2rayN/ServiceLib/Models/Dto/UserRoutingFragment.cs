@@ -55,6 +55,8 @@ public class CustomComposeResult
 {
     /// <summary>Смерженный конфиг, либо null — признак «фолбэк на дословное копирование».</summary>
     public string? Json { get; set; }
+    /// <summary>Hard preparation failure; must not fall back to the original JSON.</summary>
+    public string? Error { get; set; }
 
     /// <summary>Последнее правило JSON ловит весь трафик — локальные правила недостижимы.</summary>
     public bool CatchAllDetected { get; set; }

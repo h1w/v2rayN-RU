@@ -17,7 +17,7 @@ public static class CustomRuleStateHelper
         {
             foreach (var s in state)
             {
-                if (s.Index < 0 || s.Index >= count || used.Contains(s.Index))
+                if (s.LocalId != null || s.Index < 0 || s.Index >= count || used.Contains(s.Index))
                 {
                     continue;
                 }
@@ -43,7 +43,7 @@ public static class CustomRuleStateHelper
         }
         foreach (var s in state)
         {
-            if (s.Index == ordinal)
+            if (s.LocalId == null && s.Index == ordinal)
             {
                 return s.Enabled;
             }

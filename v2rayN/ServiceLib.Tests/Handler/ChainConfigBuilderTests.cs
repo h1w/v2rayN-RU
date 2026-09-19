@@ -137,6 +137,107 @@ public class ChainConfigBuilderTests
         route!["final"]!.GetValue<string>().Should().Be("main-out");
     }
 
+    private static string? BuildWithState(string raw, ECoreType coreType, string? state, bool editing) =>
+        ChainConfigBuilder.Build(raw, coreType, 34567, state, editing);
+
+    private static string RulesSource(ECoreType coreType, bool includeNull = false)
+    {
+        var root = JsonUtils.ParseJson(coreType == ECoreType.Xray ? XrayJson : SingboxJson)!;
+        var section = coreType == ECoreType.Xray ? "routing" : "route";
+        root[section]!["rules"] = System.Text.Json.Nodes.JsonNode.Parse(includeNull
+            ? """[{"domain":["a.test"]},null,{"domain":["b.test"]},{"domain":["c.test"]},{"domain":["d.test"]}]"""
+            : """[{"domain":["a.test"]},{"domain":["b.test"]},{"domain":["c.test"]},{"domain":["d.test"]}]""");
+        return root.ToJsonString();
+    }
+
+    private static string[] Domains(string? json, ECoreType coreType) =>
+        JsonUtils.ParseJson(json)![coreType == ECoreType.Xray ? "routing" : "route"]!["rules"]!
+            .AsArray().Where(rule => rule is not null)
+            .Select(rule => rule!["domain"]![0]!.GetValue<string>()).ToArray();
+
+    [Theory]
+    [InlineData(ECoreType.Xray)]
+    [InlineData(ECoreType.sing_box)]
+    public void Build_applies_child_state_exactly_once_and_preserves_source_and_inbound_rewrite(ECoreType coreType)
+    {
+        var source = RulesSource(coreType);
+        var original = JsonUtils.ParseJson(source)!;
+        const string state = """[{"Index":2,"Enabled":true},{"Index":0,"Enabled":false},{"Index":1,"Enabled":true}]""";
+
+        var result = BuildWithState(source, coreType, state, true);
+
+        // A second application would select d,b and disable c: this is deliberately
+        // not an idempotent permutation in the output's new ordinal space.
+        Domains(result, coreType).Should().Equal("c.test", "b.test", "d.test");
+        var parsed = JsonUtils.ParseJson(result)!;
+        parsed["inbounds"]!.AsArray().Count.Should().Be(1);
+        parsed["inbounds"]![0]!["tag"]!.GetValue<string>().Should().Be("chain-in");
+        parsed["inbounds"]![0]![coreType == ECoreType.Xray ? "port" : "listen_port"]!
+            .GetValue<int>().Should().Be(34567);
+        parsed["outbounds"]!.ToJsonString().Should().Be(original["outbounds"]!.ToJsonString());
+        parsed["log"]!.ToJsonString().Should().Be(original["log"]!.ToJsonString());
+        source.Should().Be(original.ToJsonString());
+        Domains(source, coreType).Should().Equal("a.test", "b.test", "c.test", "d.test");
+        BuildWithState(source, coreType, state, true).Should().Be(result);
+    }
+
+    [Theory]
+    [InlineData(ECoreType.Xray)]
+    [InlineData(ECoreType.sing_box)]
+    public void Build_ignores_local_tokens_duplicates_and_invalid_ordinals_and_backfills_non_null_rules(ECoreType coreType)
+    {
+        var source = RulesSource(coreType, includeNull: true);
+        const string state = """
+        [
+          {"LocalId":"global-default-index","Enabled":false},
+          {"LocalId":"global-explicit-index","Index":1,"Enabled":false},
+          {"Index":2,"Enabled":true},
+          {"Index":2,"Enabled":false},
+          {"Index":0,"Enabled":false},
+          {"Index":0,"Enabled":true},
+          {"Index":-1,"Enabled":true},
+          {"Index":99,"Enabled":true}
+        ]
+        """;
+
+        var result = BuildWithState(source, coreType, state, true);
+
+        Domains(result, coreType).Should().Equal("c.test", "b.test", "d.test");
+        JsonUtils.ParseJson(result)![coreType == ECoreType.Xray ? "routing" : "route"]!["rules"]!
+            .AsArray().Count.Should().Be(3);
+    }
+
+    [Theory]
+    [InlineData(ECoreType.Xray)]
+    [InlineData(ECoreType.sing_box)]
+    public void Build_editing_off_does_not_apply_saved_state(ECoreType coreType)
+    {
+        var source = RulesSource(coreType, includeNull: true);
+        const string state = """[{"Index":2,"Enabled":true},{"Index":0,"Enabled":false}]""";
+
+        var result = BuildWithState(source, coreType, state, false);
+
+        var section = coreType == ECoreType.Xray ? "routing" : "route";
+        JsonUtils.ParseJson(result)![section]!.ToJsonString().Should()
+            .Be(JsonUtils.ParseJson(source)![section]!.ToJsonString());
+    }
+
+    [Theory]
+    [InlineData(ECoreType.Xray, null)]
+    [InlineData(ECoreType.Xray, "[]")]
+    [InlineData(ECoreType.sing_box, null)]
+    [InlineData(ECoreType.sing_box, "[]")]
+    public void Build_absent_state_preserves_original_rules(ECoreType coreType, string? state)
+    {
+        var source = RulesSource(coreType, includeNull: true);
+
+        var result = BuildWithState(source, coreType, state, true);
+
+        var section = coreType == ECoreType.Xray ? "routing" : "route";
+        JsonUtils.ParseJson(result)![section]!.ToJsonString().Should()
+            .Be(JsonUtils.ParseJson(source)![section]!.ToJsonString());
+    }
+
     [Fact]
     public void Build_returns_null_for_unusable_json()
     {

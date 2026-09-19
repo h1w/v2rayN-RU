@@ -13,6 +13,189 @@ namespace ServiceLib.Tests.CoreConfig.Singbox;
 public class CoreConfigSingboxServiceTests
 {
     [Fact]
+    public void IPIfNonMatch_ShouldKeepNamedTargetsAcrossBothPassesAndRepeatedGeneration()
+    {
+        var config = CoreConfigTestFactory.CreateConfig(ECoreType.sing_box);
+        config.RoutingBasicItem.DomainStrategy = Global.IPIfNonMatch;
+        CoreConfigTestFactory.BindAppManagerConfig(config);
+        var main = CoreConfigTestFactory.CreateSocksNode(ECoreType.sing_box, "a", "A");
+        var b = CoreConfigTestFactory.CreateSocksNode(ECoreType.sing_box, "b", "B");
+        var c = CoreConfigTestFactory.CreateSocksNode(ECoreType.sing_box, "c", "C");
+        var targets = new[] { "B", "C", "B", Global.DirectTag, Global.BlockTag, Global.ProxyTag };
+        var items = targets.Select((target, i) => new RulesItem
+        {
+            Id = $"rule-{i}", Enabled = true, RuleType = ERuleType.Routing,
+            OutboundTag = target, Ip = [$"192.0.2.{i + 1}/32"], Port = "443", Network = "tcp",
+        }).ToList();
+        var snapshot = JsonUtils.Serialize(items);
+        var context = CoreConfigTestFactory.CreateContext(config, main, ECoreType.sing_box) with
+        {
+            RoutingItem = new RoutingItem { RuleSet = snapshot },
+        };
+        context.AllProxiesMap["remark:B"] = b;
+        context.AllProxiesMap["remark:C"] = c;
+        var service = new CoreConfigSingboxService(context);
+        SingboxConfig Generate()
+        {
+            var result = service.GenerateClientConfigContent();
+            result.Success.Should().BeTrue($"ret msg: {result.Msg}");
+            return JsonUtils.Deserialize<SingboxConfig>(result.Data!.ToString())!;
+        }
+        var first = Generate();
+        var second = Generate();
+        for (var i = 0; i < items.Count; i++)
+        {
+            var expected = targets[i] switch { "B" => "b-proxy-B", "C" => "c-proxy-C", var tag => tag };
+            foreach (var generated in new[] { first, second })
+            {
+                var matches = generated.route.rules.Where(r => r.ip_cidr?.Contains(items[i].Ip[0]) == true).ToList();
+                matches.Should().HaveCount(2);
+                if (expected == Global.BlockTag)
+                    matches.Should().OnlyContain(r => r.action == "reject" && r.outbound == null);
+                else
+                    matches.Should().OnlyContain(r => r.outbound == expected);
+            }
+        }
+        first.outbounds.Should().ContainSingle(o => o.tag == "b-proxy-B");
+        first.outbounds.Should().ContainSingle(o => o.tag == "c-proxy-C");
+        second.route.Should().BeEquivalentTo(first.route);
+        second.outbounds.Should().BeEquivalentTo(first.outbounds);
+        JsonUtils.Serialize(items).Should().Be(snapshot);
+        context.RoutingItem.RuleSet.Should().Be(snapshot);
+    }
+
+    [Theory]
+    [InlineData("B")]
+    [InlineData("direct")]
+    [InlineData("block")]
+    [InlineData("proxy")]
+    public void GenRoutingUserRule_ShouldNotMutateInput(string target)
+    {
+        var config = CoreConfigTestFactory.CreateConfig(ECoreType.sing_box);
+        CoreConfigTestFactory.BindAppManagerConfig(config);
+        var context = CoreConfigTestFactory.CreateContext(config,
+            CoreConfigTestFactory.CreateSocksNode(ECoreType.sing_box), ECoreType.sing_box);
+        context.AllProxiesMap["remark:B"] = CoreConfigTestFactory.CreateSocksNode(ECoreType.sing_box, "b", "B");
+        var service = new CoreConfigSingboxService(context);
+        service.BuildUserRoutingForCustom(); // Initializes a fresh config without deserializing our input object.
+        var item = new RulesItem
+        {
+            Id = "unchanged", Enabled = true, RuleType = ERuleType.Routing, OutboundTag = target,
+            Ip = ["192.0.2.1/32"], Domain = ["full:unchanged.test"], Port = "443,8000-8001",
+            Network = "tcp", Protocol = ["tls"], InboundTag = ["mixed"], Process = ["example"],
+        };
+        var before = JsonUtils.Serialize(item);
+        var generate = typeof(CoreConfigSingboxService).GetMethod("GenRoutingUserRule",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        generate.Invoke(service, [item]);
+        JsonUtils.Serialize(item).Should().Be(before);
+        generate.Invoke(service, [item]);
+        JsonUtils.Serialize(item).Should().Be(before);
+    }
+
+    [Theory]
+    [InlineData("port")]
+    [InlineData("range")]
+    [InlineData("network")]
+    [InlineData("protocol")]
+    [InlineData("inbound")]
+    [InlineData("all")]
+    public void NegativeIp_ShouldConstrainEveryAddressBranch(string constraint)
+    {
+        var item = new RulesItem { Enabled = true, OutboundTag = Global.DirectTag, Ip = ["!10.0.0.0/8"] };
+        if (constraint is "port" or "all") item.Port = "443";
+        if (constraint == "range") item.Port = "8000-8002";
+        if (constraint is "network" or "all") item.Network = "tcp";
+        if (constraint is "protocol" or "all") item.Protocol = ["tls"];
+        if (constraint is "inbound" or "all") item.InboundTag = ["mixed"];
+        var rule = GenerateAddressRule(item);
+        var port = constraint == "range" ? 8001 : 443;
+        MatchesAddressRule(rule, "192.0.2.1", port).Should().BeTrue();
+        MatchesAddressRule(rule, "10.1.2.3", port).Should().BeFalse("excluded addresses must not match an empty positive branch");
+        if (item.Port != null) MatchesAddressRule(rule, "192.0.2.1", 80).Should().BeFalse();
+        if (item.Network != null) MatchesAddressRule(rule, "192.0.2.1", port, network: "udp").Should().BeFalse();
+        if (item.Protocol != null) MatchesAddressRule(rule, "192.0.2.1", port, protocol: "http").Should().BeFalse();
+        if (item.InboundTag != null) MatchesAddressRule(rule, "192.0.2.1", port, inbound: "other").Should().BeFalse();
+        rule.type.Should().Be("logical");
+        rule.mode.Should().Be("and");
+        rule.rules.Should().HaveCount(2);
+        var common = rule.rules![0];
+        common.outbound.Should().BeNull();
+        common.action.Should().BeNull();
+        common.network.Should().BeEquivalentTo(item.Network == null ? null : new[] { "tcp" });
+        common.protocol.Should().BeEquivalentTo(item.Protocol);
+        common.inbound.Should().BeEquivalentTo(item.InboundTag);
+        if (constraint == "range") common.port_range.Should().Equal("8000:8002");
+        if (constraint is "port" or "all") common.port.Should().Equal(443);
+    }
+
+    [Theory]
+    [InlineData("!10.0.0.0/8", "10.1.1.1", false)]
+    [InlineData("!10.0.0.0/8", "192.0.2.1", true)]
+    [InlineData("!2001:db8::/32", "2001:db8::1", false)]
+    [InlineData("!2001:db8::/32", "2001:db9::1", true)]
+    [InlineData("!10.0.0.0/8,!192.168.0.0/16", "10.1.1.1", false)]
+    [InlineData("!10.0.0.0/8,!192.168.0.0/16", "192.168.1.1", false)]
+    [InlineData("!10.0.0.0/8,!192.168.0.0/16", "192.0.2.1", true)]
+    [InlineData("10.1.0.0/16,!10.0.0.0/8", "10.1.2.3", true)]
+    [InlineData("10.1.0.0/16,!10.0.0.0/8", "10.2.2.3", false)]
+    [InlineData("10.1.0.0/16,!10.0.0.0/8", "192.0.2.1", true)]
+    [InlineData("2001:db8:1::/48,!2001:db8::/32", "2001:db8:1::1", true)]
+    [InlineData("2001:db8:1::/48,!2001:db8::/32", "2001:db8:2::1", false)]
+    [InlineData("2001:db8:1::/48,!2001:db8::/32", "2001:db9::1", true)]
+    public void NegativeIp_ShouldPreservePositiveUnionComplementOfNegativeUnion(string addresses, string ip, bool expected)
+    {
+        foreach (var constrained in new[] { false, true })
+        {
+            var rule = GenerateAddressRule(new RulesItem
+            {
+                Enabled = true, OutboundTag = Global.DirectTag, Ip = addresses.Split(',').ToList(),
+                Port = constrained ? "443" : null,
+            });
+            MatchesAddressRule(rule, ip, 443).Should().Be(expected);
+            if (constrained) MatchesAddressRule(rule, ip, 80).Should().BeFalse();
+        }
+    }
+
+    private static Rule4Sbox GenerateAddressRule(RulesItem item)
+    {
+        var config = CoreConfigTestFactory.CreateConfig(ECoreType.sing_box);
+        CoreConfigTestFactory.BindAppManagerConfig(config);
+        var context = CoreConfigTestFactory.CreateContext(config,
+            CoreConfigTestFactory.CreateSocksNode(ECoreType.sing_box), ECoreType.sing_box) with
+        {
+            RoutingItem = new RoutingItem { RuleSet = JsonUtils.Serialize(new[] { item }) },
+        };
+        var fragment = new CoreConfigSingboxService(context).BuildUserRoutingForCustom();
+        fragment.Rules.Should().ContainSingle();
+        return fragment.Rules.Single();
+    }
+
+    // Deliberately limited unit-test interpreter, not evidence of real sing-box traffic behavior.
+    private static bool MatchesAddressRule(Rule4Sbox rule, string ip, int port,
+        string network = "tcp", string protocol = "tls", string inbound = "mixed")
+    {
+        bool match;
+        if (rule.type == "logical")
+        {
+            var branches = rule.rules!.Select(r => MatchesAddressRule(r, ip, port, network, protocol, inbound));
+            match = rule.mode == "and" ? branches.All(x => x) : branches.Any(x => x);
+        }
+        else
+        {
+            var ports = rule.port == null && rule.port_range == null
+                || rule.port?.Contains(port) == true
+                || rule.port_range?.Any(range => { var bounds = range.Split(':'); return port >= int.Parse(bounds[0]) && port <= int.Parse(bounds[1]); }) == true;
+            match = ports
+                && (rule.network == null || rule.network.Contains(network))
+                && (rule.protocol == null || rule.protocol.Contains(protocol))
+                && (rule.inbound == null || rule.inbound.Contains(inbound))
+                && (rule.ip_cidr == null || rule.ip_cidr.Any(cidr => System.Net.IPNetwork.Parse(cidr).Contains(System.Net.IPAddress.Parse(ip))));
+        }
+        return rule.invert == true ? !match : match;
+    }
+
+    [Fact]
     public void GenerateClientConfigContent_ShouldGenerateBasicProxyConfig()
     {
         var config = CoreConfigTestFactory.CreateConfig(ECoreType.sing_box);

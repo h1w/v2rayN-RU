@@ -51,6 +51,41 @@ public class CustomRuleStateHelperTests
         CustomRuleStateHelper.IsEnabled(0, null).Should().BeTrue();
     }
 
+    [Fact]
+    public void OrderedOrdinals_LocalTokensDoNotConsumeJsonOrdinals()
+    {
+        var state = new List<CustomRuleStateItem>
+        {
+            new() { LocalId = "local-default-index", Enabled = false },
+            new() { LocalId = "local-explicit-index", Index = 1, Enabled = false },
+            new() { Index = 2 },
+            new() { Index = 0 },
+            new() { Index = 2 },
+            new() { Index = -1 },
+            new() { Index = 99 },
+        };
+
+        CustomRuleStateHelper.OrderedOrdinals(4, state).Should().Equal(2, 0, 1, 3);
+    }
+
+    [Fact]
+    public void IsEnabled_IgnoresLocalTokensAndUsesFirstJsonOccurrence()
+    {
+        var state = new List<CustomRuleStateItem>
+        {
+            new() { LocalId = "local-default-index", Enabled = false },
+            new() { LocalId = "local-explicit-index", Index = 1, Enabled = false },
+            new() { Index = 0, Enabled = true },
+            new() { Index = 0, Enabled = false },
+            new() { Index = 2, Enabled = false },
+            new() { Index = 2, Enabled = true },
+        };
+
+        CustomRuleStateHelper.IsEnabled(0, state).Should().BeTrue();
+        CustomRuleStateHelper.IsEnabled(1, state).Should().BeTrue();
+        CustomRuleStateHelper.IsEnabled(2, state).Should().BeFalse();
+    }
+
     private static List<RulesItem> ThreeItems() =>
         [new() { Id = "a" }, new() { Id = "b" }, new() { Id = "c" }];
 

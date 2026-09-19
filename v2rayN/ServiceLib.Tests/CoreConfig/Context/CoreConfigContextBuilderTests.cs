@@ -188,6 +188,13 @@ public class CoreConfigContextBuilderTests
 
         // Один .json = одно ядро, сколько бы правил на него ни ссылалось.
         context.ChainCores.Should().ContainSingle();
+        var reloaded = context with { AllProxiesMap = [], ChainCores = [] };
+        await CoreConfigContextBuilder.ResolveRuleTargetsAsync(reloaded, NodeValidatorResult.Empty(),
+            resolveChainCores: true, allocatePort: () => 32017);
+        reloaded.ChainCores.Should().ContainSingle();
+        reloaded.ChainCores[0].Port.Should().Be(32017);
+        context.ChainCores.Should().ContainSingle();
+        reloaded.ChainCores[0].Should().NotBeSameAs(context.ChainCores[0]);
     }
 
     [Fact]

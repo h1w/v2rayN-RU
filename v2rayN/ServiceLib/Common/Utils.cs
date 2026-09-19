@@ -492,10 +492,11 @@ public class Utils
 
         return strategy switch
         {
-            _ when strategy.StartsWith("UseIPv6") => "prefer_ipv6",
-            _ when strategy.StartsWith("UseIP") => "prefer_ipv4",
-            _ when strategy.StartsWith("ForceIPv6") => "ipv6_only",
-            _ when strategy.StartsWith("ForceIP") => "ipv4_only",
+            _ when strategy.StartsWith("UseIPv6", StringComparison.OrdinalIgnoreCase) => "prefer_ipv6",
+            _ when strategy.StartsWith("UseIP", StringComparison.OrdinalIgnoreCase) => "prefer_ipv4",
+            _ when strategy.StartsWith("ForceIPv6", StringComparison.OrdinalIgnoreCase) => "ipv6_only",
+            _ when strategy.StartsWith("ForceIP", StringComparison.OrdinalIgnoreCase) => "ipv4_only",
+            "prefer_ipv4" or "prefer_ipv6" or "ipv4_only" or "ipv6_only" => strategy,
             _ => null
         };
     }

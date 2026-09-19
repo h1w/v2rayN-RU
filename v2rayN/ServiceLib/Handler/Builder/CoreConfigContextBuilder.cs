@@ -126,6 +126,18 @@ public class CoreConfigContextBuilder
     public static async Task ResolveRuleTargetsAsync(CoreConfigContext context, NodeValidatorResult validatorResult,
         bool resolveChainCores = false, Func<int>? allocatePort = null)
     {
+        if (resolveChainCores && context.Node.ConfigType == EConfigType.Custom
+            && context.RunCoreType is ECoreType.Xray or ECoreType.sing_box)
+        {
+            var port = allocatePort != null ? allocatePort() : Utils.GetFreePort();
+            if (port is <= 0 or > 65535 || port == context.Node.PreSocksPort
+                || context.AppConfig.Inbound.Any(i => i.LocalPort == port))
+            {
+                validatorResult.Errors.Add("Unable to allocate distinct own-routing SOCKS port.");
+                return;
+            }
+            context.SharedRoutingPort = port;
+        }
         if (context.RoutingItem?.RuleSet.IsNullOrEmpty() ?? true)
         {
             return;
@@ -227,7 +239,9 @@ public class CoreConfigContextBuilder
             // Utils.GetFreePort никогда не бросает: при сбое отдаёт сентинел 59090, и при
             // повторном сбое в этом же прогоне отдаст тот же сентинел снова. Не даём двум
             // разным цепочкам получить один и тот же порт — это фактически провал аллокации.
-            if (context.ChainCores.Any(c => c.Port == port))
+            if (port == context.SharedRoutingPort || port == context.Node.PreSocksPort
+                || context.AppConfig.Inbound.Any(i => i.LocalPort == port)
+                || context.ChainCores.Any(c => c.Port == port))
             {
                 return (null, false);
             }
@@ -240,6 +254,7 @@ public class CoreConfigContextBuilder
                 ConfigFileName = string.Format(Global.CoreChainConfigFileName, context.ChainCores.Count),
             };
             context.ChainCores.Add(descriptor);
+            context.ProtectCoreTypeList.Add(coreType);
             return (BuildSocksNodeFor(descriptor, remark), false);
         }
         catch (Exception ex)
@@ -335,11 +350,14 @@ public class CoreConfigContextBuilder
             var preSocksResult = await Build(nodeContext.AppConfig, preSocksItem);
 
             var protectCoreTypeList = new HashSet<ECoreType>(nodeContext.ProtectCoreTypeList) { nodeContext.RunCoreType };
+            protectCoreTypeList.UnionWith(nodeContext.ChainCores.Select(c => c.CoreType));
 
             return preSocksResult with
             {
                 Context = preSocksResult.Context with
                 {
+                    // Shared JSON owns the interleaved rules. The pre-core only forwards ingress.
+                    RoutingItem = nodeContext.SharedRoutingPort != null ? null : preSocksResult.Context.RoutingItem,
                     ProtectDomainList =
                     [.. nodeContext.ProtectDomainList ?? [], .. preSocksResult.Context.ProtectDomainList ?? []],
                     ProtectCoreTypeList = protectCoreTypeList,

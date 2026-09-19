@@ -234,18 +234,20 @@ public partial class CoreConfigSingboxService
                 clash_mode = nameof(ERuleMode.Global)
             });
 
-            var domainStrategy = _config.RoutingBasicItem.DomainStrategy4Singbox.NullIfEmpty();
+            var domainStrategyRaw = _config.RoutingBasicItem.DomainStrategy4Singbox.NullIfEmpty();
             var routing = context.RoutingItem;
-            if (routing.DomainStrategy4Singbox.IsNotEmpty())
+            if (routing?.DomainStrategy4Singbox.IsNotEmpty() ?? false)
             {
-                domainStrategy = routing.DomainStrategy4Singbox;
+                domainStrategyRaw = routing.DomainStrategy4Singbox;
             }
+            var domainStrategy = Utils.DomainStrategy4Sbox(domainStrategyRaw);
             var resolveRule = new Rule4Sbox
             {
                 action = "resolve",
                 strategy = domainStrategy
             };
-            if (_config.RoutingBasicItem.DomainStrategy == Global.IPOnDemand)
+            var routingDomainStrategy = routing?.DomainStrategy.NullIfEmpty() ?? _config.RoutingBasicItem.DomainStrategy;
+            if (routingDomainStrategy == Global.IPOnDemand)
             {
                 _coreConfig.route.rules.Add(resolveRule);
             }
@@ -274,7 +276,7 @@ public partial class CoreConfigSingboxService
                     }
                 }
             }
-            if (_config.RoutingBasicItem.DomainStrategy == Global.IPIfNonMatch)
+            if (routingDomainStrategy == Global.IPIfNonMatch)
             {
                 _coreConfig.route.rules.Add(resolveRule);
                 foreach (var item2 in ipRules)
@@ -339,17 +341,17 @@ public partial class CoreConfigSingboxService
             {
                 return;
             }
-            item.OutboundTag = GenRoutingUserRuleOutbound(item.OutboundTag ?? Global.ProxyTag);
+            var outboundTag = GenRoutingUserRuleOutbound(item.OutboundTag ?? Global.ProxyTag);
             var rules = _coreConfig.route.rules;
 
             var rule = new Rule4Sbox();
-            if (item.OutboundTag == "block")
+            if (outboundTag == Global.BlockTag)
             {
                 rule.action = "reject";
             }
             else
             {
-                rule.outbound = item.OutboundTag;
+                rule.outbound = outboundTag;
             }
 
             if (item.Port.IsNotEmpty())
@@ -401,10 +403,7 @@ public partial class CoreConfigSingboxService
                 if (negativeIpList.Count > 0)
                 {
                     var positiveIpList = item.Ip.Except(negativeIpList).ToList();
-                    var positiveRule = rule2;
-                    positiveRule = JsonUtils.DeepCopy(rule2);
-                    positiveRule.outbound = null;
-                    positiveRule.action = null;
+                    var positiveRule = new Rule4Sbox();
                     foreach (var it in positiveIpList)
                     {
                         if (ParseV2Address(it, positiveRule))
@@ -412,6 +411,7 @@ public partial class CoreConfigSingboxService
                             countIp++;
                         }
                     }
+                    var positiveCount = countIp;
                     var negativeRule = new Rule4Sbox();
                     foreach (var it in negativeIpList)
                     {
@@ -423,16 +423,32 @@ public partial class CoreConfigSingboxService
                         }
                     }
                     negativeRule.invert = true;
-                    rule2 = new Rule4Sbox()
+                    // Preserve P OR NOT(N), where each address list is a union.
+                    // Never add an empty positive branch: it would match every address.
+                    var addressRule = new Rule4Sbox { type = "logical", mode = "or", rules = [] };
+                    if (positiveCount > 0)
+                    {
+                        addressRule.rules.Add(positiveRule);
+                    }
+                    if (countIp > positiveCount)
+                    {
+                        addressRule.rules.Add(negativeRule);
+                    }
+
+                    // Logical rules cannot carry default-rule match fields. Keep common
+                    // constraints in a separate AND child, outside the inverted IP branch.
+                    var commonRule = JsonUtils.DeepCopy(rule2);
+                    commonRule.outbound = null;
+                    commonRule.action = null;
+                    var hasCommonConstraints = commonRule.port != null || commonRule.port_range != null
+                        || commonRule.network != null || commonRule.protocol != null || commonRule.inbound?.Count > 0;
+                    rule2 = new Rule4Sbox
                     {
                         outbound = rule2.outbound,
                         action = rule2.action,
                         type = "logical",
-                        mode = "or",
-                        rules = [
-                            positiveRule,
-                            negativeRule
-                        ]
+                        mode = hasCommonConstraints ? "and" : "or",
+                        rules = hasCommonConstraints ? [commonRule, addressRule] : addressRule.rules,
                     };
                 }
                 else
@@ -589,7 +605,7 @@ public partial class CoreConfigSingboxService
             || (!Global.SingboxSupportConfigType.Contains(node.ConfigType)
             && !node.ConfigType.IsGroupType()))
         {
-            return Global.ProxyTag;
+            return Global.BlockTag;
         }
 
         var tag = $"{node.IndexId}-{Global.ProxyTag}-{node.Remarks}";
@@ -640,7 +656,7 @@ public partial class CoreConfigSingboxService
                 if (target != null)
                 {
                     fragment.UnsupportedCustomTargets.Add(target);
-                    continue;
+                    // Keep the match and priority; outbound resolution emits reject.
                 }
                 var before = _coreConfig.route.rules.Count;
                 GenRoutingUserRule(item);
@@ -672,7 +688,7 @@ public partial class CoreConfigSingboxService
     /// Возвращает Remarks профиля, если правило указывает на профиль типа Custom.
     /// В норме сюда не попадают: CoreConfigContextBuilder подменяет такие цели на
     /// socks-узел цепочечного ядра. Custom-узел здесь означает, что цепочку поднять
-    /// не удалось — правило пропускается, а не уводится молча в proxy.
+    /// не удалось — правило сохраняет условия и блокирует совпавший трафик вместо fallback.
     /// </summary>
     private string? ResolveUnsupportedCustomTarget(string? outboundTag)
     {
@@ -681,6 +697,7 @@ public partial class CoreConfigSingboxService
             return null;
         }
         var node = context.AllProxiesMap.GetValueOrDefault($"remark:{outboundTag}");
-        return node?.ConfigType == EConfigType.Custom ? outboundTag : null;
+        return node == null || (!Global.SingboxSupportConfigType.Contains(node.ConfigType)
+            && !node.ConfigType.IsGroupType()) ? outboundTag : null;
     }
 }

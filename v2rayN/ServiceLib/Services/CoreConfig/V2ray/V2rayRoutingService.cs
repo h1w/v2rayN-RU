@@ -200,7 +200,7 @@ public partial class CoreConfigV2rayService
             || (!Global.XraySupportConfigType.Contains(node.ConfigType)
             && !node.ConfigType.IsGroupType()))
         {
-            return Global.ProxyTag;
+            return Global.BlockTag;
         }
 
         var tag = $"{node.IndexId}-{Global.ProxyTag}-{node.Remarks}";
@@ -324,7 +324,7 @@ public partial class CoreConfigV2rayService
                 if (target != null)
                 {
                     fragment.UnsupportedCustomTargets.Add(target);
-                    continue;
+                    // Keep the match and priority; outbound resolution emits block.
                 }
                 var item2 = JsonUtils.Deserialize<RulesItem4Ray>(JsonUtils.Serialize(item));
                 var before = _coreConfig.routing.rules.Count;
@@ -356,7 +356,7 @@ public partial class CoreConfigV2rayService
     /// Возвращает Remarks профиля, если правило указывает на профиль типа Custom.
     /// В норме сюда не попадают: CoreConfigContextBuilder подменяет такие цели на
     /// socks-узел цепочечного ядра. Custom-узел здесь означает, что цепочку поднять
-    /// не удалось — правило пропускается, а не уводится молча в proxy.
+    /// не удалось — правило сохраняет условия и блокирует совпавший трафик вместо fallback.
     /// </summary>
     private string? ResolveUnsupportedCustomTarget(string? outboundTag)
     {
@@ -365,6 +365,7 @@ public partial class CoreConfigV2rayService
             return null;
         }
         var node = context.AllProxiesMap.GetValueOrDefault($"remark:{outboundTag}");
-        return node?.ConfigType == EConfigType.Custom ? outboundTag : null;
+        return node == null || (!Global.XraySupportConfigType.Contains(node.ConfigType)
+            && !node.ConfigType.IsGroupType()) ? outboundTag : null;
     }
 }
