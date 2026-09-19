@@ -134,23 +134,23 @@ public class StatusBarViewModel : MyReactiveObject
         this.WhenAnyValue(
                 x => x.SelectedRouting,
                 y => y != null && !y.Remarks.IsNullOrEmpty())
-            .Subscribe(async c => await RoutingSelectedChangedAsync(c));
+            .SubscribeAsync(async _ => await RoutingSelectedChangedAsync());
 
         this.WhenAnyValue(
                 x => x.SelectedServer,
                 y => y != null && !y.Text.IsNullOrEmpty())
-            .Subscribe(ServerSelectedChanged);
+            .Subscribe(_ => ServerSelectedChanged());
 
         SystemProxySelected = (int)_config.SystemProxyItem.SysProxyType;
         this.WhenAnyValue(
                 x => x.SystemProxySelected,
                 y => y >= 0)
-            .Subscribe(async c => await DoSystemProxySelected(c));
+            .SubscribeAsync(async _ => await DoSystemProxySelected());
 
         this.WhenAnyValue(
                 x => x.EnableTun,
                 y => y == true)
-            .Subscribe(async c => await DoEnableTun(c));
+            .SubscribeAsync(async _ => await DoEnableTun());
 
         CopyProxyCmdToClipboardCmd = ReactiveCommand.CreateFromTask(async () =>
         {
@@ -365,21 +365,16 @@ public class StatusBarViewModel : MyReactiveObject
 
             var item = new ComboItem() { ID = it.IndexId, Text = name };
             models.Add(item);
-            if (_config.IndexId == it.IndexId)
-            {
-                SelectedServer = item;
-            }
         }
         Servers.Clear();
         Servers.AddRange(models);
+
+        // Update the ItemsSource before SelectedItem so a collection reset does not clear the tray selection.
+        SelectedServer = models.FirstOrDefault(it => it.ID == _config.IndexId) ?? new();
     }
 
-    private void ServerSelectedChanged(bool c)
+    private void ServerSelectedChanged()
     {
-        if (!c)
-        {
-            return;
-        }
         if (SelectedServer == null)
         {
             return;
@@ -391,20 +386,32 @@ public class StatusBarViewModel : MyReactiveObject
         SetDefaultServerRequested.Publish(SelectedServer.ID);
     }
 
-    public async Task TestServerAvailability()
+    public async Task<AvailabilityCheckResult?> TestServerAvailability()
     {
         var item = await ConfigHandler.GetDefaultServer(_config);
         if (item == null)
         {
-            return;
+            return null;
         }
 
         await TestServerAvailabilitySub(ResUI.Speedtesting);
 
-        var msg = await Task.Run(ConnectionHandler.RunAvailabilityCheck);
+        var result = await Task.Run(ConnectionHandler.RunAvailabilityCheck);
+        var msg = string.Format(ResUI.TestMeOutput, result.Time, result.Ip);
+
+        var ip = result.GetValidIp();
+        if (ip.IsNotEmpty())
+        {
+            ProfileExManager.Instance.SetTestIpInfo(item.IndexId, ip);
+        }
+        if (result.Time > 0)
+        {
+            ProfileExManager.Instance.SetTestDelay(item.IndexId, result.Time);
+        }
 
         NoticeManager.Instance.SendMessageEx(msg);
         await TestServerAvailabilitySub(msg);
+        return result;
     }
 
     private async Task TestServerAvailabilitySub(string msg)
@@ -471,13 +478,8 @@ public class StatusBarViewModel : MyReactiveObject
         SelectedRouting = routings.FirstOrDefault(t => t.IsActive == true);
     }
 
-    private async Task RoutingSelectedChangedAsync(bool c)
+    private async Task RoutingSelectedChangedAsync()
     {
-        if (!c)
-        {
-            return;
-        }
-
         if (SelectedRouting == null)
         {
             return;
@@ -497,12 +499,8 @@ public class StatusBarViewModel : MyReactiveObject
         }
     }
 
-    private async Task DoSystemProxySelected(bool c)
+    private async Task DoSystemProxySelected()
     {
-        if (!c)
-        {
-            return;
-        }
         if (_config.SystemProxyItem.SysProxyType == (ESysProxyType)SystemProxySelected)
         {
             return;
@@ -510,7 +508,7 @@ public class StatusBarViewModel : MyReactiveObject
         await SetListenerType((ESysProxyType)SystemProxySelected);
     }
 
-    private async Task DoEnableTun(bool c)
+    private async Task DoEnableTun()
     {
         if (_config.TunModeItem.EnableTun == EnableTun)
         {

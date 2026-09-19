@@ -216,6 +216,7 @@ public class ClashUIItem
     public bool EnableMixinContent { get; set; }
     public int ProxiesSorting { get; set; }
     public bool ProxiesAutoRefresh { get; set; }
+    public int ProxiesRefreshInterval { get; set; } = 2;
     public int ProxiesAutoDelayTestInterval { get; set; } = 10;
     public bool ConnectionsAutoRefresh { get; set; }
     public int ConnectionsRefreshInterval { get; set; } = 2;
@@ -246,6 +247,7 @@ public class WebDavItem
 public class CheckUpdateItem
 {
     public bool CheckPreReleaseUpdate { get; set; }
+    public bool UpdateViaProxy { get; set; } = true;
     public List<string>? SelectedCoreTypes { get; set; }
 }
 
@@ -277,8 +279,10 @@ public class SimpleDNSItem
     public bool? UseSystemHosts { get; set; }
     public bool? AddCommonHosts { get; set; }
     public bool? FakeIP { get; set; }
+    public string? FakeIPRange { get; set; }
     public bool? GlobalFakeIp { get; set; }
     public bool? BlockBindingQuery { get; set; }
+    public bool? BlockAAAAQuery { get; set; }
     public string? DirectDNS { get; set; }
     public string? RemoteDNS { get; set; }
     public string? BootstrapDNS { get; set; }

@@ -85,12 +85,40 @@ public class ClashProxiesViewModel : MyReactiveObject
 
         #endregion WhenAnyValue && ReactiveCommand
 
-        _ = Init();
+        this.WhenActivated(disposables =>
+        {
+            var cts = new CancellationTokenSource();
+            Disposable.Create(() =>
+            {
+                cts.Cancel();
+                cts.Dispose();
+            }).DisposeWith(disposables);
+
+            _ = GetClashProxiesTask(cts.Token);
+        });
     }
 
-    private async Task Init()
+    private async Task GetClashProxiesTask(CancellationToken token = default)
     {
-        await DelayTestTask();
+        var numOfExecuted = 1;
+        while (!token.IsCancellationRequested)
+        {
+            await Task.Delay(1000 * 5, token);
+            numOfExecuted++;
+            if (!(AutoRefresh && AppManager.Instance.ShowInTaskbar && AppManager.Instance.IsRunningCore(ECoreType.sing_box)))
+            {
+                continue;
+            }
+            if (_config.ClashUIItem.ProxiesRefreshInterval <= 0)
+            {
+                continue;
+            }
+            if (numOfExecuted % _config.ClashUIItem.ProxiesRefreshInterval != 0)
+            {
+                continue;
+            }
+            await ProxiesReload();
+        }
     }
 
     private async Task DoRuleModeSelected(bool c)
@@ -203,7 +231,11 @@ public class ClashProxiesViewModel : MyReactiveObject
         //from api
         foreach (var kv in _proxies)
         {
-            if (!Global.allowSelectType.Contains(kv.Value.type.ToLower()))
+            if (!Global.allowSelectType.Contains(kv.Value.type?.ToLower()))
+            {
+                continue;
+            }
+            if (kv.Key == "GLOBAL")
             {
                 continue;
             }
@@ -216,7 +248,16 @@ public class ClashProxiesViewModel : MyReactiveObject
             {
                 Now = kv.Value.now,
                 Name = kv.Key,
-                Type = kv.Value.type
+                Type = kv.Value.type,
+            });
+        }
+        if (_proxies.TryGetValue("GLOBAL", out var globalProxy))
+        {
+            lstProxyGroups.Add(new ClashProxyModel()
+            {
+                Now = globalProxy.now,
+                Name = "GLOBAL",
+                Type = globalProxy.type,
             });
         }
 
@@ -417,35 +458,4 @@ public class ClashProxiesViewModel : MyReactiveObject
     }
 
     #endregion proxy function
-
-    #region task
-
-    public async Task DelayTestTask()
-    {
-        _ = Task.Run(async () =>
-          {
-              var numOfExecuted = 1;
-              while (true)
-              {
-                  await Task.Delay(1000 * 60);
-                  numOfExecuted++;
-                  if (!(AutoRefresh && AppManager.Instance.ShowInTaskbar && AppManager.Instance.IsRunningCore(ECoreType.sing_box)))
-                  {
-                      continue;
-                  }
-                  if (_config.ClashUIItem.ProxiesAutoDelayTestInterval <= 0)
-                  {
-                      continue;
-                  }
-                  if (numOfExecuted % _config.ClashUIItem.ProxiesAutoDelayTestInterval != 0)
-                  {
-                      continue;
-                  }
-                  await ProxiesDelayTest();
-              }
-          });
-        await Task.CompletedTask;
-    }
-
-    #endregion task
 }

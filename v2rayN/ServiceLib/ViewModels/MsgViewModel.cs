@@ -2,11 +2,10 @@ namespace ServiceLib.ViewModels;
 
 public class MsgViewModel : MyReactiveObject
 {
-    public Interaction<string, Unit> DispatcherShowMsgInteraction { get; } = new();
+    public Interaction<string, Unit> ShowMsgInteraction { get; } = new();
 
     private readonly ConcurrentQueue<string> _queueMsg = new();
     private volatile bool _lastMsgFilterNotAvailable;
-    private int _showLock = 0; // 0 = unlocked, 1 = locked
     public int NumMaxMsg { get; } = 500;
 
     [Reactive]
@@ -32,63 +31,54 @@ public class MsgViewModel : MyReactiveObject
 
         AppEvents.SendMsgViewRequested
          .AsObservable()
-         //.ObserveOn(RxSchedulers.MainThreadScheduler)
-         .Subscribe(content => _ = AppendQueueMsg(content));
+         .Subscribe(EnqueueQueueMsg);
+
+        this.WhenActivated(disposables =>
+        {
+            Observable.Interval(TimeSpan.FromMilliseconds(500))
+                .ObserveOn(RxSchedulers.MainThreadScheduler)
+                .Subscribe(_ => FlushQueueToView())
+                .DisposeWith(disposables);
+        });
     }
 
-    private async Task AppendQueueMsg(string msg)
+    private void FlushQueueToView()
     {
-        if (AutoRefresh == false)
+        if (!AutoRefresh || !AppManager.Instance.ShowInTaskbar)
         {
             return;
         }
 
-        EnqueueQueueMsg(msg);
-
-        if (!AppManager.Instance.ShowInTaskbar)
+        if (_queueMsg.IsEmpty)
         {
             return;
         }
 
-        if (Interlocked.CompareExchange(ref _showLock, 1, 0) != 0)
+        var sb = new StringBuilder();
+        while (_queueMsg.TryDequeue(out var line))
         {
-            return;
+            sb.Append(line);
         }
 
-        try
+        if (sb.Length > 0)
         {
-            await Task.Delay(500).ConfigureAwait(false);
-
-            var sb = new StringBuilder();
-            while (_queueMsg.TryDequeue(out var line))
-            {
-                sb.Append(line);
-            }
-
-            await DispatcherShowMsgInteraction.Handle(sb.ToString());
-        }
-        finally
-        {
-            Interlocked.Exchange(ref _showLock, 0);
+            ShowMsgInteraction.Handle(sb.ToString()).Subscribe();
         }
     }
 
     private void EnqueueQueueMsg(string msg)
     {
+        if (!AutoRefresh)
+        {
+            return;
+        }
+
         //filter msg
         if (MsgFilter.IsNotEmpty() && !_lastMsgFilterNotAvailable)
         {
-            try
+            if (!Utils.IsRegexMatch(msg, MsgFilter))
             {
-                if (!Regex.IsMatch(msg, MsgFilter))
-                {
-                    return;
-                }
-            }
-            catch (Exception ex)
-            {
-                EnqueueWithLimit(ex.Message);
-                _lastMsgFilterNotAvailable = true;
+                return;
             }
         }
 

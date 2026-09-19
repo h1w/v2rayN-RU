@@ -12,7 +12,14 @@ public class V2rayConfig
     public Stats4Ray? stats { get; set; }
     public Observatory4Ray? observatory { get; set; }
     public BurstObservatory4Ray? burstObservatory { get; set; }
+    public FakeDns4Ray? fakedns { get; set; }
     public string? remarks { get; set; }
+}
+
+public class FakeDns4Ray
+{
+    public string? ipPool { get; set; }
+    public long? poolSize { get; set; }
 }
 
 public class Stats4Ray
@@ -165,6 +172,26 @@ public class Outboundsettings4Ray
     public int? workers { get; set; }
 
     public int? version { get; set; }
+
+    public List<string>? remoteDNS { get; set; }
+
+    public string? id { get; set; }
+
+    public int? alterId { get; set; }
+
+    public string? security { get; set; }
+
+    public string? encryption { get; set; }
+
+    public string? flow { get; set; }
+
+    public string? method { get; set; }
+
+    public string? password { get; set; }
+
+    public bool? uot { get; set; }
+
+    public bool? ota { get; set; }
 }
 
 public class WireguardPeer4Ray
@@ -234,6 +261,7 @@ public class Dns4Ray
     public List<object> servers { get; set; }
     public bool? serveStale { get; set; }
     public bool? enableParallelQuery { get; set; }
+    public string? queryStrategy { get; set; }
     public string? tag { get; set; }
 }
 

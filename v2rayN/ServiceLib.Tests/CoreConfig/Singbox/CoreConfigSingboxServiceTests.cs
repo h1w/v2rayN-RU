@@ -524,13 +524,18 @@ public class CoreConfigSingboxServiceTests
         result.Success.Should().BeTrue($"ret msg: {result.Msg}");
         var cfg = JsonUtils.Deserialize<SingboxConfig>(result.Data!.ToString())!;
 
-        var hasExpectedRule = cfg.dns.rules?.Any(r =>
-            r.server == Global.SingboxDirectDNSTag
-            && r.ip_cidr?.Contains("192.168.0.0/16") == true
-            && r.rule_set?.Contains("geosite-cn") == true
-            && r.rule_set?.Contains("geoip-cn") == true) ?? false;
+        var evaluateRule = cfg.dns.rules?.FirstOrDefault(r =>
+            r.action == "evaluate"
+            && r.server == Global.SingboxDirectDNSTag
+            && r.rule_set?.Contains("geosite-cn") == true);
+        evaluateRule.Should().NotBeNull();
 
-        hasExpectedRule.Should().BeTrue();
+        var respondRule = cfg.dns.rules?.FirstOrDefault(r =>
+            r.action == "respond"
+            && r.match_response == evaluateRule!.tag
+            && r.ip_cidr?.Contains("192.168.0.0/16") == true
+            && r.rule_set?.Contains("geoip-cn") == true);
+        respondRule.Should().NotBeNull();
     }
 
     [Fact]
@@ -670,12 +675,18 @@ public class CoreConfigSingboxServiceTests
         result.Success.Should().BeTrue($"ret msg: {result.Msg}");
         var cfg = JsonUtils.Deserialize<SingboxConfig>(result.Data!.ToString())!;
 
-        var hasExpectedRule = cfg.dns.rules?.Any(r =>
-            r.server == Global.SingboxDirectDNSTag
+        var evaluateRule = cfg.dns.rules?.FirstOrDefault(r =>
+            r.action == "evaluate"
+            && r.server == Global.SingboxDirectDNSTag
+            && r.rule_set?.Contains(expectedRuleSetTag) == true);
+        evaluateRule.Should().NotBeNull();
+
+        var respondRule = cfg.dns.rules?.FirstOrDefault(r =>
+            r.action == "respond"
+            && r.match_response == evaluateRule!.tag
             && r.ip_cidr?.Contains("192.168.0.0/16") == true
-            && r.rule_set?.Contains(expectedRuleSetTag) == true
-            && r.rule_set?.Contains("geoip-cn") == true) ?? false;
-        hasExpectedRule.Should().BeTrue();
+            && r.rule_set?.Contains("geoip-cn") == true);
+        respondRule.Should().NotBeNull();
     }
 
     [Fact]

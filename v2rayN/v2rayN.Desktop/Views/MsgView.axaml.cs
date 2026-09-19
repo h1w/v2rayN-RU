@@ -16,7 +16,7 @@ public partial class MsgView : ReactiveUserControl<MsgViewModel>
             this.Bind(ViewModel, vm => vm.MsgFilter, v => v.cmbMsgFilter.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.AutoRefresh, v => v.togAutoRefresh.IsChecked).DisposeWith(disposables);
 
-            ViewModel.DispatcherShowMsgInteraction.RegisterHandler(interaction =>
+            ViewModel.ShowMsgInteraction.RegisterHandler(interaction =>
             {
                 var msg = interaction.Input;
                 Dispatcher.UIThread.Post(() => ShowMsg(msg),
@@ -47,7 +47,7 @@ public partial class MsgView : ReactiveUserControl<MsgViewModel>
         txtMsg.AppendText(msg.ToString());
         if (togScrollToEnd.IsChecked ?? true)
         {
-            txtMsg.ScrollToEnd();
+            Dispatcher.UIThread.Invoke(() => txtMsg.ScrollTo(txtMsg.LineCount, 0, AvaloniaEdit.Rendering.VisualYPosition.TextBottom, txtMsg.Bounds.Height, 0), DispatcherPriority.Background);
         }
     }
 

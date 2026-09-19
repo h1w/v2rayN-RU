@@ -5,6 +5,7 @@ global using System.Net.NetworkInformation;
 global using System.Net.Sockets;
 global using System.Reactive;
 global using System.Reactive.Disposables;
+global using System.Reactive.Disposables.Fluent;
 global using System.Reactive.Linq;
 global using System.Reflection;
 global using System.Runtime.InteropServices;

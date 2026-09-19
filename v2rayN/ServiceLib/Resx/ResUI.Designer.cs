@@ -5580,5 +5580,83 @@ namespace ServiceLib.Resx {
                 return ResourceManager.GetString("TbIpv6Address", resourceCulture);
             }
         }
+
+        public static string TbSettingsEnableUpdateViaProxy {
+            get {
+                return ResourceManager.GetString("TbSettingsEnableUpdateViaProxy", resourceCulture);
+            }
+        }
+
+        public static string TbSettingsMux4RayConcurrency {
+            get {
+                return ResourceManager.GetString("TbSettingsMux4RayConcurrency", resourceCulture);
+            }
+        }
+
+        public static string TbSettingsMux4RayXudpConcurrency {
+            get {
+                return ResourceManager.GetString("TbSettingsMux4RayXudpConcurrency", resourceCulture);
+            }
+        }
+
+        public static string TbSettingsMux4RayXudpProxyUDP443 {
+            get {
+                return ResourceManager.GetString("TbSettingsMux4RayXudpProxyUDP443", resourceCulture);
+            }
+        }
+
+        public static string TbXrayOnly {
+            get {
+                return ResourceManager.GetString("TbXrayOnly", resourceCulture);
+            }
+        }
+
+        public static string TbBlockAAAAQueries {
+            get {
+                return ResourceManager.GetString("TbBlockAAAAQueries", resourceCulture);
+            }
+        }
+
+        public static string TbBlockAAAAQueriesTips {
+            get {
+                return ResourceManager.GetString("TbBlockAAAAQueriesTips", resourceCulture);
+            }
+        }
+
+        public static string TbDNS {
+            get {
+                return ResourceManager.GetString("TbDNS", resourceCulture);
+            }
+        }
+
+        public static string TbSettingsMux4Ray {
+            get {
+                return ResourceManager.GetString("TbSettingsMux4Ray", resourceCulture);
+            }
+        }
+
+        public static string LvRequestHeaders {
+            get {
+                return ResourceManager.GetString("LvRequestHeaders", resourceCulture);
+            }
+        }
+
+        public static string SubRequestHeadersTips {
+            get {
+                return ResourceManager.GetString("SubRequestHeadersTips", resourceCulture);
+            }
+        }
+
+        public static string SubRequestHeadersInvalid {
+            get {
+                return ResourceManager.GetString("SubRequestHeadersInvalid", resourceCulture);
+            }
+        }
+
+        public static string TbSortingProcess {
+            get {
+                return ResourceManager.GetString("TbSortingProcess", resourceCulture);
+            }
+        }
     }
 }

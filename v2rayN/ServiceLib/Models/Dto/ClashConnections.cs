@@ -33,4 +33,5 @@ public class MetadataItem
     public string? process { get; set; }
     public string? processPath { get; set; }
     public string? remoteDestination { get; set; }
+    public string? sniffHost { get; set; }
 }

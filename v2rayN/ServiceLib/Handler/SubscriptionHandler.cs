@@ -31,7 +31,7 @@ public static class SubscriptionHandler
                 }
 
                 // Create download handler
-                var downloadHandle = CreateDownloadHandler(hashCode, updateFunc);
+                var downloadHandle = CreateDownloadHandler(config, item, hashCode, updateFunc);
                 await updateFunc?.Invoke(false, $"{hashCode}{ResUI.MsgStartGettingSubscriptions}");
 
                 // Get all subscription content (main subscription + additional subscriptions)
@@ -82,9 +82,29 @@ public static class SubscriptionHandler
         return true;
     }
 
-    private static DownloadService CreateDownloadHandler(string hashCode, Func<bool, string, Task> updateFunc)
+    private static DownloadService CreateDownloadHandler(Config config, SubItem item, string hashCode, Func<bool, string, Task> updateFunc)
     {
-        var downloadHandle = new DownloadService();
+        if (!HttpRequestHeadersHelper.TryParse(item.RequestHeaders, out var requestHeaders))
+        {
+            throw new FormatException(ResUI.SubRequestHeadersInvalid);
+        }
+
+        var headers = new Dictionary<string, string>(requestHeaders, StringComparer.OrdinalIgnoreCase);
+        // Only send HWID to the subscription itself, never to a third-party conversion service.
+        if (item.ConvertTarget.IsNullOrEmpty())
+        {
+            var hwidHeaders = HwidHelper.BuildSubscriptionHeaders(config.HwidItem);
+            foreach (var kvp in hwidHeaders)
+            {
+                headers.TryAdd(kvp.Key, kvp.Value);
+            }
+        }
+
+        var downloadHandle = new DownloadService
+        {
+            AcceptHeader = "*/*",
+            RequestHeaders = headers
+        };
         downloadHandle.Error += (sender2, args) =>
         {
             updateFunc?.Invoke(false, $"{hashCode}{args.GetException().Message}");
@@ -92,14 +112,14 @@ public static class SubscriptionHandler
         return downloadHandle;
     }
 
-    private static async Task<string> DownloadSubscriptionContent(DownloadService downloadHandle, string url, bool blProxy, string userAgent, IDictionary<string, string>? headers = null)
+    private static async Task<string> DownloadSubscriptionContent(DownloadService downloadHandle, string url, bool blProxy, string userAgent)
     {
-        var result = await downloadHandle.TryDownloadString(url, blProxy, userAgent, headers);
+        var result = await downloadHandle.TryDownloadString(url, blProxy, userAgent);
 
         // If download with proxy fails, try direct connection
         if (blProxy && result.IsNullOrEmpty())
         {
-            result = await downloadHandle.TryDownloadString(url, false, userAgent, headers);
+            result = await downloadHandle.TryDownloadString(url, false, userAgent);
         }
 
         return result ?? string.Empty;
@@ -144,12 +164,7 @@ public static class SubscriptionHandler
             }
         }
 
-        // Only send HWID to the subscription itself, never to a third-party conversion service.
-        var headers = item.ConvertTarget.IsNotEmpty()
-            ? null
-            : HwidHelper.BuildSubscriptionHeaders(config.HwidItem);
-
-        var content = await DownloadSubscriptionContent(downloadHandle, url, blProxy, item.UserAgent, headers);
+        var content = await DownloadSubscriptionContent(downloadHandle, url, blProxy, item.UserAgent);
 
         // Apply Subscription-Userinfo / Profile-Title from the MAIN subscription response only
         // (before any MoreUrl downloads overwrite the captured headers).
@@ -192,7 +207,7 @@ public static class SubscriptionHandler
                 continue;
             }
 
-            var additionalResult = await DownloadSubscriptionContent(downloadHandle, url2, blProxy, item.UserAgent, HwidHelper.BuildSubscriptionHeaders(config.HwidItem));
+            var additionalResult = await DownloadSubscriptionContent(downloadHandle, url2, blProxy, item.UserAgent);
 
             if (additionalResult.IsNotEmpty())
             {

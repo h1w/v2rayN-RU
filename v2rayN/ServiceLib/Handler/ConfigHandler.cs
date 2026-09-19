@@ -120,6 +120,7 @@ public static class ConfigHandler
         }
 
         config.SimpleDNSItem ??= InitBuiltinSimpleDNS();
+        config.SimpleDNSItem.BlockAAAAQuery ??= false;
         config.SimpleDNSItem.GlobalFakeIp ??= true;
         config.SimpleDNSItem.BootstrapDNS ??= Global.DomainPureIPDNSAddress.FirstOrDefault();
         config.SimpleDNSItem.ServeStale ??= false;
@@ -474,12 +475,12 @@ public static class ConfigHandler
     /// Supports moving to top, up, down, bottom or specific position
     /// </summary>
     /// <param name="config">Current configuration</param>
-    /// <param name="lstProfile">List of server profiles</param>
+    /// <param name="lstProfile">List of server profile index ids</param>
     /// <param name="index">Index of the server to move</param>
     /// <param name="eMove">Direction to move the server</param>
     /// <param name="pos">Target position when using EMove.Position</param>
     /// <returns>0 if successful, -1 if failed</returns>
-    public static async Task<int> MoveServer(Config config, List<ProfileItem> lstProfile, int index, EMove eMove, int pos = -1)
+    public static async Task<int> MoveServer(Config config, List<string> lstProfile, int index, EMove eMove, int pos = -1)
     {
         var count = lstProfile.Count;
         if (index < 0 || index > lstProfile.Count - 1)
@@ -489,7 +490,7 @@ public static class ConfigHandler
 
         for (var i = 0; i < lstProfile.Count; i++)
         {
-            ProfileExManager.Instance.SetSort(lstProfile[i].IndexId, (i + 1) * 10);
+            ProfileExManager.Instance.SetSort(lstProfile[i], (i + 1) * 10);
         }
 
         var sort = 0;
@@ -501,7 +502,7 @@ public static class ConfigHandler
                     {
                         return 0;
                     }
-                    sort = ProfileExManager.Instance.GetSort(lstProfile.First().IndexId) - 1;
+                    sort = ProfileExManager.Instance.GetSort(lstProfile.First()) - 1;
 
                     break;
                 }
@@ -511,7 +512,7 @@ public static class ConfigHandler
                     {
                         return 0;
                     }
-                    sort = ProfileExManager.Instance.GetSort(lstProfile[index - 1].IndexId) - 1;
+                    sort = ProfileExManager.Instance.GetSort(lstProfile[index - 1]) - 1;
 
                     break;
                 }
@@ -522,7 +523,7 @@ public static class ConfigHandler
                     {
                         return 0;
                     }
-                    sort = ProfileExManager.Instance.GetSort(lstProfile[index + 1].IndexId) + 1;
+                    sort = ProfileExManager.Instance.GetSort(lstProfile[index + 1]) + 1;
 
                     break;
                 }
@@ -532,7 +533,7 @@ public static class ConfigHandler
                     {
                         return 0;
                     }
-                    sort = ProfileExManager.Instance.GetSort(lstProfile[^1].IndexId) + 1;
+                    sort = ProfileExManager.Instance.GetSort(lstProfile[^1]) + 1;
 
                     break;
                 }
@@ -541,7 +542,7 @@ public static class ConfigHandler
                 break;
         }
 
-        ProfileExManager.Instance.SetSort(lstProfile[index].IndexId, sort);
+        ProfileExManager.Instance.SetSort(lstProfile[index], sort);
         return await Task.FromResult(0);
     }
 
@@ -925,6 +926,7 @@ public static class ConfigHandler
             WgInterfaceAddress = profileItem.GetProtocolExtra().WgInterfaceAddress?.TrimEx(),
             WgReserved = wgReserved,
             WgMtu = profileItem.GetProtocolExtra().WgMtu is null or <= 0 ? Global.TunMtus.First() : profileItem.GetProtocolExtra().WgMtu,
+            WgDns = profileItem.GetProtocolExtra().WgDns?.TrimEx(),
         });
 
         if (profileItem.Password.IsNullOrEmpty())
@@ -2210,6 +2212,7 @@ public static class ConfigHandler
             item.Enabled = subItem.Enabled;
             item.AutoUpdateInterval = subItem.AutoUpdateInterval;
             item.UserAgent = subItem.UserAgent;
+            item.RequestHeaders = subItem.RequestHeaders;
             item.Sort = subItem.Sort;
             item.Filter = subItem.Filter;
             item.UpdateTime = subItem.UpdateTime;
