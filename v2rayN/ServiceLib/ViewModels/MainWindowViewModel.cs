@@ -674,15 +674,19 @@ public class MainWindowViewModel : MyReactiveObject
         {
             SetReloadEnabled(false);
 
+            // Отказ до запуска обязан остановить текущий запуск: иначе выбранный профиль
+            // показан активным, а трафик продолжает идти через предыдущий.
             var profileItem = await ConfigHandler.GetDefaultServer(_config);
             if (profileItem == null)
             {
+                await CoreManager.Instance.CoreStop();
                 NoticeManager.Instance.Enqueue(ResUI.CheckServerSettings);
                 return;
             }
             var allResult = await CoreConfigContextBuilder.BuildAll(_config, profileItem);
             if (NoticeManager.Instance.NotifyValidatorResult(allResult.CombinedValidatorResult) && !allResult.Success)
             {
+                await CoreManager.Instance.CoreStop();
                 return;
             }
 

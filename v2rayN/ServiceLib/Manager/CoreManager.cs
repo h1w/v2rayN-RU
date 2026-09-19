@@ -76,7 +76,7 @@ public class CoreManager
         var result = await CoreConfigHandler.GenerateClientConfig(mainContext, fileName);
         if (result.Success != true)
         {
-            await UpdateFunc(true, result.Msg);
+            await AbortLoad(result.Msg);
             return;
         }
 
@@ -87,14 +87,14 @@ public class CoreManager
             var preResult = await CoreConfigHandler.GenerateClientConfig(preContext, Utils.GetBinConfigPath(Global.CorePreConfigFileName));
             if (!preResult.Success)
             {
-                await UpdateFunc(true, preResult.Msg);
+                await AbortLoad(preResult.Msg);
                 return;
             }
             if (!ChainConfigBuilder.AreLaunchResourcesCompatible([
                 await File.ReadAllTextAsync(fileName),
                 await File.ReadAllTextAsync(Utils.GetBinConfigPath(Global.CorePreConfigFileName))]))
             {
-                await UpdateFunc(true, "Main and pre-core configurations have conflicting resources.");
+                await AbortLoad("Main and pre-core configurations have conflicting resources.");
                 return;
             }
         }
@@ -127,6 +127,18 @@ public class CoreManager
         {
             await UpdateFunc(true, $"{node.GetSummary()}");
         }
+    }
+
+    /// <summary>
+    /// Отказ на этапе генерации обязан остановить текущий запуск. Иначе ядро прежнего
+    /// профиля продолжает работать, интерфейс показывает выбранным новый профиль,
+    /// а весь трафик молча идёт через предыдущий — ровно тот скрытый fallback,
+    /// который контракт запрещает.
+    /// </summary>
+    private async Task AbortLoad(string msg)
+    {
+        await CoreStop();
+        await UpdateFunc(true, msg);
     }
 
     public async Task<ProcessService?> LoadCoreConfigSpeedtest(List<ServerTestItem> selecteds)

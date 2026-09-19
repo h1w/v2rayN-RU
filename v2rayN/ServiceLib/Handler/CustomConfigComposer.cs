@@ -47,7 +47,11 @@ public static class CustomConfigComposer
                     ? JsonUtils.Deserialize<List<CustomRuleStateItem>>(context.Node.CustomRuleState) : null;
                 var ownRoot = JsonUtils.ParseJson(ApplyCustomRuleState(rawJson, coreType, state))!;
                 ownRules = ownRoot[section]?["rules"]?.DeepClone() as JsonArray ?? [];
-                ValidateSharedRules(ownRules, coreType);
+                // Before anything is guarded: the inbounds these rules name are the ones
+                // shared routing replaces, so their predicate is meaningless, not hostile.
+                DropReplacedInboundTags(ownRules, root["inbounds"] as JsonArray, coreType);
+                DropReplacedInboundTags(root[section]?["rules"] as JsonArray, root["inbounds"] as JsonArray, coreType);
+                ValidateSharedRules(ownRules, coreType, HasSniffAction(ownRules));
                 context = NormalizeSelfTargets(context);
             }
             var tags = CollectTags(outbounds);
@@ -132,14 +136,22 @@ public static class CustomConfigComposer
         return context with { RoutingItem = routing };
     }
 
-    private static void ValidateSharedRules(JsonArray rules, ECoreType coreType)
+    /// <summary>
+    /// Отклоняет предикаты, которые описывают ИСХОДНОГО клиента: SOCKS-хоп подменяет
+    /// его на loopback и собственный процесс приложения, поэтому такие условия молча
+    /// перестали бы совпадать. `protocol` в этот список НЕ входит: он выводится
+    /// сниффингом полезной нагрузки, а нагрузка через loopback-SOCKS идёт без изменений.
+    /// Для sing-box сниффинг задаётся правилом `action: "sniff"`, поэтому `protocol`
+    /// принимается только когда такое правило в конфиге действительно есть.
+    /// </summary>
+    private static void ValidateSharedRules(JsonArray rules, ECoreType coreType, bool sniffed)
     {
         // SOCKS creates a new connection: these predicates cannot be preserved.
         string[] forbidden = coreType == ECoreType.Xray
-            ? ["inboundTag", "source", "sourceIP", "sourcePort", "localIP", "localPort", "process", "user", "vlessRoute", "protocol", "attrs"]
+            ? ["inboundTag", "source", "sourceIP", "sourcePort", "localIP", "localPort", "process", "user", "vlessRoute", "attrs"]
             : ["inbound", "source_ip_cidr", "source_ip_is_private", "source_port", "source_port_range", "source_geoip",
                "process_name", "process_path", "process_path_regex", "auth_user", "user", "user_id", "package_name", "package_name_regex",
-               "source_mac_address", "source_hostname", "protocol", "client"];
+               "source_mac_address", "source_hostname", "client"];
         foreach (var rule in rules.OfType<JsonObject>())
         {
             var unsupported = forbidden.FirstOrDefault(rule.ContainsKey);
@@ -149,15 +161,61 @@ public static class CustomConfigComposer
             }
             if (coreType == ECoreType.sing_box)
             {
+                if (!sniffed && rule.ContainsKey("protocol"))
+                {
+                    throw new InvalidOperationException(
+                        "Shared native routing needs an 'action: sniff' rule to preserve 'protocol'; the replaced inbounds cannot sniff on their own.");
+                }
                 var action = rule["action"]?.GetValue<string>() ?? "route";
-                if (action is not ("route" or "reject" or "hijack-dns"))
+                if (action is not ("route" or "reject" or "hijack-dns" or "sniff" or "resolve"))
                 {
                     throw new InvalidOperationException($"Shared native routing does not preserve nonterminal/context-dependent action '{action}'.");
                 }
                 if (rule["rules"] is JsonArray nested)
                 {
-                    ValidateSharedRules(nested, coreType);
+                    ValidateSharedRules(nested, coreType, sniffed);
                 }
+            }
+        }
+    }
+
+    /// <summary>
+    /// true, если правила сами устанавливают сниффинг (`action: "sniff"`), включая
+    /// вложенные logical-правила. Только тогда `protocol` у sing-box может совпасть
+    /// после замены входов.
+    /// </summary>
+    private static bool HasSniffAction(JsonArray rules) =>
+        rules.OfType<JsonObject>().Any(rule => rule["action"]?.GetValue<string>() == "sniff"
+            || (rule["rules"] is JsonArray nested && HasSniffAction(nested)));
+
+    /// <summary>
+    /// Убирает inbound-предикат, если он целиком указывает на входы, которые общий
+    /// нативный роутинг заменяет своими: такое условие в исходном конфиге означало
+    /// «трафик из клиентских входов», то есть ровно то, что теперь приходит на
+    /// управляемый вход. Предикат, ссылающийся хоть на один незнакомый тег, остаётся
+    /// на месте и будет отклонён валидацией — молча менять его смысл нельзя.
+    /// </summary>
+    private static void DropReplacedInboundTags(JsonArray? rules, JsonArray? nativeInbounds, ECoreType coreType)
+    {
+        if (rules is null)
+        {
+            return;
+        }
+        var replaced = CollectTags(nativeInbounds ?? []);
+        var key = coreType == ECoreType.Xray ? "inboundTag" : "inbound";
+        foreach (var rule in rules.OfType<JsonObject>())
+        {
+            if (rule["rules"] is JsonArray nested)
+            {
+                DropReplacedInboundTags(nested, nativeInbounds, coreType);
+            }
+            if (rule[key] is not JsonArray tags || tags.Count == 0)
+            {
+                continue;
+            }
+            if (tags.All(t => t is not null && replaced.Contains(t.GetValue<string>())))
+            {
+                rule.Remove(key);
             }
         }
     }
@@ -174,11 +232,39 @@ public static class CustomConfigComposer
         {
             throw new InvalidOperationException("Front and own routing listeners require distinct ports.");
         }
-        JsonObject Inbound(string tag, int listenPort) => coreType == ECoreType.sing_box
-            ? new JsonObject { ["type"] = "socks", ["tag"] = tag, ["listen"] = Global.Loopback, ["listen_port"] = listenPort }
-            : new JsonObject { ["protocol"] = "socks", ["tag"] = tag, ["listen"] = Global.Loopback, ["port"] = listenPort,
-                ["settings"] = new JsonObject { ["udp"] = true, ["auth"] = "noauth" } };
-        root["inbounds"] = new JsonArray(Inbound(frontTag, frontPort), Inbound(ownTag, port));
+        var inItem = context.AppConfig.Inbound.First();
+        JsonObject Inbound(string tag, int listenPort, bool ownSide)
+        {
+            if (coreType == ECoreType.sing_box)
+            {
+                // sing-box ≥1.11 sniffs through route `action: "sniff"`, not on the inbound.
+                return new JsonObject { ["type"] = "socks", ["tag"] = tag, ["listen"] = Global.Loopback, ["listen_port"] = listenPort };
+            }
+            // An empty list leaves Xray with no sniffer to run at all, so the own side
+            // falls back to the same default a fresh inbound carries.
+            var protocols = inItem.DestOverride is { Count: > 0 } configured ? configured
+                : ownSide ? ["http", "tls"] : new List<string>();
+            var destOverride = new JsonArray();
+            foreach (var p in protocols)
+            {
+                destOverride.Add(p);
+            }
+            // Front mirrors the app inbound a regular profile would get. Own side always
+            // sniffs so the JSON's own `protocol` rules keep matching, but routeOnly keeps
+            // the address its outbounds receive exactly as the front passed it on.
+            return new JsonObject
+            {
+                ["protocol"] = "socks", ["tag"] = tag, ["listen"] = Global.Loopback, ["port"] = listenPort,
+                ["settings"] = new JsonObject { ["udp"] = true, ["auth"] = "noauth" },
+                ["sniffing"] = new JsonObject
+                {
+                    ["enabled"] = ownSide || inItem.SniffingEnabled,
+                    ["destOverride"] = destOverride,
+                    ["routeOnly"] = ownSide || inItem.RouteOnly,
+                },
+            };
+        }
+        root["inbounds"] = new JsonArray(Inbound(frontTag, frontPort, false), Inbound(ownTag, port, true));
         if (ChainConfigBuilder.HasConflictingResources(root))
         {
             throw new InvalidOperationException("Shared native routing has conflicting listener or state resources.");
@@ -234,6 +320,16 @@ public static class CustomConfigComposer
             {
                 guarded[key] = value;
             }
+        }
+        if (clone.Count == 0)
+        {
+            // A rule that was nothing but an action (e.g. a bare `action: "sniff"`) has no
+            // predicate left to intersect: a logical wrapper around an empty object is not
+            // a valid rule, so gate it on the inbound directly.
+            guarded.Remove("type");
+            guarded.Remove("mode");
+            guarded["inbound"] = new JsonArray(inbound);
+            return guarded;
         }
         guarded["rules"] = new JsonArray(new JsonObject { ["inbound"] = new JsonArray(inbound) }, clone);
         return guarded;
