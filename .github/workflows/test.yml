@@ -42,7 +42,7 @@ jobs:
         dotnet-quality: 'ga'
 
     - name: Test Code
-      run: dotnet test --project ./v2rayN/ServiceLib.Tests -c Release --results-directory ./TestResults -- --report-trx
+      run: dotnet test ./v2rayN/ServiceLib.Tests/ServiceLib.Tests.csproj -c Release --results-directory ./TestResults --logger "trx"
 
     - name: Comment PR with results
       if: always()
