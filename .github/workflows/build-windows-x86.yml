@@ -234,6 +234,7 @@ jobs:
       fail-fast: false
       matrix:
         flavor: [ desktop ]
+    uses: ./.github/workflows/upload-sign.yml
     with:
       release_tag: ${{ inputs.release_tag }}
       artifact_name: release-windows-x86-${{ matrix.flavor }}

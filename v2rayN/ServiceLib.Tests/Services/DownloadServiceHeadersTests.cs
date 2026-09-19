@@ -41,7 +41,7 @@ public class DownloadServiceHeadersTests
         }.Uri;
         IWebProxy? proxy = useProxy ? new WebProxy(server.Url) : null;
 
-        var content = await service.TryDownloadString(uri.AbsoluteUri, proxy, "OriginalClient/1.0").WaitAsync(TimeSpan.FromSeconds(20));
+        var content = await service.TryDownloadString(uri.AbsoluteUri, proxy, "OriginalClient/1.0", TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken);
 
         content.Should().Be(SubscriptionHttpServer.Body);
         (server.Requests.Count >= (failFirstRequest ? 2 : 1)).Should().BeTrue();
@@ -66,7 +66,7 @@ public class DownloadServiceHeadersTests
         var service = new DownloadService { AcceptHeader = "*/*" };
         var uri = new UriBuilder(server.Url) { UserName = "user", Password = "password" }.Uri;
 
-        var content = await service.TryDownloadString(uri.AbsoluteUri, (IWebProxy?)null, "ExistingClient/1.0").WaitAsync(TimeSpan.FromSeconds(20));
+        var content = await service.TryDownloadString(uri.AbsoluteUri, (IWebProxy?)null, "ExistingClient/1.0", TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken);
 
         content.Should().Be(SubscriptionHttpServer.Body);
         foreach (var request in server.Requests)
@@ -90,8 +90,8 @@ public class DownloadServiceHeadersTests
         };
         var ordinaryDownload = new DownloadService();
 
-        (await subscription.TryDownloadString(server.Url, (IWebProxy?)null, "TestClient/1.0")).Should().Be(SubscriptionHttpServer.Body);
-        (await ordinaryDownload.TryDownloadString(server.Url, (IWebProxy?)null, "TestClient/1.0")).Should().Be(SubscriptionHttpServer.Body);
+        (await subscription.TryDownloadString(server.Url, (IWebProxy?)null, "TestClient/1.0", TestContext.Current.CancellationToken)).Should().Be(SubscriptionHttpServer.Body);
+        (await ordinaryDownload.TryDownloadString(server.Url, (IWebProxy?)null, "TestClient/1.0", TestContext.Current.CancellationToken)).Should().Be(SubscriptionHttpServer.Body);
 
         var requests = server.Requests.ToArray();
         requests.Length.Should().Be(2);
