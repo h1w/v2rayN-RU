@@ -6,10 +6,24 @@ public partial class ClashProxiesView : ReactiveUserControl<ClashProxiesViewMode
     {
         InitializeComponent();
         lstProxyDetails.DoubleTapped += LstProxyDetails_DoubleTapped;
+        lstXrayProxies.SelectionChanged += (_, _) =>
+        {
+            if (lstXrayProxies.SelectedItem is not XrayProxyRow row || ViewModel == null) return;
+            lstXrayServiceProxies.SelectedItem = null;
+            ViewModel.SelectedXrayProxy = row;
+        };
+        lstXrayServiceProxies.SelectionChanged += (_, _) =>
+        {
+            if (lstXrayServiceProxies.SelectedItem is not XrayProxyRow row || ViewModel == null) return;
+            lstXrayProxies.SelectedItem = null;
+            ViewModel.SelectedXrayProxy = row;
+        };
         KeyDown += ClashProxiesView_KeyDown;
 
         this.WhenActivated(disposables =>
         {
+            this.OneWayBind(ViewModel, vm => vm.XrayProxies, v => v.lstXrayProxies.ItemsSource).DisposeWith(disposables);
+
             this.OneWayBind(ViewModel, vm => vm.ProxyGroups, v => v.lstProxyGroups.ItemsSource).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SelectedGroup, v => v.lstProxyGroups.SelectedItem).DisposeWith(disposables);
 
@@ -37,7 +51,10 @@ public partial class ClashProxiesView : ReactiveUserControl<ClashProxiesViewMode
                 break;
 
             case Key.Enter:
-                ViewModel?.SetActiveProxy();
+                if (ViewModel?.IsXrayMode == false)
+                {
+                    ViewModel.SetActiveProxy();
+                }
                 break;
         }
     }

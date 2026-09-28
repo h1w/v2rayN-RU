@@ -1,3 +1,5 @@
+using Avalonia.Input.Platform;
+
 namespace v2rayN.Desktop.Views;
 
 public partial class ClashConnectionsView : ReactiveUserControl<ClashConnectionsViewModel>
@@ -19,9 +21,11 @@ public partial class ClashConnectionsView : ReactiveUserControl<ClashConnections
             this.Bind(ViewModel, vm => vm.SelectedSource, v => v.lstConnections.SelectedItem).DisposeWith(disposables);
 
             this.BindCommand(ViewModel, vm => vm.ConnectionCloseCmd, v => v.menuConnectionClose).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.ConnectionCloseCmd, v => v.btnConnectionClose).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.ConnectionCloseAllCmd, v => v.menuConnectionCloseAll).DisposeWith(disposables);
 
             this.Bind(ViewModel, vm => vm.HostFilter, v => v.txtHostFilter.Text).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.TrafficFilter, v => v.cmbTrafficFilter.SelectedIndex).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.ConnectionCloseAllCmd, v => v.btnConnectionCloseAll).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.AutoRefresh, v => v.togAutoRefresh.IsChecked).DisposeWith(disposables);
 
@@ -46,7 +50,12 @@ public partial class ClashConnectionsView : ReactiveUserControl<ClashConnections
         {
             foreach (var it in lstConnections.Columns)
             {
-                it.Width = new DataGridLength(1, DataGridLengthUnitType.Auto);
+                it.Width = it.Tag switch
+                {
+                    "Host" or "Chain" => new DataGridLength(3, DataGridLengthUnitType.Star),
+                    "ProcessPath" => new DataGridLength(2, DataGridLengthUnitType.Star),
+                    _ => new DataGridLength(100, DataGridLengthUnitType.Pixel)
+                };
             }
         }
         catch (Exception ex)
@@ -55,9 +64,20 @@ public partial class ClashConnectionsView : ReactiveUserControl<ClashConnections
         }
     }
 
-    private void btnClose_Click(object? sender, RoutedEventArgs e)
+    private async void CopyProcessPath_Click(object? sender, RoutedEventArgs e)
     {
-        ViewModel?.ClashConnectionClose(false);
+        if (sender is not Button { Tag: ClashConnectionModel row } || string.IsNullOrWhiteSpace(row.ProcessPath)) return;
+        try
+        {
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (clipboard == null) return;
+            await clipboard.SetTextAsync(row.ProcessPath);
+            NoticeManager.Instance.Enqueue(ResUI.ConnectionsProcessPathCopied);
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+        }
     }
 
     #region UI
@@ -89,7 +109,9 @@ public partial class ClashConnectionsView : ReactiveUserControl<ClashConnections
                         }
                         else
                         {
-                            item2.Width = new DataGridLength(item.Width, DataGridLengthUnitType.Pixel);
+                            // Old fixed widths must not disable the redesigned elastic layout.
+                            if (!item2.Width.IsStar)
+                                item2.Width = new DataGridLength(item.Width, DataGridLengthUnitType.Pixel);
                             item2.DisplayIndex = displayIndex++;
                         }
                     }

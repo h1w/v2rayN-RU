@@ -9,6 +9,8 @@ public record ChainCoreDescriptor
 {
     /// <summary>Профиль типа Custom, чей .json исполняет это ядро.</summary>
     public required ProfileItem Node { get; init; }
+    /// <summary>Original routed profile identities, including virtual profiles resolved to this child.</summary>
+    public HashSet<string> StatisticsProfileIds { get; init; } = new(StringComparer.Ordinal);
 
     /// <summary>Ядро, которым его запускать.</summary>
     public required ECoreType CoreType { get; init; }

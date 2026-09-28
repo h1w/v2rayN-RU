@@ -247,6 +247,14 @@ public partial class CoreConfigSingboxService
                 clash_mode = nameof(ERuleMode.Global)
             });
 
+            if (context.SharedProcessRules.Count > 0)
+            {
+                _coreConfig.outbounds.AddRange(context.SharedProcessOutbounds.Select(JsonUtils.DeepCopy));
+                _coreConfig.route.rules.AddRange(context.SharedProcessRules.Select(JsonUtils.DeepCopy));
+                // Xray owns all domain/IP resolution and interleaved user decisions.
+                return;
+            }
+
             var domainStrategyRaw = _config.RoutingBasicItem.DomainStrategy4Singbox.NullIfEmpty();
             var routing = context.RoutingItem;
             if (routing?.DomainStrategy4Singbox.IsNotEmpty() ?? false)
@@ -508,28 +516,11 @@ public partial class CoreConfigSingboxService
                 ruleProcPath.process_path ??= [];
                 foreach (var process in item.Process)
                 {
-                    // sing-box doesn't support this, fall back to process name match
-                    if (process is "self/" or "xray/")
-                    {
-                        ruleProcName.process_name.Add(Utils.GetExeName("sing-box"));
-                        continue;
-                    }
-
-                    if (process.Contains('/') || process.Contains('\\'))
-                    {
-                        var procPath = process;
-                        if (Utils.IsWindows())
-                        {
-                            procPath = procPath.Replace('/', '\\');
-                        }
-                        ruleProcPath.process_path.Add(procPath);
-                        continue;
-                    }
-
-                    // sing-box strictly matches the exe suffix on Windows
-                    var procName = Utils.GetExeName(process);
-
-                    ruleProcName.process_name.Add(procName);
+                    var (value, isPath) = HelperRoutingHandoff.NormalizeProcess(process);
+                    if (isPath)
+                        ruleProcPath.process_path.Add(value);
+                    else
+                        ruleProcName.process_name.Add(value);
                 }
 
                 if (ruleProcName.process_name.Count > 0)
@@ -631,6 +622,23 @@ public partial class CoreConfigSingboxService
             return outboundTag;
         }
 
+        if (context.RoutingOutboundPorts.TryGetValue(outboundTag, out var handoffPort))
+        {
+            var handoffTag = $"v2rayn-handoff-{handoffPort}";
+            if (!_coreConfig.outbounds.Any(o => o.tag == handoffTag))
+            {
+                _coreConfig.outbounds.Add(new Outbound4Sbox
+                {
+                    type = "socks",
+                    tag = handoffTag,
+                    server = Global.Loopback,
+                    server_port = handoffPort,
+                    version = "5",
+                });
+            }
+            return handoffTag;
+        }
+
         var node = context.AllProxiesMap.GetValueOrDefault($"remark:{outboundTag}");
 
         if (node == null
@@ -640,7 +648,8 @@ public partial class CoreConfigSingboxService
             return Global.BlockTag;
         }
 
-        var tag = $"{node.IndexId}-{Global.ProxyTag}-{node.Remarks}";
+        var profileId = context.RoutingProfileIds.GetValueOrDefault($"remark:{outboundTag}", node.IndexId);
+        var tag = $"{profileId}-{Global.ProxyTag}-{node.Remarks}";
         if (_coreConfig.outbounds.Any(o => o.tag.StartsWith(tag))
             || (_coreConfig.endpoints != null && _coreConfig.endpoints.Any(e => e.tag.StartsWith(tag))))
         {
@@ -649,6 +658,7 @@ public partial class CoreConfigSingboxService
 
         var proxyOutbounds = new CoreConfigSingboxService(context with { Node = node, }).BuildAllProxyOutbounds(tag);
         FillRangeProxy(proxyOutbounds, _coreConfig, false);
+        context.StatisticsOutboundProfiles[tag] = profileId;
 
         return tag;
     }
@@ -724,7 +734,8 @@ public partial class CoreConfigSingboxService
     /// </summary>
     private string? ResolveUnsupportedCustomTarget(string? outboundTag)
     {
-        if (outboundTag.IsNullOrEmpty() || Global.OutboundTags.Contains(outboundTag))
+        if (outboundTag.IsNullOrEmpty() || Global.OutboundTags.Contains(outboundTag)
+            || context.RoutingOutboundPorts.ContainsKey(outboundTag))
         {
             return null;
         }

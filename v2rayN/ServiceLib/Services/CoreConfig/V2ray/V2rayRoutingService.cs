@@ -160,11 +160,14 @@ public partial class CoreConfigV2rayService
             }
             if (userRule.process?.Count > 0)
             {
-                var it = JsonUtils.DeepCopy(userRule);
-                it.domain = null;
-                it.ip = null;
-                it.type = "field";
-                _coreConfig.routing.rules.Add(it);
+                if (!context.IsProcessRoutingDelegated)
+                {
+                    var it = JsonUtils.DeepCopy(userRule);
+                    it.domain = null;
+                    it.ip = null;
+                    it.type = "field";
+                    _coreConfig.routing.rules.Add(it);
+                }
                 hasDomainIp = true;
             }
             if (!hasDomainIp)
@@ -203,7 +206,9 @@ public partial class CoreConfigV2rayService
             return Global.BlockTag;
         }
 
-        var tag = $"{node.IndexId}-{Global.ProxyTag}-{node.Remarks}";
+        var profileId = context.RoutingProfileIds.GetValueOrDefault($"remark:{outboundTag}", node.IndexId);
+        var tag = $"{profileId}-{Global.ProxyTag}-{node.Remarks}";
+        context.RoutingOutboundTags[outboundTag] = tag;
         if (_coreConfig.outbounds.Any(p => p.tag.StartsWith(tag)))
         {
             return tag;
@@ -211,6 +216,8 @@ public partial class CoreConfigV2rayService
 
         var proxyOutbounds = new CoreConfigV2rayService(context with { Node = node, }).BuildAllProxyOutbounds(tag);
         _coreConfig.outbounds.AddRange(proxyOutbounds);
+        foreach (var outbound in proxyOutbounds.Where(o => o.tag.StartsWith(tag, StringComparison.Ordinal)))
+            context.StatisticsOutboundProfiles[outbound.tag] = profileId;
         if (proxyOutbounds.Count(n => n.tag.StartsWith(tag)) > 1)
         {
             var multipleLoad = node.GetProtocolExtra().MultipleLoad ?? EMultipleLoad.LeastPing;

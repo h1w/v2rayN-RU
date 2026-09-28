@@ -628,7 +628,7 @@ namespace ServiceLib.Resx {
         }
         
         /// <summary>
-        ///   查找类似 Total download traffic 的本地化字符串。
+        ///   Looks up a localized string similar to Received total.
         /// </summary>
         public static string LvTotalDownloadDataAmount {
             get {
@@ -637,11 +637,29 @@ namespace ServiceLib.Resx {
         }
         
         /// <summary>
-        ///   查找类似 Total upload traffic 的本地化字符串。
+        ///   Looks up a localized string similar to Sent total.
         /// </summary>
         public static string LvTotalUploadDataAmount {
             get {
                 return ResourceManager.GetString("LvTotalUploadDataAmount", resourceCulture);
+            }
+        }
+
+        public static string LvCurrentDownloadRate {
+            get {
+                return ResourceManager.GetString("LvCurrentDownloadRate", resourceCulture);
+            }
+        }
+
+        public static string LvCurrentUploadRate {
+            get {
+                return ResourceManager.GetString("LvCurrentUploadRate", resourceCulture);
+            }
+        }
+
+        public static string ProfileStatisticsHint {
+            get {
+                return ResourceManager.GetString("ProfileStatisticsHint", resourceCulture);
             }
         }
         
@@ -4286,7 +4304,7 @@ namespace ServiceLib.Resx {
         }
         
         /// <summary>
-        ///   查找类似 Display real-time speed (requires restart) 的本地化字符串。
+        ///   查找类似 Display real-time speed in the status bar (requires restart) 的本地化字符串。
         /// </summary>
         public static string TbSettingsDisplayRealTimeSpeed {
             get {
@@ -4844,7 +4862,7 @@ namespace ServiceLib.Resx {
         }
         
         /// <summary>
-        ///   查找类似 Enable traffic statistics (requires restart) 的本地化字符串。
+        ///   查找类似 Show daily traffic columns (requires restart) 的本地化字符串。
         /// </summary>
         public static string TbSettingsStatistics {
             get {
@@ -5658,5 +5676,248 @@ namespace ServiceLib.Resx {
                 return ResourceManager.GetString("TbSortingProcess", resourceCulture);
             }
         }
+        public static string XrayProxyInventoryTip {
+            get {
+                return ResourceManager.GetString("XrayProxyInventoryTip", resourceCulture);
+            }
+        }
+
+        public static string XrayProxyGroups {
+            get {
+                return ResourceManager.GetString("XrayProxyGroups", resourceCulture);
+            }
+        }
+
+        public static string XrayProxyStatus {
+            get {
+                return ResourceManager.GetString("XrayProxyStatus", resourceCulture);
+            }
+        }
+
+        public static string XrayProxyLiveUpload {
+            get {
+                return ResourceManager.GetString("XrayProxyLiveUpload", resourceCulture);
+            }
+        }
+
+        public static string XrayProxyLiveDownload {
+            get {
+                return ResourceManager.GetString("XrayProxyLiveDownload", resourceCulture);
+            }
+        }
+
+        public static string ConnectionsHostOrProxyFilterTitle {
+            get {
+                return ResourceManager.GetString("ConnectionsHostOrProxyFilterTitle", resourceCulture);
+            }
+        }
+        public static string XrayProxyLiveCount {
+            get {
+                return ResourceManager.GetString("XrayProxyLiveCount", resourceCulture);
+            }
+        }
+
+        public static string XrayProxyUploadRate {
+            get {
+                return ResourceManager.GetString("XrayProxyUploadRate", resourceCulture);
+            }
+        }
+
+        public static string XrayProxyDownloadRate {
+            get {
+                return ResourceManager.GetString("XrayProxyDownloadRate", resourceCulture);
+            }
+        }
+        public static string XrayPanelApiUnavailable {
+            get {
+                return ResourceManager.GetString("XrayPanelApiUnavailable", resourceCulture);
+            }
+        }
+
+        public static string XrayPanelBalancerStatus {
+            get {
+                return ResourceManager.GetString("XrayPanelBalancerStatus", resourceCulture);
+            }
+        }
+
+        public static string XrayPanelAmbiguousStatus {
+            get {
+                return ResourceManager.GetString("XrayPanelAmbiguousStatus", resourceCulture);
+            }
+        }
+
+        public static string XrayPanelNoEndpointStatus {
+            get {
+                return ResourceManager.GetString("XrayPanelNoEndpointStatus", resourceCulture);
+            }
+        }
+
+        public static string XrayPanelNoMatchesStatus {
+            get {
+                return ResourceManager.GetString("XrayPanelNoMatchesStatus", resourceCulture);
+            }
+        }
+
+        public static string XrayPanelMatchedStatus {
+            get {
+                return ResourceManager.GetString("XrayPanelMatchedStatus", resourceCulture);
+            }
+        }
+
+        public static string XrayPanelUnmatchedConnection {
+            get {
+                return ResourceManager.GetString("XrayPanelUnmatchedConnection", resourceCulture);
+            }
+        }
+
+        public static string XrayPanelMatchedConnection {
+            get {
+                return ResourceManager.GetString("XrayPanelMatchedConnection", resourceCulture);
+            }
+        }
+
+        public static string XrayPanelAmbiguousConnection {
+            get {
+                return ResourceManager.GetString("XrayPanelAmbiguousConnection", resourceCulture);
+            }
+        }
+        public static string XrayProxySearch {
+            get {
+                return ResourceManager.GetString("XrayProxySearch", resourceCulture);
+            }
+        }
+
+        public static string XrayProxyFilterAll {
+            get {
+                return ResourceManager.GetString("XrayProxyFilterAll", resourceCulture);
+            }
+        }
+
+        public static string XrayProxyFilterConnected {
+            get {
+                return ResourceManager.GetString("XrayProxyFilterConnected", resourceCulture);
+            }
+        }
+
+        public static string XrayProxyServices {
+            get {
+                return ResourceManager.GetString("XrayProxyServices", resourceCulture);
+            }
+        }
+
+        public static string XrayProxyBalancer {
+            get {
+                return ResourceManager.GetString("XrayProxyBalancer", resourceCulture);
+            }
+        }
+
+        public static string XrayProxyUnavailableBadge {
+            get {
+                return ResourceManager.GetString("XrayProxyUnavailableBadge", resourceCulture);
+            }
+        }
+
+        public static string XrayProxyAmbiguousBadge {
+            get {
+                return ResourceManager.GetString("XrayProxyAmbiguousBadge", resourceCulture);
+            }
+        }
+
+        public static string XrayProxyChainBadge {
+            get {
+                return ResourceManager.GetString("XrayProxyChainBadge", resourceCulture);
+            }
+        }
+
+        public static string XrayProxyDetails {
+            get {
+                return ResourceManager.GetString("XrayProxyDetails", resourceCulture);
+            }
+        }
+
+        public static string ConnectionsFilterAll {
+            get {
+                return ResourceManager.GetString("ConnectionsFilterAll", resourceCulture);
+            }
+        }
+
+        public static string ConnectionsFilterUser {
+            get {
+                return ResourceManager.GetString("ConnectionsFilterUser", resourceCulture);
+            }
+        }
+
+        public static string ConnectionsFilterToProxies {
+            get {
+                return ResourceManager.GetString("ConnectionsFilterToProxies", resourceCulture);
+            }
+        }
+
+        public static string ConnectionsRouteToProxy {
+            get {
+                return ResourceManager.GetString("ConnectionsRouteToProxy", resourceCulture);
+            }
+        }
+
+        public static string ConnectionsRouteAmbiguous {
+            get {
+                return ResourceManager.GetString("ConnectionsRouteAmbiguous", resourceCulture);
+            }
+        }
+
+        public static string ConnectionsRouteForwarded {
+            get {
+                return ResourceManager.GetString("ConnectionsRouteForwarded", resourceCulture);
+            }
+        }
+
+        public static string ConnectionsRouteDirect {
+            get {
+                return ResourceManager.GetString("ConnectionsRouteDirect", resourceCulture);
+            }
+        }
+
+        public static string ConnectionsRouteUnknown {
+            get {
+                return ResourceManager.GetString("ConnectionsRouteUnknown", resourceCulture);
+            }
+        }
+
+        public static string ConnectionsDestination {
+            get {
+                return ResourceManager.GetString("ConnectionsDestination", resourceCulture);
+            }
+        }
+
+        public static string ConnectionsRoute {
+            get {
+                return ResourceManager.GetString("ConnectionsRoute", resourceCulture);
+            }
+        }
+
+        public static string ConnectionsRawRoute {
+            get {
+                return ResourceManager.GetString("ConnectionsRawRoute", resourceCulture);
+            }
+        }
+
+        public static string ConnectionsCopyProcessPath {
+            get {
+                return ResourceManager.GetString("ConnectionsCopyProcessPath", resourceCulture);
+            }
+        }
+
+        public static string ConnectionsProcessPathCopied {
+            get {
+                return ResourceManager.GetString("ConnectionsProcessPathCopied", resourceCulture);
+            }
+        }
+
+        public static string ConnectionsDetails {
+            get {
+                return ResourceManager.GetString("ConnectionsDetails", resourceCulture);
+            }
+        }
+
     }
 }

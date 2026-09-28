@@ -47,6 +47,7 @@ public class CoreConfigContextBuilder
         var context = new CoreConfigContext
         {
             Node = node,
+            StatisticsProfileId = node.IndexId,
             RunCoreType = runCoreType,
             AllProxiesMap = [],
             AppConfig = config,
@@ -172,6 +173,7 @@ public class CoreConfigContextBuilder
                 ruleItem.OutboundTag = Global.ProxyTag;
                 continue;
             }
+            context.RoutingProfileIds[$"remark:{ruleItem.OutboundTag}"] = ruleOutboundNode.IndexId;
 
             if (resolveChainCores && actRuleNode.ConfigType == EConfigType.Custom)
             {
@@ -196,6 +198,8 @@ public class CoreConfigContextBuilder
                     continue;
                 }
                 context.AllProxiesMap[$"remark:{ruleItem.OutboundTag}"] = chainNode;
+                context.ChainCores.First(c => c.Node.IndexId == actRuleNode.IndexId)
+                    .StatisticsProfileIds.Add(ruleOutboundNode.IndexId);
                 continue;
             }
             context.AllProxiesMap[$"remark:{ruleItem.OutboundTag}"] = actRuleNode;
@@ -395,7 +399,8 @@ public class CoreConfigContextBuilder
             {
                 Context = preSocksResult.Context with
                 {
-                    // Shared JSON owns the interleaved rules. The pre-core only forwards ingress.
+                    // Shared JSON owns interleaved destination rules. Handoff attaches a
+                    // process-identity classifier after composition; never run local rules twice.
                     RoutingItem = nodeContext.SharedRoutingPort != null ? null : preSocksResult.Context.RoutingItem,
                     ProtectDomainList =
                     [.. nodeContext.ProtectDomainList ?? [], .. preSocksResult.Context.ProtectDomainList ?? []],

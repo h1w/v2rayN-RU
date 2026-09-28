@@ -703,7 +703,7 @@
     <value>İstisnalar: aşağıdakılarla başlayan ünvanlar üçün proksi serverdən istifadə etməyin. Girişləri nöqtəli vergüllə (;) ayırın.</value>
   </data>
   <data name="TbSettingsDisplayRealTimeSpeed" xml:space="preserve">
-    <value>Sürəti real vaxtda göstər (yenidən başlatma tələb olunur)</value>
+    <value>Status sətrində real vaxt sürətini göstər (yenidən başlatma tələb olunur)</value>
   </data>
   <data name="TbSettingsKeepOlderDedupl" xml:space="preserve">
     <value>Təkrarlananları silərkən köhnə girişləri saxla</value>
@@ -736,7 +736,7 @@
     <value>Sistem açılarkən başlat</value>
   </data>
   <data name="TbSettingsStatistics" xml:space="preserve">
-    <value>Trafik statistikasını aktiv et (yenidən başlatma tələb olunur)</value>
+    <value>Gündəlik trafik sütunlarını göstər (yenidən başlatma tələb olunur)</value>
   </data>
   <data name="TbSettingsSubConvert" xml:space="preserve">
     <value>Abunəliyin çevrilməsi üçün URL</value>

@@ -703,7 +703,7 @@
     <value>Kivételek: Ne használjon proxy szervert a következő címmel kezdődő címekhez. Pontosvesszővel (;) válassza el a bejegyzéseket.</value>
   </data>
   <data name="TbSettingsDisplayRealTimeSpeed" xml:space="preserve">
-    <value>Valós idejű sebesség megjelenítése (újraindítást igényel)</value>
+    <value>Valós idejű sebesség megjelenítése az állapotsorban (újraindítást igényel)</value>
   </data>
   <data name="TbSettingsKeepOlderDedupl" xml:space="preserve">
     <value>Régebbi bejegyzések megtartása deduplikáláskor</value>
@@ -736,7 +736,7 @@
     <value>Indítás rendszerindításkor</value>
   </data>
   <data name="TbSettingsStatistics" xml:space="preserve">
-    <value>Forgalmi statisztikák engedélyezése (újraindítást igényel)</value>
+    <value>Napi adatforgalmi oszlopok megjelenítése (újraindítást igényel)</value>
   </data>
   <data name="TbSettingsSubConvert" xml:space="preserve">
     <value>Előfizetés konverziós URL</value>

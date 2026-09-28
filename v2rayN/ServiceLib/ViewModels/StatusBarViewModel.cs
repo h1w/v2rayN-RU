@@ -589,6 +589,18 @@ public class StatusBarViewModel : MyReactiveObject
 
     public async Task UpdateStatistics(ServerSpeedItem update)
     {
+        var activeProfileId = StatisticsManager.Instance.ActiveProfileId;
+        if (activeProfileId == null)
+        {
+            SpeedProxyDisplay = string.Empty;
+            SpeedDirectDisplay = string.Empty;
+            return;
+        }
+        if (update.IndexId != activeProfileId)
+        {
+            return;
+        }
+
         if (!_config.GuiItem.DisplayRealTimeSpeed)
         {
             return;
@@ -598,13 +610,13 @@ public class StatusBarViewModel : MyReactiveObject
         {
             if (AppManager.Instance.IsRunningCore(ECoreType.sing_box))
             {
-                SpeedProxyDisplay = string.Format(ResUI.SpeedDisplayText, EInboundProtocol.mixed, Utils.HumanFy(update.ProxyUp), Utils.HumanFy(update.ProxyDown));
+                SpeedProxyDisplay = string.Format(ResUI.SpeedDisplayText, EInboundProtocol.mixed, FormatRate(update.ProxyUpRate), FormatRate(update.ProxyDownRate));
                 SpeedDirectDisplay = string.Empty;
             }
             else
             {
-                SpeedProxyDisplay = string.Format(ResUI.SpeedDisplayText, Global.ProxyTag, Utils.HumanFy(update.ProxyUp), Utils.HumanFy(update.ProxyDown));
-                SpeedDirectDisplay = string.Format(ResUI.SpeedDisplayText, Global.DirectTag, Utils.HumanFy(update.DirectUp), Utils.HumanFy(update.DirectDown));
+                SpeedProxyDisplay = string.Format(ResUI.SpeedDisplayText, Global.ProxyTag, FormatRate(update.ProxyUpRate), FormatRate(update.ProxyDownRate));
+                SpeedDirectDisplay = string.Format(ResUI.SpeedDisplayText, Global.DirectTag, FormatRate(update.DirectUpRate), FormatRate(update.DirectDownRate));
             }
         }
         catch
@@ -612,6 +624,10 @@ public class StatusBarViewModel : MyReactiveObject
         }
         await Task.CompletedTask;
     }
+
+    private static string FormatRate(double? rate) => rate is >= 0 && double.IsFinite(rate.Value)
+        ? Utils.HumanFyBytes(rate.Value)
+        : "—";
 
     #endregion UI
 }

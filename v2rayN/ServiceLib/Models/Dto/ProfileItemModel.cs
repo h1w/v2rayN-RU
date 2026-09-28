@@ -36,10 +36,45 @@ public class ProfileItemModel : ReactiveObject
     public string TodayDown { get; set; }
 
     [Reactive]
-    public string TotalUp { get; set; }
+    public string TotalUp { get; set; } = string.Empty;
 
     [Reactive]
-    public string TotalDown { get; set; }
+    public string TotalDown { get; set; } = string.Empty;
+
+    [Reactive]
+    public string CurrentDown { get; set; } = string.Empty;
+
+    [Reactive]
+    public string CurrentUp { get; set; } = string.Empty;
+
+    public void ApplyStatistics(ServerSpeedItem update, IReadOnlySet<string> activeProfileIds)
+    {
+        var isRunning = activeProfileIds.Contains(IndexId);
+        if (!isRunning)
+        {
+            CurrentDown = string.Empty;
+            CurrentUp = string.Empty;
+        }
+
+        if (IndexId != update.IndexId || string.IsNullOrEmpty(update.IndexId))
+        {
+            return;
+        }
+
+        TodayDown = Utils.HumanFy(update.TodayDown);
+        TodayUp = Utils.HumanFy(update.TodayUp);
+        TotalDown = Utils.HumanFyBytes(update.TotalDown * 1024d + update.TotalDownBytesRemainder);
+        TotalUp = Utils.HumanFyBytes(update.TotalUp * 1024d + update.TotalUpBytesRemainder);
+        if (isRunning)
+        {
+            CurrentDown = FormatRate(update.ProxyDownRate);
+            CurrentUp = FormatRate(update.ProxyUpRate);
+        }
+    }
+
+    private static string FormatRate(double? rate) => rate is >= 0 && double.IsFinite(rate.Value)
+        ? $"{Utils.HumanFyBytes(rate.Value)}/s"
+        : string.Empty;
 
     public string GetSummary()
     {

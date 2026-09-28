@@ -4,6 +4,8 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:dd="clr-namespace:v2rayN.Desktop.DesignData"
+    xmlns:dto="clr-namespace:ServiceLib.Models.Dto;assembly=ServiceLib"
+    xmlns:converters="using:Avalonia.Data.Converters"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:resx="clr-namespace:ServiceLib.Resx;assembly=ServiceLib"
     xmlns:vms="clr-namespace:ServiceLib.ViewModels;assembly=ServiceLib"
@@ -13,58 +15,86 @@
     Design.DataContext="{x:Static dd:DesignData.ClashConnections}"
     mc:Ignorable="d">
 
-    <DockPanel Margin="2">
-        <WrapPanel
-            Margin="{StaticResource Margin4}"
-            VerticalAlignment="Center"
-            DockPanel.Dock="Top"
-            Orientation="Horizontal">
+    <UserControl.Styles>
+        <Style Selector="Button.processPath">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+    </UserControl.Styles>
 
+    <DockPanel Margin="8">
+        <WrapPanel Margin="0,0,0,8" DockPanel.Dock="Top" Orientation="Horizontal">
             <TextBox
                 x:Name="txtHostFilter"
-                Width="200"
-                Margin="{StaticResource MarginLr8}"
+                Width="220"
+                Margin="0,0,8,0"
                 VerticalContentAlignment="Center"
-                PlaceholderText="{x:Static resx:ResUI.ConnectionsHostFilterTitle}" />
-
-            <Button
-                x:Name="btnConnectionCloseAll"
-                Margin="{StaticResource MarginLr8}"
-                Classes="IconButton Success"
-                ToolTip.Tip="{x:Static resx:ResUI.menuConnectionCloseAll}">
-                <Button.Content>
-                    <PathIcon Data="{StaticResource SemiIconClose}" />
-                </Button.Content>
-            </Button>
-
+                PlaceholderText="{x:Static resx:ResUI.ConnectionsHostOrProxyFilterTitle}" />
+            <ComboBox x:Name="cmbTrafficFilter" MinWidth="130" Margin="0,0,8,0" VerticalAlignment="Center" SelectedIndex="0">
+                <ComboBoxItem Content="{x:Static resx:ResUI.ConnectionsFilterAll}" />
+                <ComboBoxItem Content="{x:Static resx:ResUI.ConnectionsFilterUser}" />
+                <ComboBoxItem Content="{x:Static resx:ResUI.ConnectionsFilterToProxies}" />
+            </ComboBox>
+            <Button x:Name="btnConnectionClose" Margin="0,0,8,0" Content="{x:Static resx:ResUI.menuConnectionClose}" />
+            <Button x:Name="btnConnectionCloseAll" Margin="0,0,8,0" Content="{x:Static resx:ResUI.menuConnectionCloseAll}" />
             <Button
                 x:Name="btnAutofitColumnWidth"
-                Margin="{StaticResource MarginLr8}"
-                Classes="IconButton Success"
+                Margin="0,0,8,0"
+                Classes="IconButton"
                 ToolTip.Tip="{x:Static resx:ResUI.menuProfileAutofitColumnWidth}">
-                <Button.Content>
-                    <PathIcon Data="{StaticResource SemiIconExpand}" />
-                </Button.Content>
+                <PathIcon Data="{StaticResource SemiIconExpand}" />
             </Button>
-
-            <TextBlock
-                Margin="{StaticResource MarginLr8}"
-                VerticalAlignment="Center"
-                Text="{x:Static resx:ResUI.TbAutoRefresh}" />
-            <ToggleSwitch
-                x:Name="togAutoRefresh"
-                Margin="{StaticResource MarginLr8}"
-                HorizontalAlignment="Left" />
+            <TextBlock Margin="0,0,8,0" VerticalAlignment="Center" Text="{x:Static resx:ResUI.TbAutoRefresh}" />
+            <ToggleSwitch x:Name="togAutoRefresh" HorizontalAlignment="Left" />
         </WrapPanel>
+
+        <Border
+            x:Name="connectionDetails"
+            DockPanel.Dock="Bottom"
+            Margin="0,8,0,0"
+            Padding="8"
+            BorderThickness="0"
+            IsVisible="{Binding SelectedSource, Converter={x:Static converters:ObjectConverters.IsNotNull}}">
+            <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="6">
+                <TextBlock Grid.ColumnSpan="4" FontWeight="SemiBold" Text="{x:Static resx:ResUI.ConnectionsDetails}" />
+                <TextBlock Grid.Row="1" Opacity="0.65" Text="{x:Static resx:ResUI.TbSortingNetwork}" />
+                <SelectableTextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedSource.Network}" />
+                <TextBlock Grid.Row="1" Grid.Column="2" Opacity="0.65" Text="{x:Static resx:ResUI.TbSortingType}" />
+                <SelectableTextBlock Grid.Row="1" Grid.Column="3" Text="{Binding SelectedSource.Type}" />
+                <TextBlock Grid.Row="2" Opacity="0.65" Text="{x:Static resx:ResUI.ConnectionsRawRoute}" />
+                <ScrollViewer Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" MaxHeight="96" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <SelectableTextBlock Text="{Binding SelectedSource.RawRoute}" TextWrapping="Wrap" />
+                </ScrollViewer>
+                <TextBlock Grid.Row="3" VerticalAlignment="Center" Opacity="0.65" Text="{x:Static resx:ResUI.TbSortingProcess}" />
+                <Button
+                    x:Name="btnCopySelectedProcessPath"
+                    Grid.Row="3"
+                    Grid.Column="1"
+                    Grid.ColumnSpan="3"
+                    Classes="processPath"
+                    Click="CopyProcessPath_Click"
+                    Tag="{Binding SelectedSource}"
+                    IsEnabled="{Binding SelectedSource.HasProcessPath}"
+                    ToolTip.Tip="{x:Static resx:ResUI.ConnectionsCopyProcessPath}">
+                    <TextBlock Text="{Binding SelectedSource.ProcessPath, TargetNullValue=—}" TextWrapping="Wrap" />
+                </Button>
+            </Grid>
+        </Border>
 
         <DataGrid
             x:Name="lstConnections"
             AutoGenerateColumns="False"
-            BorderThickness="1"
+            BorderThickness="0"
             CanUserResizeColumns="True"
-            GridLinesVisibility="All"
+            GridLinesVisibility="None"
             HeadersVisibility="Column"
+            RowHeight="40"
             IsReadOnly="True"
+            SelectionMode="Single"
             ItemsSource="{Binding ConnectionItems}">
             <DataGrid.ContextMenu>
                 <ContextMenu>
@@ -73,36 +103,43 @@
                 </ContextMenu>
             </DataGrid.ContextMenu>
             <DataGrid.Columns>
-                <DataGridTextColumn
-                    Width="300"
-                    Binding="{Binding Host}"
-                    Header="{x:Static resx:ResUI.TbSortingHost}"
-                    Tag="Host" />
-                <DataGridTextColumn
-                    Width="500"
-                    Binding="{Binding Chain}"
-                    Header="{x:Static resx:ResUI.TbSortingChain}"
-                    Tag="Chain" />
-                <DataGridTextColumn
-                    Width="80"
-                    Binding="{Binding Network}"
-                    Header="{x:Static resx:ResUI.TbSortingNetwork}"
-                    Tag="Network" />
-                <DataGridTextColumn
-                    Width="160"
-                    Binding="{Binding Type}"
-                    Header="{x:Static resx:ResUI.TbSortingType}"
-                    Tag="Type" />
-                <DataGridTextColumn
-                    Width="100"
-                    Binding="{Binding ProcessPath}"
-                    Header="{x:Static resx:ResUI.TbSortingProcess}"
-                    Tag="ProcessPath" />
-                <DataGridTextColumn
-                    Width="100"
-                    Binding="{Binding Elapsed}"
-                    Header="{x:Static resx:ResUI.TbSortingTime}"
-                    Tag="Elapsed" />
+                <DataGridTemplateColumn Width="3*" MinWidth="180" Header="{x:Static resx:ResUI.ConnectionsDestination}" SortMemberPath="Host" Tag="Host">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:ClashConnectionModel">
+                            <TextBlock Margin="8,0" VerticalAlignment="Center" Text="{Binding Host}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Host}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="3*" MinWidth="180" Header="{x:Static resx:ResUI.ConnectionsRoute}" SortMemberPath="Chain" Tag="Chain">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:ClashConnectionModel">
+                            <TextBlock Margin="8,0" VerticalAlignment="Center" Text="{Binding Chain}" TextTrimming="CharacterEllipsis">
+                                <ToolTip.Tip>
+                                    <StackPanel MaxWidth="640" Spacing="4">
+                                        <TextBlock Text="{Binding Chain}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding RawRoute}" TextWrapping="Wrap" Opacity="0.7" />
+                                    </StackPanel>
+                                </ToolTip.Tip>
+                            </TextBlock>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="2*" MinWidth="120" Header="{x:Static resx:ResUI.TbSortingProcess}" SortMemberPath="ProcessName" Tag="ProcessPath">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:ClashConnectionModel">
+                            <Button
+                                x:Name="btnCopyProcessPath"
+                                Classes="processPath"
+                                Click="CopyProcessPath_Click"
+                                Tag="{Binding}"
+                                IsEnabled="{Binding HasProcessPath}"
+                                ToolTip.Tip="{Binding ProcessPath}">
+                                <TextBlock Text="{Binding ProcessName}" TextTrimming="CharacterEllipsis" />
+                            </Button>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Width="100" Binding="{Binding Elapsed}" Header="{x:Static resx:ResUI.TbSortingTime}" Tag="Elapsed" />
             </DataGrid.Columns>
         </DataGrid>
     </DockPanel>

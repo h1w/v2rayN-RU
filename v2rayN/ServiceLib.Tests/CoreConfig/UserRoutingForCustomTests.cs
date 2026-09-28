@@ -27,6 +27,50 @@ public class UserRoutingForCustomTests
     }
 
     [Fact]
+    public void RoutedStatistics_DeduplicateRules_AndKeepOriginalIdentityAfterResolution()
+    {
+        var context = BuildContext("""
+            [{"Id":"one","OutboundTag":"alias","Domain":["one.test"],"Enabled":true},
+             {"Id":"two","OutboundTag":"alias","Domain":["two.test"],"Enabled":true}]
+            """);
+        var target = CoreConfigTestFactory.CreateVmessNode(ECoreType.Xray);
+        target.IndexId = "resolved-child";
+        target.Remarks = "same display name";
+        context.AllProxiesMap["remark:alias"] = target;
+        context.RoutingProfileIds["remark:alias"] = "original-subscription-profile";
+        var fragment = new CoreConfigV2rayService(context).BuildUserRoutingForCustom();
+        fragment.Rules.Should().HaveCount(2);
+        var tag = fragment.Rules[0].outboundTag;
+        fragment.Rules[1].outboundTag.Should().Be(tag);
+        context.StatisticsOutboundProfiles.Should().ContainSingle();
+        context.StatisticsOutboundProfiles[tag!].Should().Be("original-subscription-profile");
+    }
+
+    [Fact]
+    public void CustomTagCollision_StatisticsFollowTheGeneratedHandoff_NotTheNativeOutbound()
+    {
+        var context = BuildContext("""
+            [{"Id":"one","OutboundTag":"alias","Domain":["one.test"],"Enabled":true}]
+            """);
+        var target = CoreConfigTestFactory.CreateVmessNode(ECoreType.Xray);
+        target.IndexId = "aux";
+        target.Remarks = "target";
+        context.AllProxiesMap["remark:alias"] = target;
+        context.RoutingProfileIds["remark:alias"] = "original";
+        var result = CustomConfigComposer.Compose("""
+            {"outbounds":[{"tag":"native-proxy","protocol":"socks","settings":{"servers":[{"address":"127.0.0.1","port":1080}]}},
+              {"tag":"original-proxy-target","protocol":"freedom"}]}
+            """, ECoreType.Xray, context);
+        result.Json.Should().NotBeNull();
+        var root = JsonNode.Parse(result.Json!)!;
+        var handoff = root["routing"]!["rules"]!.AsArray().Single(r =>
+            r?["domain"] is JsonArray domains && domains.Any(d => d?.GetValue<string>() == "one.test"))!["outboundTag"]!.GetValue<string>();
+        handoff.Should().NotBe("original-proxy-target");
+        context.StatisticsOutboundProfiles.Should().ContainSingle();
+        context.StatisticsOutboundProfiles[handoff].Should().Be("original");
+    }
+
+    [Fact]
     public void Xray_rule_survives_trailing_commented_domain()
     {
         // Последняя строка блока «Домены» закомментирована — правило не должно исчезать.

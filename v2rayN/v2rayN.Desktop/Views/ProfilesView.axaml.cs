@@ -1,6 +1,7 @@
 using Avalonia.VisualTree;
 using DialogHostAvalonia;
 using DynamicData.Binding;
+using ServiceLib.Helper;
 using v2rayN.Desktop.Common;
 
 namespace v2rayN.Desktop.Views;
@@ -412,7 +413,15 @@ public partial class ProfilesView : ReactiveUserControl<ProfilesViewModel>
     {
         try
         {
-            var lvColumnItem = _config.UiItem.MainColumnItem.OrderBy(t => t.Index).ToList();
+            var defaults = lstProfiles.Columns.Where(column => column.Tag is string)
+                .Select(column => new ColumnItem
+                {
+                    Name = (string)column.Tag!,
+                    Width = (int)(column.Width.IsAbsolute ? column.Width.Value : 0),
+                    Index = column.DisplayIndex
+                }).ToList();
+            var lvColumnItem = ProfileColumnLayout.Restore(_config.UiItem.MainColumnItem, defaults);
+            _config.UiItem.MainColumnItem = lvColumnItem;
             var displayIndex = 0;
             foreach (var item in lvColumnItem)
             {
@@ -424,16 +433,20 @@ public partial class ProfilesView : ReactiveUserControl<ProfilesViewModel>
                     }
                     if (item2.Tag.Equals(item.Name))
                     {
+                        item2.DisplayIndex = displayIndex++;
                         if (item.Width < 0)
                         {
                             item2.IsVisible = false;
                         }
                         else
                         {
-                            item2.Width = new DataGridLength(item.Width, DataGridLengthUnitType.Pixel);
-                            item2.DisplayIndex = displayIndex++;
+                            item2.IsVisible = true;
+                            if (item.Width > 0)
+                            {
+                                item2.Width = new DataGridLength(item.Width, DataGridLengthUnitType.Pixel);
+                            }
                         }
-                        if (item.Name.StartsWith("to", StringComparison.CurrentCultureIgnoreCase))
+                        if (item.Name is nameof(ProfileItemModel.TodayDown) or nameof(ProfileItemModel.TodayUp))
                         {
                             item2.IsVisible = _config.GuiItem.EnableStatistics;
                         }

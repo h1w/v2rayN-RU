@@ -15,6 +15,8 @@ public class CoreManager
     private ProcessService? _processService;
     private ProcessService? _processPreService;
     private readonly List<ProcessService> _processChainServices = [];
+    private readonly Dictionary<string, Func<bool>> _chainStatisticsLiveness = new(StringComparer.Ordinal);
+    private readonly List<StatisticsSourceConfiguration> _chainStatisticsSources = [];
     private bool _linuxSudo = false;
     private Func<bool, string, Task>? _updateFunc;
     private const string _tag = "CoreHandler";
@@ -65,11 +67,18 @@ public class CoreManager
     /// <param name="preContext">Optional pre-socks context passed to <see cref="CoreStartPreService"/>.</param>
     public async Task LoadCore(CoreConfigContext? mainContext, CoreConfigContext? preContext)
     {
+        XrayProxyPanelManager.Instance.Reset();
         if (mainContext == null)
         {
             await UpdateFunc(false, ResUI.CheckServerSettings);
             return;
         }
+
+        mainContext = mainContext with
+        {
+            IsProcessRoutingDelegated = mainContext.RunCoreType == ECoreType.Xray
+                && preContext?.RunCoreType == ECoreType.sing_box && mainContext.SharedRoutingPort == null,
+        };
 
         var node = mainContext.Node;
         var fileName = Utils.GetBinConfigPath(Global.CoreConfigFileName);
@@ -78,6 +87,36 @@ public class CoreManager
         {
             await AbortLoad(result.Msg);
             return;
+        }
+        if (mainContext.SharedProcessRoutingRules.Count > 0 && preContext?.RunCoreType != ECoreType.sing_box)
+        {
+            await AbortLoad("Shared custom process routing requires the sing-box helper. Enable TUN legacy protection.");
+            return;
+        }
+
+        // Main ingress remains the aggregate; routed outbound counters are auxiliary
+        // breakdowns, never a second addition to the main profile.
+        if (mainContext.RunCoreType == ECoreType.Xray)
+        {
+            try
+            {
+                if (preContext?.RunCoreType == ECoreType.sing_box)
+                {
+                    var handoff = HelperRoutingHandoff.Prepare(mainContext, preContext,
+                        await File.ReadAllTextAsync(fileName));
+                    preContext = handoff.HelperContext;
+                    await File.WriteAllTextAsync(fileName, handoff.MainJson);
+                }
+                var json = await File.ReadAllTextAsync(fileName);
+                await File.WriteAllTextAsync(fileName,
+                    StatisticsXrayService.EnableCounters(json, AppManager.Instance.StatePort));
+            }
+            catch (Exception ex)
+            {
+                Logging.SaveLog(_tag, ex);
+                await AbortLoad(ResUI.FailedGenDefaultConfiguration);
+                return;
+            }
         }
 
         // Prepare the future pre-core before starting any children: its listeners/cache
@@ -103,6 +142,7 @@ public class CoreManager
         await UpdateFunc(false, $"{Utils.GetRuntimeInfo()}");
         await UpdateFunc(false, string.Format(ResUI.StartService, DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss")));
         await CoreStop();
+        var panelVersion = XrayProxyPanelManager.Instance.Version;
         await Task.Delay(100);
 
         if (Utils.IsWindows() && _config.TunModeItem.EnableTun)
@@ -112,6 +152,7 @@ public class CoreManager
         }
 
         await CoreStartChainServices(mainContext, preContext);
+        var statisticsStartedAt = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
         await CoreStart(mainContext);
         if (_processService == null)
         {
@@ -121,7 +162,38 @@ public class CoreManager
         await WaitForProxyPort(preContext);
         await CoreStartPreService(preContext);
 
+        // Inventory must describe the final generated main JSON, never the selected
+        // profile or a speed-test config. The helper sees transport endpoints only.
+        if (mainContext.RunCoreType == ECoreType.Xray
+            && preContext?.RunCoreType == ECoreType.sing_box
+            && _processService is { HasExited: false } mainProcess
+            && _processPreService is { HasExited: false } helperProcess)
+        {
+            try
+            {
+                var runningJson = await File.ReadAllTextAsync(fileName);
+                XrayProxyPanelManager.Instance.Activate(runningJson,
+                    () => !mainProcess.HasExited && !helperProcess.HasExited, panelVersion);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Logging.SaveLog(_tag, ex);
+            }
+        }
+
         AppManager.Instance.RunningCoreType = preContext?.RunCoreType ?? mainContext.RunCoreType;
+
+        if (_processService is { HasExited: false } statisticsMain
+            && (preContext == null || _processPreService is { HasExited: false }))
+        {
+            var statisticsHelper = _processPreService;
+            await StatisticsManager.Instance.StartSession(
+                mainContext.StatisticsProfileId ?? node.IndexId, mainContext.RunCoreType,
+                await File.ReadAllTextAsync(fileName), mainContext.SharedRoutingPort != null,
+                () => !statisticsMain.HasExited && (statisticsHelper == null || !statisticsHelper.HasExited),
+                statisticsStartedAt, mainContext.StatisticsOutboundProfiles,
+                _chainStatisticsLiveness, _chainStatisticsSources);
+        }
 
         if (_processService != null)
         {
@@ -198,6 +270,8 @@ public class CoreManager
 
     public async Task CoreStop()
     {
+        XrayProxyPanelManager.Instance.Reset();
+        await StatisticsManager.Instance.StopSession();
         try
         {
             if (_linuxSudo)
@@ -219,6 +293,8 @@ public class CoreManager
 
         var chains = _processChainServices.ToList();
         _processChainServices.Clear();
+        _chainStatisticsLiveness.Clear();
+        _chainStatisticsSources.Clear();
         foreach (var proc in chains)
         {
             await StopProcessSafe(proc);
@@ -318,6 +394,10 @@ public class CoreManager
         }
         foreach (var descriptor in mainContext.ChainCores)
         {
+            // Failed children remain unavailable, not live zero-rate sources.
+            var profileIds = descriptor.StatisticsProfileIds.Count > 0
+                ? descriptor.StatisticsProfileIds.ToArray() : [descriptor.Node.IndexId];
+            foreach (var profileId in profileIds) _chainStatisticsLiveness[profileId] = () => false;
             try
             {
                 var sourcePath = descriptor.Node.Address;
@@ -339,11 +419,30 @@ public class CoreManager
                     continue;
                 }
 
+                // Xray main cores already count the distinct SOCKS handoff. A native
+                // sing-box main instead needs independently instrumented child ingress.
+                // Several virtual identities sharing one child cannot be separated by
+                // its ingress totals; leave those rows unavailable on native sing-box.
+                int? statisticsPort = null;
+                if (mainContext.RunCoreType != ECoreType.Xray && profileIds.Length == 1)
+                {
+                    var port = Utils.GetFreePort();
+                    var instrumented = descriptor.CoreType == ECoreType.Xray
+                        ? StatisticsXrayService.EnableCounters(chainConfig!, port)
+                        : descriptor.CoreType == ECoreType.sing_box
+                            ? StatisticsSingboxService.EnableCounters(chainConfig!, port) : null;
+                    if (instrumented != null && ChainConfigBuilder.AreLaunchResourcesCompatible([.. ownedConfigs, instrumented]))
+                    {
+                        chainConfig = instrumented;
+                        statisticsPort = port;
+                    }
+                }
                 await File.WriteAllTextAsync(Utils.GetBinConfigPath(descriptor.ConfigFileName), chainConfig);
 
                 var coreInfo = CoreInfoManager.Instance.GetCoreInfo(descriptor.CoreType);
                 // Без sudo и без проброса логов: цепочка не занимается TUN, а её вывод
                 // смешался бы с выводом главного ядра — ProcessService не помечает источник.
+                var statisticsStartedAt = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
                 var proc = await ChainCoreLifecycle.StartReadyAsync(
                     () => RunProcess(coreInfo, descriptor.ConfigFileName, false, false),
                     process => ChainCoreLifecycle.WaitReadyAsync(() => process.HasExited,
@@ -358,6 +457,13 @@ public class CoreManager
                 }
                 _processChainServices.Add(proc);
                 ownedConfigs.Add(chainConfig!);
+                foreach (var profileId in profileIds)
+                {
+                    _chainStatisticsLiveness[profileId] = () => !proc.HasExited;
+                    if (statisticsPort is { } port)
+                        _chainStatisticsSources.Add(new(profileId, descriptor.CoreType, chainConfig!,
+                            () => !proc.HasExited, statisticsStartedAt, port));
+                }
             }
             catch (Exception ex)
             {

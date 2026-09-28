@@ -161,6 +161,7 @@ public static class CustomConfigComposer
             }
 
             JsonArray? ownRules = null;
+            context.SharedProcessRoutingRules.Clear();
             if (context.SharedRoutingPort != null)
             {
                 var section = coreType == ECoreType.sing_box ? "route" : "routing";
@@ -404,10 +405,21 @@ public static class CustomConfigComposer
         var section = coreType == ECoreType.sing_box ? "route" : "routing";
         root[section] ??= new JsonObject();
         var frontRules = root[section]!["rules"] as JsonArray ?? [];
+        if (coreType == ECoreType.Xray && frontRules.OfType<JsonObject>().Any(r => r["process"] is JsonArray { Count: > 0 }))
+        {
+            // Preserve the composed order and exact renamed targets, not a second projection
+            // from RoutingItem. Only the helper can evaluate process ownership.
+            context.SharedProcessRoutingRules.AddRange(frontRules.OfType<JsonObject>().Select(r => (JsonObject)r.DeepClone()));
+        }
         var combined = new JsonArray();
         foreach (var rule in frontRules.OfType<JsonObject>())
         {
-            combined.Add(GuardRule(rule, frontTag, coreType));
+            var guarded = GuardRule(rule, frontTag, coreType);
+            if (coreType == ECoreType.Xray && rule["process"] != null)
+            {
+                continue;
+            }
+            combined.Add(guarded);
         }
         foreach (var rule in ownRules.OfType<JsonObject>())
         {
@@ -580,6 +592,8 @@ public static class CustomConfigComposer
             if (unique != ob.tag)
             {
                 renames[ob.tag] = unique;
+                if (context.StatisticsOutboundProfiles.Remove(ob.tag, out var profileId))
+                    context.StatisticsOutboundProfiles[unique] = profileId;
                 ob.tag = unique;
             }
             tags.Add(ob.tag);
@@ -692,6 +706,8 @@ public static class CustomConfigComposer
             if (unique != srv.tag)
             {
                 renames[srv.tag] = unique;
+                if (context.StatisticsOutboundProfiles.Remove(srv.tag, out var profileId))
+                    context.StatisticsOutboundProfiles[unique] = profileId;
                 srv.tag = unique;
             }
             tags.Add(srv.tag);

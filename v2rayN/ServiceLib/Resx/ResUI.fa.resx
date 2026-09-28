@@ -703,7 +703,7 @@
     <value>استثناها: از سرور پروکسی برای آدرس هایی که با موارد زیر شروع می شوند استفاده نکنید. برای جدا کردن ورودی ها از نقطه ویرگول (;) استفاده کنید.</value>
   </data>
   <data name="TbSettingsDisplayRealTimeSpeed" xml:space="preserve">
-    <value>نمایش سرعت واقعی (نیاز به راه اندازی مجدد)</value>
+    <value>نمایش سرعت لحظه‌ای در نوار وضعیت (نیاز به راه‌اندازی مجدد)</value>
   </data>
   <data name="TbSettingsKeepOlderDedupl" xml:space="preserve">
     <value>ورودی‌های قدیمی‌تر را هنگام حذف کپی نگه دارید</value>
@@ -736,7 +736,7 @@
     <value>درهنگام راه ائدازی شروع شود</value>
   </data>
   <data name="TbSettingsStatistics" xml:space="preserve">
-    <value>فعال کردن آمار ترافیک (نیاز به راه اندازی مجدد)</value>
+    <value>نمایش ستون‌های ترافیک روزانه (نیاز به راه‌اندازی مجدد)</value>
   </data>
   <data name="TbSettingsSubConvert" xml:space="preserve">
     <value>آدرس اینترنتی تبدیل اشتراک</value>

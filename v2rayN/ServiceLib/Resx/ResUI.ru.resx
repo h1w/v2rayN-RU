@@ -196,10 +196,19 @@
     <value>Отправлено сегодня</value>
   </data>
   <data name="LvTotalDownloadDataAmount" xml:space="preserve">
-    <value>Всего загружено</value>
+    <value>↓ Получено</value>
   </data>
   <data name="LvTotalUploadDataAmount" xml:space="preserve">
-    <value>Всего отдано</value>
+    <value>↑ Отправлено</value>
+  </data>
+  <data name="LvCurrentDownloadRate" xml:space="preserve">
+    <value>↓ Сейчас</value>
+  </data>
+  <data name="LvCurrentUploadRate" xml:space="preserve">
+    <value>↑ Сейчас</value>
+  </data>
+  <data name="ProfileStatisticsHint" xml:space="preserve">
+    <value>Общий трафик сохраняется после перезапуска. Текущая скорость показана для работающих профилей, в том числе используемых правилами маршрутизации; пустые ячейки означают, что профиль неактивен или данные недоступны. Трафик дополнительных профилей уже включён в общий трафик основного профиля; не суммируйте эти строки. Для учёта трафика включите сбор статистики. При его отключении накопленные значения сохраняются.</value>
   </data>
   <data name="LvTransportProtocol" xml:space="preserve">
     <value>Протокол</value>
@@ -724,7 +733,7 @@
     <value>Исключения: не использовать прокси для адресов, начинающихся с указанных. Разделяйте точкой с запятой (;)</value>
   </data>
   <data name="TbSettingsDisplayRealTimeSpeed" xml:space="preserve">
-    <value>Показывать скорость в реальном времени (требуется перезапуск)</value>
+    <value>Показывать текущую скорость в строке состояния (требуется перезапуск)</value>
   </data>
   <data name="TbSettingsKeepOlderDedupl" xml:space="preserve">
     <value>При удалении дубликатов сохранять элементы с меньшим порядковым номером</value>
@@ -757,7 +766,7 @@
     <value>Запускать при старте системы (может не сработать)</value>
   </data>
   <data name="TbSettingsStatistics" xml:space="preserve">
-    <value>Включить статистику трафика (требуется перезапуск)</value>
+    <value>Показывать столбцы суточного трафика (требуется перезапуск)</value>
   </data>
   <data name="TbSettingsSubConvert" xml:space="preserve">
     <value>URL конвертации подписок (необязательно)</value>
@@ -1992,5 +2001,128 @@
   </data>
   <data name="TbSortingProcess" xml:space="preserve">
     <value>Процесс</value>
+  </data>
+  <data name="XrayProxyInventoryTip" xml:space="preserve">
+    <value>Исходящие подключения Xray из работающей конфигурации. Байты и скорость учитывают только открытые соединения вспомогательного ядра, а не трафик отдельных пользователей. Общие адреса неоднозначны: их трафик не приписывается прокси.</value>
+  </data>
+  <data name="XrayProxyGroups" xml:space="preserve">
+    <value>Группы</value>
+  </data>
+  <data name="XrayProxyStatus" xml:space="preserve">
+    <value>Статус</value>
+  </data>
+  <data name="XrayProxyLiveUpload" xml:space="preserve">
+    <value>↑ байт</value>
+  </data>
+  <data name="XrayProxyLiveDownload" xml:space="preserve">
+    <value>↓ байт</value>
+  </data>
+  <data name="ConnectionsHostOrProxyFilterTitle" xml:space="preserve">
+    <value>Хост, прокси или процесс</value>
+  </data>
+  <data name="XrayProxyLiveCount" xml:space="preserve">
+    <value>Откр.</value>
+  </data>
+  <data name="XrayProxyUploadRate" xml:space="preserve">
+    <value>↑ /с</value>
+  </data>
+  <data name="XrayProxyDownloadRate" xml:space="preserve">
+    <value>↓ /с</value>
+  </data>
+  <data name="XrayPanelApiUnavailable" xml:space="preserve">
+    <value>API вспомогательного ядра недоступен</value>
+  </data>
+  <data name="XrayPanelBalancerStatus" xml:space="preserve">
+    <value>Балансировщик настроен; выбранный прокси не наблюдается</value>
+  </data>
+  <data name="XrayPanelAmbiguousStatus" xml:space="preserve">
+    <value>Неоднозначный адрес; трафик не приписан (число: только однозначные совпадения)</value>
+  </data>
+  <data name="XrayPanelNoEndpointStatus" xml:space="preserve">
+    <value>Нет адреса для сопоставления; трафик неизвестен</value>
+  </data>
+  <data name="XrayPanelNoMatchesStatus" xml:space="preserve">
+    <value>Нет точных совпадений; только открытые соединения вспомогательного ядра</value>
+  </data>
+  <data name="XrayPanelMatchedStatus" xml:space="preserve">
+    <value>Точное совпадение адреса; только открытые соединения</value>
+  </data>
+  <data name="XrayPanelUnmatchedConnection" xml:space="preserve">
+    <value>Нет совпадающего адреса Xray</value>
+  </data>
+  <data name="XrayPanelMatchedConnection" xml:space="preserve">
+    <value>Xray: {0}</value>
+  </data>
+  <data name="XrayPanelAmbiguousConnection" xml:space="preserve">
+    <value>Xray: неоднозначно ({0})</value>
+  </data>
+  <data name="XrayProxySearch" xml:space="preserve">
+    <value>Имя, адрес или балансировщик</value>
+  </data>
+  <data name="XrayProxyFilterAll" xml:space="preserve">
+    <value>Все</value>
+  </data>
+  <data name="XrayProxyFilterConnected" xml:space="preserve">
+    <value>С соединениями</value>
+  </data>
+  <data name="XrayProxyServices" xml:space="preserve">
+    <value>Служебные выходы</value>
+  </data>
+  <data name="XrayProxyBalancer" xml:space="preserve">
+    <value>Балансировщик</value>
+  </data>
+  <data name="XrayProxyUnavailableBadge" xml:space="preserve">
+    <value>Недоступно</value>
+  </data>
+  <data name="XrayProxyAmbiguousBadge" xml:space="preserve">
+    <value>Неоднозначно</value>
+  </data>
+  <data name="XrayProxyChainBadge" xml:space="preserve">
+    <value>Цепочка</value>
+  </data>
+  <data name="XrayProxyDetails" xml:space="preserve">
+    <value>Сведения о выходе</value>
+  </data>
+  <data name="ConnectionsFilterAll" xml:space="preserve">
+    <value>Все</value>
+  </data>
+  <data name="ConnectionsFilterUser" xml:space="preserve">
+    <value>Пользовательские</value>
+  </data>
+  <data name="ConnectionsFilterToProxies" xml:space="preserve">
+    <value>К прокси</value>
+  </data>
+  <data name="ConnectionsRouteToProxy" xml:space="preserve">
+    <value>К прокси {0} · транспорт</value>
+  </data>
+  <data name="ConnectionsRouteAmbiguous" xml:space="preserve">
+    <value>Возможные прокси: {0} · транспорт</value>
+  </data>
+  <data name="ConnectionsRouteForwarded" xml:space="preserve">
+    <value>Передано в Xray</value>
+  </data>
+  <data name="ConnectionsRouteDirect" xml:space="preserve">
+    <value>Напрямую</value>
+  </data>
+  <data name="ConnectionsRouteUnknown" xml:space="preserve">
+    <value>Неизвестно</value>
+  </data>
+  <data name="ConnectionsDestination" xml:space="preserve">
+    <value>Назначение</value>
+  </data>
+  <data name="ConnectionsRoute" xml:space="preserve">
+    <value>Маршрут</value>
+  </data>
+  <data name="ConnectionsRawRoute" xml:space="preserve">
+    <value>Исходный маршрут</value>
+  </data>
+  <data name="ConnectionsCopyProcessPath" xml:space="preserve">
+    <value>Копировать полный путь процесса</value>
+  </data>
+  <data name="ConnectionsProcessPathCopied" xml:space="preserve">
+    <value>Путь процесса скопирован</value>
+  </data>
+  <data name="ConnectionsDetails" xml:space="preserve">
+    <value>Сведения о соединении</value>
   </data>
 </root>

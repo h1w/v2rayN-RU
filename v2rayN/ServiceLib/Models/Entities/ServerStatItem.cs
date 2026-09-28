@@ -15,4 +15,10 @@ public class ServerStatItem
     public long TodayDown { get; set; }
 
     public long DateNow { get; set; }
+
+    // Totals above retain their historical KiB units; these columns preserve sub-KiB bytes.
+    public long TotalUpBytesRemainder { get; set; }
+    public long TotalDownBytesRemainder { get; set; }
+    public long TodayUpBytesRemainder { get; set; }
+    public long TodayDownBytesRemainder { get; set; }
 }

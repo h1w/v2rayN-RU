@@ -54,8 +54,6 @@ public partial class CoreConfigV2rayService(CoreConfigContext context)
 
             GenDns();
 
-            GenStatistic();
-
             if (_config.CoreBasicItem.EnableFragment)
             {
                 ApplyOutboundFragment();

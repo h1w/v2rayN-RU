@@ -3,19 +3,9 @@ namespace ServiceLib.Models.Dto;
 [Serializable]
 public class ServerSpeedItem : ServerStatItem
 {
-    public long ProxyUp { get; set; }
-
-    public long ProxyDown { get; set; }
-
-    public long DirectUp { get; set; }
-
-    public long DirectDown { get; set; }
-}
-
-[Serializable]
-public class TrafficItem
-{
-    public ulong Up { get; set; }
-
-    public ulong Down { get; set; }
+    // Bytes per second, or null when this profile has no available live sample.
+    public double? ProxyUpRate { get; set; }
+    public double? ProxyDownRate { get; set; }
+    public double? DirectUpRate { get; set; }
+    public double? DirectDownRate { get; set; }
 }

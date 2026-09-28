@@ -703,7 +703,7 @@
     <value>Pengecualian: jangan gunakan server proxy untuk alamat yang cocok dengan entri berikut. Pisahkan dengan titik koma (;).</value>
   </data>
   <data name="TbSettingsDisplayRealTimeSpeed" xml:space="preserve">
-    <value>Tampilkan kecepatan waktu nyata (perlu mulai ulang)</value>
+    <value>Tampilkan kecepatan waktu nyata di bilah status (perlu mulai ulang)</value>
   </data>
   <data name="TbSettingsKeepOlderDedupl" xml:space="preserve">
     <value>Pertahankan entri lama saat deduplikasi</value>
@@ -736,7 +736,7 @@
     <value>Jalankan saat boot</value>
   </data>
   <data name="TbSettingsStatistics" xml:space="preserve">
-    <value>Aktifkan statistik lalu lintas (perlu mulai ulang)</value>
+    <value>Tampilkan kolom lalu lintas harian (perlu mulai ulang)</value>
   </data>
   <data name="TbSettingsSubConvert" xml:space="preserve">
     <value>URL konversi langganan</value>

@@ -1,107 +1,77 @@
 namespace ServiceLib.Services.Statistics;
 
-public class StatisticsXrayService
+/// <summary>Reads distinct ingress or routed outbound counters, without counting transport hops twice.</summary>
+public static class StatisticsXrayService
 {
-    private const long linkBase = 1024;
-    private ServerSpeedItem _serverSpeedItem = new();
-    private readonly Config _config;
-    private bool _exitFlag;
-    private readonly Func<ServerSpeedItem, Task>? _updateFunc;
-    private string Url => $"{Global.HttpProtocol}{Global.Loopback}:{AppManager.Instance.StatePort}/debug/vars";
-
-    public StatisticsXrayService(Config config, Func<ServerSpeedItem, Task> updateFunc)
+    public static string EnableCounters(string json, int port)
     {
-        _config = config;
-        _updateFunc = updateFunc;
-        _exitFlag = false;
-
-        _ = Task.Run(Run);
-    }
-
-    public void Close()
-    {
-        _exitFlag = true;
-    }
-
-    private async Task Run()
-    {
-        while (!_exitFlag)
+        var root = JsonNode.Parse(json)!.AsObject();
+        root["stats"] ??= new JsonObject();
+        var metrics = root["metrics"] as JsonObject ?? new JsonObject();
+        if (root["metrics"] == null) root["metrics"] = metrics;
+        metrics["listen"] = $"{Global.Loopback}:{port}";
+        var policy = root["policy"] as JsonObject ?? new JsonObject();
+        if (root["policy"] == null) root["policy"] = policy;
+        var system = policy["system"] as JsonObject ?? new JsonObject();
+        if (policy["system"] == null) policy["system"] = system;
+        system["statsInboundUplink"] = true;
+        system["statsInboundDownlink"] = true;
+        system["statsOutboundUplink"] = true;
+        system["statsOutboundDownlink"] = true;
+        if (root["inbounds"] is JsonArray inbounds)
         {
-            await Task.Delay(1000);
-            try
+            var tags = inbounds.OfType<JsonObject>().Select(i => i["tag"]?.GetValue<string>()).ToHashSet();
+            var index = 0;
+            foreach (var inbound in inbounds.OfType<JsonObject>())
             {
-                if (AppManager.Instance.RunningCoreType != ECoreType.Xray)
-                {
-                    continue;
-                }
-
-                var result = await HttpClientHelper.Instance.TryGetAsync(Url);
-                if (result != null)
-                {
-                    var server = ParseOutput(result) ?? new ServerSpeedItem();
-                    await _updateFunc?.Invoke(server);
-                }
-            }
-            catch
-            {
-                // ignored
+                if (!string.IsNullOrEmpty(inbound["tag"]?.GetValue<string>())) continue;
+                string tag;
+                do { tag = $"v2rayn-stat-in-{index++}"; } while (!tags.Add(tag));
+                inbound["tag"] = tag;
             }
         }
+        return root.ToJsonString();
     }
 
-    private ServerSpeedItem? ParseOutput(string result)
+    public static HashSet<string> GetIngressTags(string json)
     {
-        try
+        var root = JsonNode.Parse(json)!;
+        var apiTag = root["api"]?["tag"]?.GetValue<string>();
+        var apiInbounds = new HashSet<string>(StringComparer.Ordinal);
+        if (apiTag != null && root["routing"]?["rules"] is JsonArray rules)
         {
-            var source = JsonUtils.Deserialize<V2rayMetricsVars>(result);
-            if (source?.stats?.outbound == null)
+            foreach (var rule in rules.OfType<JsonObject>())
             {
-                return null;
+                if (rule["outboundTag"]?.GetValue<string>() == apiTag && rule["inboundTag"] is JsonArray apiTags)
+                    foreach (var tag in apiTags) if (tag?.GetValue<string>() is { } value) apiInbounds.Add(value);
             }
-
-            ServerSpeedItem server = new();
-            foreach (var key in source.stats.outbound.Keys.Cast<string>())
-            {
-                var value = source.stats.outbound[key];
-                if (value == null)
-                {
-                    continue;
-                }
-                var state = JsonUtils.Deserialize<V2rayMetricsVarsLink>(value.ToString());
-
-                if (key.StartsWith(Global.ProxyTag))
-                {
-                    server.ProxyUp += state.uplink / linkBase;
-                    server.ProxyDown += state.downlink / linkBase;
-                }
-                else if (key == Global.DirectTag)
-                {
-                    server.DirectUp = state.uplink / linkBase;
-                    server.DirectDown = state.downlink / linkBase;
-                }
-            }
-
-            if (server.DirectDown < _serverSpeedItem.DirectDown || server.ProxyDown < _serverSpeedItem.ProxyDown)
-            {
-                _serverSpeedItem = new();
-                return null;
-            }
-
-            ServerSpeedItem curItem = new()
-            {
-                ProxyUp = server.ProxyUp - _serverSpeedItem.ProxyUp,
-                ProxyDown = server.ProxyDown - _serverSpeedItem.ProxyDown,
-                DirectUp = server.DirectUp - _serverSpeedItem.DirectUp,
-                DirectDown = server.DirectDown - _serverSpeedItem.DirectDown,
-            };
-            _serverSpeedItem = server;
-            return curItem;
         }
-        catch
+        var tags = new HashSet<string>(StringComparer.Ordinal);
+        if (root["inbounds"] is not JsonArray inbounds) return tags;
+        foreach (var inbound in inbounds.OfType<JsonObject>())
         {
-            // ignored
+            var tag = inbound["tag"]?.GetValue<string>();
+            if (string.IsNullOrEmpty(tag) || tag == apiTag || apiInbounds.Contains(tag) || tag == "v2rayn-own-in") continue;
+            tags.Add(tag);
         }
+        return tags;
+    }
 
-        return null;
+    public static IReadOnlyDictionary<string, TrafficCounter>? ParseCounters(string json, ISet<string> tags,
+        bool outbound = false)
+    {
+        var root = JsonNode.Parse(json);
+        if (root?["stats"]?[outbound ? "outbound" : "inbound"] is not JsonObject inbounds || tags.Count == 0) return null;
+        var result = new Dictionary<string, TrafficCounter>(StringComparer.Ordinal);
+        foreach (var tag in tags)
+        {
+            // A counter may not exist until its inbound/outbound has carried traffic.
+            if (inbounds[tag] is not JsonObject inbound) continue;
+            if (inbound["uplink"] is not JsonValue up || !up.TryGetValue<long>(out var upload)
+                || inbound["downlink"] is not JsonValue down || !down.TryGetValue<long>(out var download)
+                || upload < 0 || download < 0) return null;
+            result[tag] = new(upload, download);
+        }
+        return result;
     }
 }

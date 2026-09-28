@@ -17,5 +17,7 @@ public enum EServerColName
     TodayDown,
     TodayUp,
     TotalDown,
-    TotalUp
+    TotalUp,
+    CurrentDown,
+    CurrentUp
 }

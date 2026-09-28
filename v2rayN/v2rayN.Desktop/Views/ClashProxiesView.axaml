@@ -5,6 +5,7 @@
     xmlns:conv="using:v2rayN.Desktop.Converters"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:dd="clr-namespace:v2rayN.Desktop.DesignData"
+    xmlns:dto="clr-namespace:ServiceLib.Models.Dto;assembly=ServiceLib"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:resx="clr-namespace:ServiceLib.Resx;assembly=ServiceLib"
     xmlns:vms="clr-namespace:ServiceLib.ViewModels;assembly=ServiceLib"
@@ -26,11 +27,13 @@
 
             <TextBlock
                 Margin="{StaticResource MarginLr8}"
+                IsVisible="{Binding !IsXrayMode}"
                 VerticalAlignment="Center"
                 Text="{x:Static resx:ResUI.menuRulemode}" />
             <ComboBox
                 x:Name="cmbRulemode"
                 Width="100"
+                IsVisible="{Binding !IsXrayMode}"
                 Margin="{StaticResource MarginLr8}">
                 <ComboBoxItem Content="{x:Static resx:ResUI.menuModeRule}" />
                 <ComboBoxItem Content="{x:Static resx:ResUI.menuModeGlobal}" />
@@ -39,11 +42,13 @@
 
             <TextBlock
                 Margin="{StaticResource MarginLr8}"
+                IsVisible="{Binding !IsXrayMode}"
                 VerticalAlignment="Center"
                 Text="{x:Static resx:ResUI.TbSorting}" />
             <ComboBox
                 x:Name="cmbSorting"
                 Width="100"
+                IsVisible="{Binding !IsXrayMode}"
                 Margin="{StaticResource MarginLr8}">
                 <ComboBoxItem Content="{x:Static resx:ResUI.TbSortingDelay}" />
                 <ComboBoxItem Content="{x:Static resx:ResUI.TbSortingName}" />
@@ -63,6 +68,7 @@
             <Button
                 x:Name="menuProxiesDelaytest"
                 Margin="{StaticResource MarginLr8}"
+                IsVisible="{Binding !IsXrayMode}"
                 Classes="IconButton Success"
                 ToolTip.Tip="{x:Static resx:ResUI.menuProxiesDelaytest}">
                 <Button.Content>
@@ -79,7 +85,169 @@
                 Margin="{StaticResource MarginLr8}"
                 HorizontalAlignment="Left" />
         </WrapPanel>
-        <DockPanel>
+        <Grid>
+        <Grid IsVisible="{Binding IsXrayMode}" RowDefinitions="Auto,*,Auto,Auto">
+            <Grid Margin="8,4,8,8" ColumnDefinitions="*,Auto,Auto">
+                <TextBox MinWidth="180" MaxWidth="420" HorizontalAlignment="Stretch"
+                         PlaceholderText="{x:Static resx:ResUI.XrayProxySearch}"
+                         Text="{Binding XraySearch, Mode=TwoWay}" />
+                <ComboBox Grid.Column="1" Margin="8,0" MinWidth="170" SelectedIndex="{Binding XrayConnectionFilter, Mode=TwoWay}">
+                    <ComboBoxItem Content="{x:Static resx:ResUI.XrayProxyFilterAll}" />
+                    <ComboBoxItem Content="{x:Static resx:ResUI.XrayProxyFilterConnected}" />
+                </ComboBox>
+                <Button Grid.Column="2" Content="ⓘ" ToolTip.Tip="{x:Static resx:ResUI.XrayProxyInventoryTip}" />
+            </Grid>
+        <DataGrid x:Name="lstXrayProxies" Classes="proxyTable" AutoGenerateColumns="False"
+                  BorderThickness="0" CanUserResizeColumns="True" CanUserSortColumns="False"
+                  GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#20808080"
+                  HeadersVisibility="Column" IsReadOnly="True" SelectionMode="Single" RowHeight="30"
+                  ItemsSource="{Binding XrayProxies}" Grid.Row="1">
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Width="2*" MinWidth="200" Header="{x:Static resx:ResUI.TbSortingName}">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:XrayProxyRow">
+                            <Grid Margin="6,0" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Details}">
+                                <TextBlock VerticalAlignment="Center" Text="{Binding Tag}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="11" Opacity="0.65" Text="{Binding DisplayProtocol}" />
+                            </Grid>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="2*" MinWidth="150" Header="{x:Static resx:ResUI.TbSortingHost}">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:XrayProxyRow">
+                            <Grid Margin="6,0" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Details}">
+                                <TextBlock VerticalAlignment="Center" Text="{Binding Endpoint}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="1" Margin="6,0,0,0" VerticalAlignment="Center" FontSize="11" Opacity="0.7" Text="{Binding Badge}" />
+                            </Grid>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="*" MinWidth="110" Header="{x:Static resx:ResUI.XrayProxyGroups}" SortMemberPath="Groups">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:XrayProxyRow">
+                            <TextBlock Margin="6,0" VerticalAlignment="Center" MaxLines="1" TextTrimming="CharacterEllipsis" Text="{Binding Groups}" ToolTip.Tip="{Binding Groups}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="70" MinWidth="70" Header="{x:Static resx:ResUI.XrayProxyLiveCount}" SortMemberPath="ConnectionCount">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:XrayProxyRow">
+                            <TextBlock Margin="6,0" VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Right" Text="{Binding ConnectionCount}" ToolTip.Tip="{Binding ConnectionCount}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="104" MinWidth="104" Header="{x:Static resx:ResUI.XrayProxyLiveUpload}" SortMemberPath="Upload">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:XrayProxyRow">
+                            <TextBlock Margin="6,0" VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Right" Text="{Binding Upload}" ToolTip.Tip="{Binding Upload}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="104" MinWidth="104" Header="{x:Static resx:ResUI.XrayProxyLiveDownload}" SortMemberPath="Download">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:XrayProxyRow">
+                            <TextBlock Margin="6,0" VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Right" Text="{Binding Download}" ToolTip.Tip="{Binding Download}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="112" MinWidth="112" Header="{x:Static resx:ResUI.XrayProxyUploadRate}" SortMemberPath="UploadRate">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:XrayProxyRow">
+                            <TextBlock Margin="6,0" VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Right" Text="{Binding UploadRate}" ToolTip.Tip="{Binding UploadRate}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="112" MinWidth="112" Header="{x:Static resx:ResUI.XrayProxyDownloadRate}" SortMemberPath="DownloadRate">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:XrayProxyRow">
+                            <TextBlock Margin="6,0" VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Right" Text="{Binding DownloadRate}" ToolTip.Tip="{Binding DownloadRate}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+            <Expander Grid.Row="2" Margin="4,6,4,0" HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Stretch" Header="{x:Static resx:ResUI.XrayProxyServices}">
+        <DataGrid x:Name="lstXrayServiceProxies" Classes="proxyTable" AutoGenerateColumns="False"
+                  BorderThickness="0" CanUserResizeColumns="True" CanUserSortColumns="False"
+                  GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#20808080"
+                  HeadersVisibility="Column" IsReadOnly="True" SelectionMode="Single" RowHeight="30"
+                  ItemsSource="{Binding XrayServiceProxies}" MaxHeight="180">
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Width="2*" MinWidth="200" Header="{x:Static resx:ResUI.TbSortingName}">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:XrayProxyRow">
+                            <Grid Margin="6,0" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Details}">
+                                <TextBlock VerticalAlignment="Center" Text="{Binding Tag}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="11" Opacity="0.65" Text="{Binding DisplayProtocol}" />
+                            </Grid>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="2*" MinWidth="150" Header="{x:Static resx:ResUI.TbSortingHost}">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:XrayProxyRow">
+                            <Grid Margin="6,0" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Details}">
+                                <TextBlock VerticalAlignment="Center" Text="{Binding Endpoint}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="1" Margin="6,0,0,0" VerticalAlignment="Center" FontSize="11" Opacity="0.7" Text="{Binding Badge}" />
+                            </Grid>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="*" MinWidth="110" Header="{x:Static resx:ResUI.XrayProxyGroups}" SortMemberPath="Groups">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:XrayProxyRow">
+                            <TextBlock Margin="6,0" VerticalAlignment="Center" MaxLines="1" TextTrimming="CharacterEllipsis" Text="{Binding Groups}" ToolTip.Tip="{Binding Groups}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="70" MinWidth="70" Header="{x:Static resx:ResUI.XrayProxyLiveCount}" SortMemberPath="ConnectionCount">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:XrayProxyRow">
+                            <TextBlock Margin="6,0" VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Right" Text="{Binding ConnectionCount}" ToolTip.Tip="{Binding ConnectionCount}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="104" MinWidth="104" Header="{x:Static resx:ResUI.XrayProxyLiveUpload}" SortMemberPath="Upload">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:XrayProxyRow">
+                            <TextBlock Margin="6,0" VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Right" Text="{Binding Upload}" ToolTip.Tip="{Binding Upload}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="104" MinWidth="104" Header="{x:Static resx:ResUI.XrayProxyLiveDownload}" SortMemberPath="Download">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:XrayProxyRow">
+                            <TextBlock Margin="6,0" VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Right" Text="{Binding Download}" ToolTip.Tip="{Binding Download}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="112" MinWidth="112" Header="{x:Static resx:ResUI.XrayProxyUploadRate}" SortMemberPath="UploadRate">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:XrayProxyRow">
+                            <TextBlock Margin="6,0" VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Right" Text="{Binding UploadRate}" ToolTip.Tip="{Binding UploadRate}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="112" MinWidth="112" Header="{x:Static resx:ResUI.XrayProxyDownloadRate}" SortMemberPath="DownloadRate">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="dto:XrayProxyRow">
+                            <TextBlock Margin="6,0" VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Right" Text="{Binding DownloadRate}" ToolTip.Tip="{Binding DownloadRate}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+            </Expander>
+            <Expander Grid.Row="3" Margin="4,4,4,0" HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Stretch" Header="{x:Static resx:ResUI.XrayProxyDetails}">
+                <ScrollViewer MaxHeight="150" HorizontalScrollBarVisibility="Disabled">
+                    <SelectableTextBlock Margin="8" Text="{Binding SelectedXrayProxy.Details}" TextWrapping="Wrap" />
+                </ScrollViewer>
+            </Expander>
+        </Grid>
+        <DockPanel IsVisible="{Binding !IsXrayMode}">
             <ListBox
                 x:Name="lstProxyGroups"
                 DockPanel.Dock="Left"
@@ -154,5 +322,6 @@
                 </ItemsControl.ItemTemplate>
             </ListBox>
         </DockPanel>
+        </Grid>
     </DockPanel>
 </UserControl>

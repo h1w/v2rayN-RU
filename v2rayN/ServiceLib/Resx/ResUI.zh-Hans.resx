@@ -703,7 +703,7 @@
     <value>例外：对于下列字符开头的地址，不使用代理配置。使用分号 (;) 分隔。</value>
   </data>
   <data name="TbSettingsDisplayRealTimeSpeed" xml:space="preserve">
-    <value>显示实时速度 (需重启)</value>
+    <value>在状态栏显示实时速度 (需重启)</value>
   </data>
   <data name="TbSettingsKeepOlderDedupl" xml:space="preserve">
     <value>去重时保留序号较小的项</value>
@@ -736,7 +736,7 @@
     <value>开机启动 (可能会不成功)</value>
   </data>
   <data name="TbSettingsStatistics" xml:space="preserve">
-    <value>启用流量统计 (需重启)</value>
+    <value>显示每日流量列 (需重启)</value>
   </data>
   <data name="TbSettingsSubConvert" xml:space="preserve">
     <value>订阅转换网址 (可选)</value>

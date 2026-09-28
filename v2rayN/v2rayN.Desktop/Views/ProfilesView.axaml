@@ -299,6 +299,75 @@
                         Header="{x:Static resx:ResUI.LvTestSpeed}"
                         Tag="SpeedVal" />
 
+                    <DataGridTemplateColumn
+                        Width="140"
+                        MinWidth="120"
+                        CanUserSort="False"
+                        Header="{x:Static resx:ResUI.LvTotalDownloadDataAmount}"
+                        Tag="TotalDown">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock
+                                    Margin="{StaticResource MarginLr8}"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Text="{Binding TotalDown}"
+                                    ToolTip.Tip="{x:Static resx:ResUI.ProfileStatisticsHint}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn
+                        Width="140"
+                        MinWidth="120"
+                        CanUserSort="False"
+                        Header="{x:Static resx:ResUI.LvTotalUploadDataAmount}"
+                        Tag="TotalUp">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock
+                                    Margin="{StaticResource MarginLr8}"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Text="{Binding TotalUp}"
+                                    ToolTip.Tip="{x:Static resx:ResUI.ProfileStatisticsHint}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn
+                        Width="140"
+                        MinWidth="120"
+                        CanUserSort="False"
+                        Header="{x:Static resx:ResUI.LvCurrentDownloadRate}"
+                        Tag="CurrentDown">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock
+                                    Margin="{StaticResource MarginLr8}"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Text="{Binding CurrentDown}"
+                                    ToolTip.Tip="{x:Static resx:ResUI.ProfileStatisticsHint}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn
+                        Width="140"
+                        MinWidth="120"
+                        CanUserSort="False"
+                        Header="{x:Static resx:ResUI.LvCurrentUploadRate}"
+                        Tag="CurrentUp">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock
+                                    Margin="{StaticResource MarginLr8}"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Text="{Binding CurrentUp}"
+                                    ToolTip.Tip="{x:Static resx:ResUI.ProfileStatisticsHint}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
                     <DataGridTemplateColumn SortMemberPath="IpInfo" Tag="IpInfo">
                         <DataGridTemplateColumn.Header>
                             <TextBlock Text="{x:Static resx:ResUI.LvTestIpInfo}" />
@@ -323,16 +392,6 @@
                         Binding="{Binding TodayDown}"
                         Header="{x:Static resx:ResUI.LvTodayDownloadDataAmount}"
                         Tag="TodayDown" />
-                    <DataGridTextColumn
-                        Width="100"
-                        Binding="{Binding TotalUp}"
-                        Header="{x:Static resx:ResUI.LvTotalUploadDataAmount}"
-                        Tag="TotalUp" />
-                    <DataGridTextColumn
-                        Width="100"
-                        Binding="{Binding TotalDown}"
-                        Header="{x:Static resx:ResUI.LvTotalDownloadDataAmount}"
-                        Tag="TotalDown" />
                 </DataGrid.Columns>
             </DataGrid>
         </DockPanel>

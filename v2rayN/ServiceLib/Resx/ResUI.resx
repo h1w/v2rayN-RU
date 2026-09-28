@@ -196,10 +196,19 @@
     <value>Upload traffic today</value>
   </data>
   <data name="LvTotalDownloadDataAmount" xml:space="preserve">
-    <value>Total download traffic</value>
+    <value>↓ Received</value>
   </data>
   <data name="LvTotalUploadDataAmount" xml:space="preserve">
-    <value>Total upload traffic</value>
+    <value>↑ Sent</value>
+  </data>
+  <data name="LvCurrentDownloadRate" xml:space="preserve">
+    <value>↓ Now</value>
+  </data>
+  <data name="LvCurrentUploadRate" xml:space="preserve">
+    <value>↑ Now</value>
+  </data>
+  <data name="ProfileStatisticsHint" xml:space="preserve">
+    <value>Totals are saved across restarts. Current rates are shown for running profiles, including profiles used by routing rules; empty cells mean inactive or unavailable. Auxiliary profile traffic is already included in the main profile total; do not add these rows together. Enable statistics collection to record traffic. Disabling collection keeps saved totals.</value>
   </data>
   <data name="LvTransportProtocol" xml:space="preserve">
     <value>Transport</value>
@@ -724,7 +733,7 @@
     <value>Exclusions: Do not use proxy server for addresses beginning with the following. Use semicolon (;) to separate entries.</value>
   </data>
   <data name="TbSettingsDisplayRealTimeSpeed" xml:space="preserve">
-    <value>Display real-time speed (requires restart)</value>
+    <value>Display real-time speed in the status bar (requires restart)</value>
   </data>
   <data name="TbSettingsKeepOlderDedupl" xml:space="preserve">
     <value>Keep older entries when de-duplicating</value>
@@ -757,7 +766,7 @@
     <value>Start on boot</value>
   </data>
   <data name="TbSettingsStatistics" xml:space="preserve">
-    <value>Enable traffic statistics (requires restart)</value>
+    <value>Show daily traffic columns (requires restart)</value>
   </data>
   <data name="TbSettingsSubConvert" xml:space="preserve">
     <value>Subscription conversion URL</value>
@@ -2007,5 +2016,128 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
   </data>
   <data name="TbSortingProcess" xml:space="preserve">
     <value>Process</value>
+  </data>
+  <data name="XrayProxyInventoryTip" xml:space="preserve">
+    <value>Xray outbounds from the running configuration. Bytes and rates cover live helper connections, not per-user traffic. Shared endpoints are ambiguous and are not attributed.</value>
+  </data>
+  <data name="XrayProxyGroups" xml:space="preserve">
+    <value>Balancers</value>
+  </data>
+  <data name="XrayProxyStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="XrayProxyLiveUpload" xml:space="preserve">
+    <value>↑ bytes</value>
+  </data>
+  <data name="XrayProxyLiveDownload" xml:space="preserve">
+    <value>↓ bytes</value>
+  </data>
+  <data name="ConnectionsHostOrProxyFilterTitle" xml:space="preserve">
+    <value>Host, proxy or process</value>
+  </data>
+  <data name="XrayProxyLiveCount" xml:space="preserve">
+    <value>Live</value>
+  </data>
+  <data name="XrayProxyUploadRate" xml:space="preserve">
+    <value>↑ /s</value>
+  </data>
+  <data name="XrayProxyDownloadRate" xml:space="preserve">
+    <value>↓ /s</value>
+  </data>
+  <data name="XrayPanelApiUnavailable" xml:space="preserve">
+    <value>Helper API unavailable</value>
+  </data>
+  <data name="XrayPanelBalancerStatus" xml:space="preserve">
+    <value>Configured balancer; selection not observable</value>
+  </data>
+  <data name="XrayPanelAmbiguousStatus" xml:space="preserve">
+    <value>Ambiguous endpoint; traffic not attributed (count: unique matches only)</value>
+  </data>
+  <data name="XrayPanelNoEndpointStatus" xml:space="preserve">
+    <value>No matchable endpoint; traffic unknown</value>
+  </data>
+  <data name="XrayPanelNoMatchesStatus" xml:space="preserve">
+    <value>No exact helper matches; live connections only</value>
+  </data>
+  <data name="XrayPanelMatchedStatus" xml:space="preserve">
+    <value>Exact endpoint match; live connections only</value>
+  </data>
+  <data name="XrayPanelUnmatchedConnection" xml:space="preserve">
+    <value>No matching Xray endpoint</value>
+  </data>
+  <data name="XrayPanelMatchedConnection" xml:space="preserve">
+    <value>Xray: {0}</value>
+  </data>
+  <data name="XrayPanelAmbiguousConnection" xml:space="preserve">
+    <value>Xray: ambiguous ({0})</value>
+  </data>
+  <data name="XrayProxySearch" xml:space="preserve">
+    <value>Name, endpoint or balancer</value>
+  </data>
+  <data name="XrayProxyFilterAll" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="XrayProxyFilterConnected" xml:space="preserve">
+    <value>With connections</value>
+  </data>
+  <data name="XrayProxyServices" xml:space="preserve">
+    <value>Service outbounds</value>
+  </data>
+  <data name="XrayProxyBalancer" xml:space="preserve">
+    <value>Balancer</value>
+  </data>
+  <data name="XrayProxyUnavailableBadge" xml:space="preserve">
+    <value>Unavailable</value>
+  </data>
+  <data name="XrayProxyAmbiguousBadge" xml:space="preserve">
+    <value>Ambiguous</value>
+  </data>
+  <data name="XrayProxyChainBadge" xml:space="preserve">
+    <value>Chain</value>
+  </data>
+  <data name="XrayProxyDetails" xml:space="preserve">
+    <value>Outbound details</value>
+  </data>
+  <data name="ConnectionsFilterAll" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="ConnectionsFilterUser" xml:space="preserve">
+    <value>User</value>
+  </data>
+  <data name="ConnectionsFilterToProxies" xml:space="preserve">
+    <value>To proxies</value>
+  </data>
+  <data name="ConnectionsRouteToProxy" xml:space="preserve">
+    <value>To proxy {0} · transport</value>
+  </data>
+  <data name="ConnectionsRouteAmbiguous" xml:space="preserve">
+    <value>Proxy candidates: {0} · transport</value>
+  </data>
+  <data name="ConnectionsRouteForwarded" xml:space="preserve">
+    <value>Forwarded to Xray</value>
+  </data>
+  <data name="ConnectionsRouteDirect" xml:space="preserve">
+    <value>Direct</value>
+  </data>
+  <data name="ConnectionsRouteUnknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="ConnectionsDestination" xml:space="preserve">
+    <value>Destination</value>
+  </data>
+  <data name="ConnectionsRoute" xml:space="preserve">
+    <value>Route</value>
+  </data>
+  <data name="ConnectionsRawRoute" xml:space="preserve">
+    <value>Raw route</value>
+  </data>
+  <data name="ConnectionsCopyProcessPath" xml:space="preserve">
+    <value>Copy full process path</value>
+  </data>
+  <data name="ConnectionsProcessPathCopied" xml:space="preserve">
+    <value>Process path copied</value>
+  </data>
+  <data name="ConnectionsDetails" xml:space="preserve">
+    <value>Connection details</value>
   </data>
 </root>

@@ -188,6 +188,13 @@ public class CoreConfigContextBuilderTests
 
         // Один .json = одно ядро, сколько бы правил на него ни ссылалось.
         context.ChainCores.Should().ContainSingle();
+        context.ChainCores[0].StatisticsProfileIds.Should().BeEquivalentTo([customNode.IndexId]);
+        context.RoutingProfileIds[$"remark:{customRemark}"].Should().Be(customNode.IndexId);
+        var fragment = new ServiceLib.Services.CoreConfig.CoreConfigV2rayService(context).BuildUserRoutingForCustom();
+        fragment.Rules.Should().HaveCount(2);
+        fragment.Rules[0].outboundTag.Should().Be(fragment.Rules[1].outboundTag);
+        context.StatisticsOutboundProfiles.Should().ContainSingle();
+        context.StatisticsOutboundProfiles.Values.Should().BeEquivalentTo([customNode.IndexId]);
         var reloaded = context with { AllProxiesMap = [], ChainCores = [] };
         await CoreConfigContextBuilder.ResolveRuleTargetsAsync(reloaded, NodeValidatorResult.Empty(),
             resolveChainCores: true, allocatePort: () => 32017);

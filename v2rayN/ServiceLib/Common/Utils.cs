@@ -180,6 +180,18 @@ public class Utils
         return $"{size:f1} {units[unitIndex]}";
     }
 
+    public static string HumanFyBytes(double amount)
+    {
+        var unitIndex = 0;
+        while (amount >= 1024 && unitIndex < 5)
+        {
+            amount /= 1024;
+            unitIndex++;
+        }
+        var unit = unitIndex switch { 0 => "B", 1 => "KB", 2 => "MB", 3 => "GB", 4 => "TB", _ => "PB" };
+        return $"{amount:f1} {unit}";
+    }
+
     public static string UrlEncode(string url)
     {
         return Uri.EscapeDataString(url);

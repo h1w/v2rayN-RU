@@ -339,30 +339,14 @@ public class ProfilesViewModel : MyReactiveObject
         await Task.CompletedTask;
     }
 
-    public async Task UpdateStatistics(ServerSpeedItem update)
+    public Task UpdateStatistics(ServerSpeedItem update)
     {
-        if (!_config.GuiItem.EnableStatistics
-            || (update.ProxyUp + update.ProxyDown) <= 0
-            || DateTime.Now.Second % 3 != 0)
+        var activeProfileIds = StatisticsManager.Instance.ActiveProfileIds;
+        foreach (var item in ProfileItems)
         {
-            return;
+            item.ApplyStatistics(update, activeProfileIds);
         }
-
-        try
-        {
-            var item = ProfileItems.FirstOrDefault(it => it.IndexId == update.IndexId);
-            if (item != null)
-            {
-                item.TodayDown = Utils.HumanFy(update.TodayDown);
-                item.TodayUp = Utils.HumanFy(update.TodayUp);
-                item.TotalDown = Utils.HumanFy(update.TotalDown);
-                item.TotalUp = Utils.HumanFy(update.TotalUp);
-            }
-        }
-        catch
-        {
-        }
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
     #endregion Actions
@@ -461,7 +445,7 @@ public class ProfilesViewModel : MyReactiveObject
 
         await ConfigHandler.SetDefaultServer(_config, lstModel);
 
-        var lstServerStat = (_config.GuiItem.EnableStatistics ? StatisticsManager.Instance.ServerStat : null) ?? [];
+        var lstServerStat = StatisticsManager.Instance.ServerStat ?? [];
         var lstProfileExs = await ProfileExManager.Instance.GetProfileExs();
         lstModel = (from t in lstModel
                     join t2 in lstServerStat on t.IndexId equals t2.IndexId into t2b
@@ -489,9 +473,19 @@ public class ProfilesViewModel : MyReactiveObject
                         IpInfo = t33?.IpInfo ?? string.Empty,
                         TodayDown = t22 == null ? "" : Utils.HumanFy(t22.TodayDown),
                         TodayUp = t22 == null ? "" : Utils.HumanFy(t22.TodayUp),
-                        TotalDown = t22 == null ? "" : Utils.HumanFy(t22.TotalDown),
-                        TotalUp = t22 == null ? "" : Utils.HumanFy(t22.TotalUp)
+                        TotalDown = t22 == null ? string.Empty : Utils.HumanFyBytes(t22.TotalDown * 1024d + t22.TotalDownBytesRemainder),
+                        TotalUp = t22 == null ? string.Empty : Utils.HumanFyBytes(t22.TotalUp * 1024d + t22.TotalUpBytesRemainder)
                     }).OrderBy(t => t.Sort).ToList();
+
+        var latestStatistics = StatisticsManager.Instance.LatestStatistics;
+        var activeProfileIds = StatisticsManager.Instance.ActiveProfileIds;
+        foreach (var item in lstModel)
+        {
+            if (latestStatistics.TryGetValue(item.IndexId, out var update))
+            {
+                item.ApplyStatistics(update, activeProfileIds);
+            }
+        }
 
         return lstModel;
     }

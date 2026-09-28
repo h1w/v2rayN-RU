@@ -9,6 +9,21 @@ public class ClashProxiesViewModel : MyReactiveObject
     private Dictionary<string, ProxiesItem>? _proxies;
     private Dictionary<string, ProvidersItem>? _providers;
     private readonly int _delayTimeout = 99999999;
+    private readonly SemaphoreSlim _reloadLock = new(1, 1);
+    private long _displayVersion = -1;
+    private readonly Dictionary<string, XrayProxyRow> _xrayRows = new(StringComparer.Ordinal);
+    private readonly List<XrayProxyRow> _xrayOrder = [];
+
+    public ObservableCollectionExtended<XrayProxyRow> XrayServiceProxies { get; } = new();
+
+    [Reactive] public string XraySearch { get; set; } = string.Empty;
+    [Reactive] public int XrayConnectionFilter { get; set; }
+    [Reactive] public XrayProxyRow? SelectedXrayProxy { get; set; }
+
+    public ObservableCollectionExtended<XrayProxyRow> XrayProxies { get; } = new();
+
+    [Reactive]
+    public bool IsXrayMode { get; private set; }
 
     public IObservableCollection<ClashProxyModel> ProxyGroups { get; } = new ObservableCollectionExtended<ClashProxyModel>();
     public IObservableCollection<ClashProxyModel> ProxyDetails { get; } = new ObservableCollectionExtended<ClashProxyModel>();
@@ -36,6 +51,7 @@ public class ClashProxiesViewModel : MyReactiveObject
     public ClashProxiesViewModel()
     {
         _config = AppManager.Instance.Config;
+        IsXrayMode = XrayProxyPanelManager.Instance.IsActive;
 
         ProxiesReloadCmd = ReactiveCommand.CreateFromTask(async () =>
         {
@@ -83,6 +99,9 @@ public class ClashProxiesViewModel : MyReactiveObject
         y => y == true)
             .Subscribe(c => { _config.ClashUIItem.ProxiesAutoRefresh = AutoRefresh; });
 
+        this.WhenAnyValue(x => x.XraySearch, x => x.XrayConnectionFilter)
+            .Subscribe(_ => ApplyXrayFilters());
+
         #endregion WhenAnyValue && ReactiveCommand
 
         this.WhenActivated(disposables =>
@@ -100,30 +119,44 @@ public class ClashProxiesViewModel : MyReactiveObject
 
     private async Task GetClashProxiesTask(CancellationToken token = default)
     {
-        var numOfExecuted = 1;
-        while (!token.IsCancellationRequested)
+        try
         {
-            await Task.Delay(1000 * 5, token);
-            numOfExecuted++;
-            if (!(AutoRefresh && AppManager.Instance.ShowInTaskbar && AppManager.Instance.IsRunningCore(ECoreType.sing_box)))
+            await ProxiesReload(token);
+            var numOfExecuted = 1;
+            while (!token.IsCancellationRequested)
             {
-                continue;
+                var manager = XrayProxyPanelManager.Instance;
+                var inventoryTick = manager.IsActive;
+                await Task.Delay(TimeSpan.FromSeconds(inventoryTick ? 1 : 5), token);
+                if (!inventoryTick) numOfExecuted++;
+                if (_displayVersion != manager.Version || IsXrayMode != manager.IsActive)
+                {
+                    await ProxiesReload(token);
+                    continue;
+                }
+                if (!(AutoRefresh && AppManager.Instance.ShowInTaskbar &&
+                    (manager.IsActive || AppManager.Instance.IsRunningCore(ECoreType.sing_box))))
+                {
+                    continue;
+                }
+                // The configured interval counts five-second native list ticks, not traffic samples.
+                if (!manager.IsActive && (inventoryTick ||
+                    _config.ClashUIItem.ProxiesRefreshInterval <= 0 ||
+                    numOfExecuted % _config.ClashUIItem.ProxiesRefreshInterval != 0))
+                {
+                    continue;
+                }
+                await ProxiesReload(token);
             }
-            if (_config.ClashUIItem.ProxiesRefreshInterval <= 0)
-            {
-                continue;
-            }
-            if (numOfExecuted % _config.ClashUIItem.ProxiesRefreshInterval != 0)
-            {
-                continue;
-            }
-            await ProxiesReload();
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
         }
     }
 
     private async Task DoRuleModeSelected(bool c)
     {
-        if (!c)
+        if (!c || XrayProxyPanelManager.Instance.IsActive)
         {
             return;
         }
@@ -136,7 +169,7 @@ public class ClashProxiesViewModel : MyReactiveObject
 
     public async Task SetRuleModeCheck(ERuleMode mode)
     {
-        if (_config.ClashUIItem.RuleMode == mode)
+        if (XrayProxyPanelManager.Instance.IsActive || _config.ClashUIItem.RuleMode == mode)
         {
             return;
         }
@@ -145,7 +178,7 @@ public class ClashProxiesViewModel : MyReactiveObject
 
     private void DoSortingSelected(bool c)
     {
-        if (!c)
+        if (!c || XrayProxyPanelManager.Instance.IsActive)
         {
             return;
         }
@@ -157,16 +190,135 @@ public class ClashProxiesViewModel : MyReactiveObject
         RefreshProxyDetails(c);
     }
 
-    public async Task ProxiesReload()
+    public Task ProxiesReload() => ProxiesReload(CancellationToken.None);
+
+    private async Task ProxiesReload(CancellationToken token)
     {
-        await GetClashProxies(true);
-        await ProxiesDelayTest();
+        var manager = XrayProxyPanelManager.Instance;
+        // Coalesce timer/manual reloads rather than letting slow requests build a queue.
+        if (!await _reloadLock.WaitAsync(0, token)) return;
+        try
+        {
+            var version = manager.Version;
+            await Observable.Start(() =>
+            {
+                token.ThrowIfCancellationRequested();
+                UpdatePanelMode();
+            }, RxSchedulers.MainThreadScheduler);
+            if (manager.IsActive)
+            {
+                var connections = await ClashApiManager.Instance.GetClashConnectionsAsync();
+                token.ThrowIfCancellationRequested();
+                if (version != manager.Version || !manager.IsActive)
+                {
+                    return;
+                }
+                var rows = await Task.Run(() => manager.GetRows(connections?.connections, DateTimeOffset.UtcNow, version));
+                await Observable.Start(() =>
+                {
+                    token.ThrowIfCancellationRequested();
+                    if (version != manager.Version || !manager.IsActive)
+                    {
+                        UpdatePanelMode();
+                        return;
+                    }
+                    RefreshXrayProxies(rows);
+                }, RxSchedulers.MainThreadScheduler);
+                return;
+            }
+            if (AppManager.Instance.IsRunningCore(ECoreType.sing_box))
+            {
+                await GetClashProxies(true);
+                if (!token.IsCancellationRequested && version == manager.Version && !manager.IsActive)
+                {
+                    await ProxiesDelayTest();
+                }
+            }
+        }
+        finally
+        {
+            _reloadLock.Release();
+        }
+    }
+    public void RefreshXrayProxies(IReadOnlyList<XrayProxyRow> rows)
+    {
+        var keys = new HashSet<string>(rows.Select(row => row.Key), StringComparer.Ordinal);
+        foreach (var key in _xrayRows.Keys.Where(key => !keys.Contains(key)).ToArray())
+            _xrayRows.Remove(key);
+        _xrayOrder.Clear();
+        foreach (var row in rows)
+        {
+            if (_xrayRows.TryGetValue(row.Key, out var existing)) existing.UpdateTraffic(row);
+            else _xrayRows.Add(row.Key, row);
+            _xrayOrder.Add(_xrayRows[row.Key]);
+        }
+        ApplyXrayFilters();
+    }
+
+    private void ApplyXrayFilters()
+    {
+        var search = XraySearch.Trim();
+        var rows = _xrayOrder.Where(row =>
+            (XrayConnectionFilter != 1 || row.ConnectionCount > 0) &&
+            (search.Length == 0 || row.Tag.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                row.Endpoint.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                row.Protocol.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                row.Groups.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                row.Chain.Contains(search, StringComparison.OrdinalIgnoreCase))).ToArray();
+        Reconcile(XrayProxies, rows.Where(row => !row.IsService).ToArray());
+        Reconcile(XrayServiceProxies, rows.Where(row => row.IsService).ToArray());
+        if (SelectedXrayProxy != null && !rows.Contains(SelectedXrayProxy)) SelectedXrayProxy = null;
+    }
+
+    private static void Reconcile(ObservableCollectionExtended<XrayProxyRow> target, IReadOnlyList<XrayProxyRow> rows)
+    {
+        var visible = new HashSet<XrayProxyRow>(rows);
+        for (var index = target.Count - 1; index >= 0; index--)
+            if (!visible.Contains(target[index])) target.RemoveAt(index);
+        for (var index = 0; index < rows.Count; index++)
+        {
+            if (index < target.Count && ReferenceEquals(target[index], rows[index])) continue;
+            var oldIndex = target.IndexOf(rows[index]);
+            if (oldIndex >= 0) target.Move(oldIndex, index);
+            else target.Insert(index, rows[index]);
+        }
+    }
+
+
+    private void UpdatePanelMode()
+    {
+        var manager = XrayProxyPanelManager.Instance;
+        var version = manager.Version;
+        var active = manager.IsActive;
+        if (_displayVersion == version && IsXrayMode == active)
+        {
+            return;
+        }
+        _displayVersion = version;
+        IsXrayMode = active;
+        _proxies = null;
+        _providers = null;
+        ProxyGroups.Clear();
+        ProxyDetails.Clear();
+        XrayProxies.Clear();
+        XrayServiceProxies.Clear();
+        _xrayRows.Clear();
+        _xrayOrder.Clear();
+        SelectedXrayProxy = null;
+        SelectedGroup = new();
+        SelectedDetail = new();
+        RuleModeSelected = (int)_config.ClashUIItem.RuleMode;
+        SortingSelected = _config.ClashUIItem.ProxiesSorting;
     }
 
     #region proxy function
 
     private async Task SetRuleMode(ERuleMode mode)
     {
+        if (XrayProxyPanelManager.Instance.IsActive)
+        {
+            return;
+        }
         _config.ClashUIItem.RuleMode = mode;
 
         if (mode != ERuleMode.Unchanged)
@@ -181,8 +333,14 @@ public class ClashProxiesViewModel : MyReactiveObject
 
     private async Task GetClashProxies(bool refreshUI)
     {
+        var manager = XrayProxyPanelManager.Instance;
+        var version = manager.Version;
+        if (manager.IsActive)
+        {
+            return;
+        }
         var ret = await ClashApiManager.Instance.GetClashProxiesAsync();
-        if (ret?.Item1 == null || ret.Item2 == null)
+        if (version != manager.Version || manager.IsActive || ret?.Item1 == null || ret.Item2 == null)
         {
             return;
         }
@@ -191,13 +349,19 @@ public class ClashProxiesViewModel : MyReactiveObject
 
         if (refreshUI)
         {
-            RxSchedulers.MainThreadScheduler.Schedule(() => _ = RefreshProxyGroups());
+            RxSchedulers.MainThreadScheduler.Schedule(() =>
+            {
+                if (version == manager.Version && !manager.IsActive)
+                {
+                    _ = RefreshProxyGroups();
+                }
+            });
         }
     }
 
     public async Task RefreshProxyGroups()
     {
-        if (_proxies == null)
+        if (XrayProxyPanelManager.Instance.IsActive || _proxies == null)
         {
             return;
         }
@@ -284,7 +448,7 @@ public class ClashProxiesViewModel : MyReactiveObject
     private void RefreshProxyDetails(bool c)
     {
         ProxyDetails.Clear();
-        if (!c)
+        if (!c || XrayProxyPanelManager.Instance.IsActive)
         {
             return;
         }
@@ -370,6 +534,10 @@ public class ClashProxiesViewModel : MyReactiveObject
 
     public async Task SetActiveProxy()
     {
+        if (XrayProxyPanelManager.Instance.IsActive)
+        {
+            return;
+        }
         if (SelectedGroup == null || SelectedGroup.Name.IsNullOrEmpty())
         {
             return;
@@ -412,6 +580,10 @@ public class ClashProxiesViewModel : MyReactiveObject
 
     private async Task ProxiesDelayTest(bool blAll = true)
     {
+        if (XrayProxyPanelManager.Instance.IsActive)
+        {
+            return;
+        }
         ClashApiManager.Instance.ClashProxiesDelayTest(blAll, ProxyDetails.ToList(), async (item, result) =>
         {
             if (item == null || result.IsNullOrEmpty())
@@ -432,6 +604,10 @@ public class ClashProxiesViewModel : MyReactiveObject
 
     public async Task ProxiesDelayTestResult(SpeedTestResult result)
     {
+        if (XrayProxyPanelManager.Instance.IsActive)
+        {
+            return;
+        }
         var detail = ProxyDetails.FirstOrDefault(it => it.Name == result.IndexId);
         if (detail == null)
         {
