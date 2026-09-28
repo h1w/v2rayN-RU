@@ -16,6 +16,8 @@ public record CoreConfigContext
     public List<ChainCoreDescriptor> ChainCores { get; init; } = [];
     /// <summary>Own-only SOCKS ingress in the active native process, never a child process.</summary>
     public int? SharedRoutingPort { get; set; }
+    /// <summary>Resolved front ingress; private when a pre-core owns the public listener.</summary>
+    public int? ManagedIngressPort { get; set; }
     public Config AppConfig { get; init; } = new();
     public FullConfigTemplateItem? FullConfigTemplate { get; init; } = new();
 
@@ -28,6 +30,8 @@ public record CoreConfigContext
     // TUN Compatibility
     public bool IsTunEnabled { get; init; } = false;
     public HashSet<string> ProtectDomainList { get; init; } = [];
+    /// <summary>Exact direct transport destinations; never a port-wide or host-wide bypass.</summary>
+    public HashSet<TransportEndpoint> ProtectTransportEndpoints { get; init; } = [];
     // Typically, it is the core of the outbound chain
     public HashSet<ECoreType> ProtectCoreTypeList { get; init; } = [];
 
@@ -38,3 +42,5 @@ public record CoreConfigContext
     // tunnel; only a positive detection of the host having no global IPv6 address turns it off.
     public bool HasGlobalIPv6Address { get; init; } = true;
 }
+
+public sealed record TransportEndpoint(string Address, int Port);

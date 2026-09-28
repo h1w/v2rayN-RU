@@ -27,6 +27,17 @@ public partial class CoreConfigSingboxService
         {
             Logging.SaveLog(_tag, ex);
         }
+        finally
+        {
+            // TUN sockets carry IPs. Remember answers seen by this helper so exact domain +
+            // port rules work before sniffing (including REALITY with unrelated cover SNI).
+            // This cannot recover answers cached before launch or resolved outside the helper.
+            if (context.ProtectTransportEndpoints.Any(e => Utils.IsDomain(e.Address)))
+            {
+                _coreConfig.dns ??= new Dns4Sbox();
+                _coreConfig.dns.reverse_mapping = true;
+            }
+        }
     }
 
     private void GenDnsServers()

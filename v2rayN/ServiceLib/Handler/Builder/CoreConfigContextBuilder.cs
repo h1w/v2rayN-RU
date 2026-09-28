@@ -298,6 +298,8 @@ public class CoreConfigContextBuilder
             return new CoreConfigContextBuilderAllResult(mainResult, null);
         }
 
+        await PopulateTransportProtectionAsync(mainResult.Context);
+
         var preResult = await BuildPreSocksIfNeeded(mainResult.Context);
         if (preResult is null)
         {
@@ -341,6 +343,42 @@ public class CoreConfigContextBuilder
         var coreType = AppManager.Instance.GetCoreType(node, node.ConfigType);
 
         var preSocksItem = ConfigHandler.GetPreSocksItem(config, node, coreType);
+        if (nodeContext.SharedRoutingPort != null)
+        {
+            if (preSocksItem == null && coreType == ECoreType.Xray
+                && config.TunModeItem.EnableTun && config.TunModeItem.EnableLegacyProtect)
+            {
+                preSocksItem = new ProfileItem
+                {
+                    CoreType = ECoreType.sing_box,
+                    ConfigType = EConfigType.SOCKS,
+                    Address = Global.Loopback,
+                };
+            }
+            var publicPort = AppManager.Instance.GetLocalPort(EInboundProtocol.socks);
+            if (preSocksItem == null)
+            {
+                nodeContext.ManagedIngressPort = publicPort;
+            }
+            else
+            {
+                var port = Utils.GetFreePort();
+                var inbound = config.Inbound.First();
+                if (port is <= 0 or > 65535 or 59090 || port == publicPort
+                    || port == nodeContext.SharedRoutingPort
+                    || port == AppManager.Instance.StatePort || port == AppManager.Instance.StatePort2
+                    || (inbound.SecondLocalPortEnabled && port == AppManager.Instance.GetLocalPort(EInboundProtocol.socks2))
+                    || (inbound.AllowLANConn && inbound.NewPort4LAN && port == AppManager.Instance.GetLocalPort(EInboundProtocol.socks3))
+                    || nodeContext.ChainCores.Any(c => c.Port == port))
+                {
+                    var validation = NodeValidatorResult.Empty();
+                    validation.Errors.Add("Unable to allocate distinct main ingress SOCKS port.");
+                    return new CoreConfigContextBuilderResult(nodeContext, validation);
+                }
+                nodeContext.ManagedIngressPort = port;
+                preSocksItem.Port = port;
+            }
+        }
         if (preSocksItem != null)
         {
             // Намеренно БЕЗ resolveChainCores: true. Pre-socks строится на том же RoutingItem,
@@ -362,11 +400,58 @@ public class CoreConfigContextBuilder
                     ProtectDomainList =
                     [.. nodeContext.ProtectDomainList ?? [], .. preSocksResult.Context.ProtectDomainList ?? []],
                     ProtectCoreTypeList = protectCoreTypeList,
+                    ProtectTransportEndpoints = [.. nodeContext.ProtectTransportEndpoints],
                 },
             };
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Reads only profiles whose cores this launch owns. DNS stays in sing-box's runtime
+    /// resolver; no synchronous or startup-only DNS lookup can freeze the GUI or go stale.
+    /// </summary>
+    public static async Task PopulateTransportProtectionAsync(CoreConfigContext context)
+    {
+        if (!context.IsTunEnabled)
+        {
+            return;
+        }
+        if (context.Node.ConfigType == EConfigType.Custom)
+        {
+            await ReadEndpoints(context.Node, context.RunCoreType).ConfigureAwait(false);
+        }
+        foreach (var chain in context.ChainCores)
+        {
+            await ReadEndpoints(chain.Node, chain.CoreType).ConfigureAwait(false);
+        }
+
+        async Task ReadEndpoints(ProfileItem node, ECoreType coreType)
+        {
+            if (coreType is not (ECoreType.Xray or ECoreType.sing_box))
+            {
+                return;
+            }
+            try
+            {
+                var path = File.Exists(node.Address) ? node.Address : Utils.GetConfigPath(node.Address);
+                var json = await File.ReadAllTextAsync(path).ConfigureAwait(false);
+                foreach (var endpoint in CustomConfigComposer.ExtractDirectTransportEndpoints(json, coreType))
+                {
+                    context.ProtectTransportEndpoints.Add(endpoint);
+                    if (Utils.IsDomain(endpoint.Address))
+                    {
+                        context.ProtectDomainList.Add(endpoint.Address);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Normal config generation still reports an unreadable/invalid profile.
+                Logging.SaveLog(nameof(CoreConfigContextBuilder), ex);
+            }
+        }
     }
 
     /// <summary>

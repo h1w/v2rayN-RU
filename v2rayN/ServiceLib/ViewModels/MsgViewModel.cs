@@ -5,6 +5,7 @@ public class MsgViewModel : MyReactiveObject
     public Interaction<string, Unit> ShowMsgInteraction { get; } = new();
 
     private readonly ConcurrentQueue<string> _queueMsg = new();
+    private readonly ConnectionCloseNoise _closeNoise = new();
     private volatile bool _lastMsgFilterNotAvailable;
     public int NumMaxMsg { get; } = 500;
 
@@ -49,6 +50,17 @@ public class MsgViewModel : MyReactiveObject
             return;
         }
 
+        // Summaries belong only to the unfiltered view. An explicit filter shows
+        // matching raw future lines; it does not replay previously collapsed lines.
+        if (string.IsNullOrEmpty(MsgFilter))
+        {
+            var count = _closeNoise.TakeSummaryCount();
+            if (count > 0)
+            {
+                EnqueueWithLimit($"INFO: {count} TCP download-close messages collapsed (endpoint not connected). Original lines: diagnostic log; set a message filter to see future raw lines.{Environment.NewLine}");
+            }
+        }
+
         if (_queueMsg.IsEmpty)
         {
             return;
@@ -68,15 +80,22 @@ public class MsgViewModel : MyReactiveObject
 
     private void EnqueueQueueMsg(string msg)
     {
-        if (!AutoRefresh)
+        // Any nonempty explicit filter opts out of close-noise collapse, including
+        // an invalid regex (the existing matcher fails open in that case).
+        var filter = MsgFilter;
+        var explicitFilter = !string.IsNullOrEmpty(filter);
+        var autoRefresh = AutoRefresh;
+        // Preserve original close diagnostics before pause/filter decisions, on
+        // the producer thread. Paused display neither queues nor counts messages.
+        var collapsed = _closeNoise.TryCollapse(msg, explicitFilter || !autoRefresh);
+        if (!autoRefresh || collapsed)
         {
             return;
         }
 
-        //filter msg
-        if (MsgFilter.IsNotEmpty() && !_lastMsgFilterNotAvailable)
+        if (explicitFilter && !_lastMsgFilterNotAvailable)
         {
-            if (!Utils.IsRegexMatch(msg, MsgFilter))
+            if (!Utils.IsRegexMatch(msg, filter))
             {
                 return;
             }

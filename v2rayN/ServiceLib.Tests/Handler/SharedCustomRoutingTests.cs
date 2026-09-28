@@ -29,6 +29,63 @@ public class SharedCustomRoutingTests
     }
 
     [Theory]
+    [InlineData(null)]
+    [InlineData(10808)]
+    [InlineData(31010)]
+    public async Task Legacy_custom_helper_owns_public_ingress_without_persisting_transport_port(int? savedPort)
+    {
+        ServiceLib.Helper.SQLiteHelper.Instance.CreateTable<FullConfigTemplateItem>();
+        ServiceLib.Helper.SQLiteHelper.Instance.CreateTable<DNSItem>();
+        ServiceLib.Helper.SQLiteHelper.Instance.CreateTable<RoutingItem>();
+        var ctx = Context(ECoreType.Xray);
+        ctx.Node.PreSocksPort = savedPort;
+        ctx.AppConfig.TunModeItem.EnableTun = true;
+        ctx.AppConfig.TunModeItem.EnableLegacyProtect = true;
+        ctx.SharedRoutingPort = 31011;
+        ctx.ChainCores.Add(new ChainCoreDescriptor { CoreType = ECoreType.Xray, Node = new ProfileItem(), Port = 31012, ConfigFileName = "x.json" });
+        ctx.ChainCores.Add(new ChainCoreDescriptor { CoreType = ECoreType.sing_box, Node = new ProfileItem(), Port = 31013, ConfigFileName = "s.json" });
+        var method = typeof(CoreConfigContextBuilder).GetMethod("BuildPreSocksIfNeeded",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+        var pre = await (Task<CoreConfigContextBuilderResult?>)method.Invoke(null, [ctx])!;
+        pre.Should().NotBeNull();
+        pre!.Success.Should().BeTrue();
+        pre.Context.Node.Port.Should().NotBe(ctx.AppConfig.Inbound[0].LocalPort).And.NotBe(31011);
+        pre.Context.Node.Port.Should().NotBe(31012).And.NotBe(31013);
+        pre.Context.ProtectCoreTypeList.Should().Contain(ECoreType.Xray).And.Contain(ECoreType.sing_box);
+        ctx.Node.PreSocksPort.Should().Be(savedPort);
+        var main = CustomConfigComposer.Compose(Source(ECoreType.Xray), ECoreType.Xray, ctx);
+        main.Error.Should().BeNull();
+        var root = JsonUtils.ParseJson(main.Json)!;
+        root["inbounds"]![0]!["port"]!.GetValue<int>().Should().Be(pre.Context.Node.Port);
+        var generated = new CoreConfigSingboxService(pre.Context).GenerateClientConfigContent();
+        generated.Success.Should().BeTrue(generated.Msg);
+        var helper = JsonUtils.Deserialize<SingboxConfig>(generated.Data!.ToString())!;
+        helper.inbounds.Should().Contain(i => i.type == "mixed" && i.listen_port == 10808);
+        helper.inbounds.Should().Contain(i => i.type == "tun");
+        helper.route.final.Should().Be(Global.ProxyTag);
+        pre.Context.RoutingItem.Should().BeNull();
+        ChainConfigBuilder.AreLaunchResourcesCompatible([main.Json!, generated.Data!.ToString()!]).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(ECoreType.Xray)]
+    [InlineData(ECoreType.sing_box)]
+    public async Task Managed_profile_without_helper_keeps_public_listener(ECoreType core)
+    {
+        var ctx = Context(core);
+        ctx.Node.PreSocksPort = null;
+        ctx.SharedRoutingPort = 31011;
+        var method = typeof(CoreConfigContextBuilder).GetMethod("BuildPreSocksIfNeeded",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+        var pre = await (Task<CoreConfigContextBuilderResult?>)method.Invoke(null, [ctx])!;
+        pre.Should().BeNull();
+        var result = CustomConfigComposer.Compose(Source(core), core, ctx);
+        result.Error.Should().BeNull();
+        JsonUtils.ParseJson(result.Json)!["inbounds"]![0]![core == ECoreType.Xray ? "port" : "listen_port"]!
+            .GetValue<int>().Should().Be(ctx.AppConfig.Inbound[0].LocalPort);
+    }
+
+    [Theory]
     [InlineData(ECoreType.Xray, "inboundTag", "[\"old-in\"]")]
     [InlineData(ECoreType.Xray, "sourceIP", "[\"192.0.2.1\"]")]
     [InlineData(ECoreType.Xray, "process", "[\"app.exe\"]")]

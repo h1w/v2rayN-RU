@@ -23,6 +23,127 @@ public static class CustomConfigComposer
     private static readonly JsonSerializerOptions _mergeNodeOptions = new() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 
     /// <summary>
+    /// Extracts socket destinations, not routing destinations, SNI, HTTP Host, DNS servers or
+    /// probe URLs. Explicit transport chains keep their outer destination private to that
+    /// chain; only independently direct terminal outbounds contribute protection.
+    /// </summary>
+    public static HashSet<TransportEndpoint> ExtractDirectTransportEndpoints(string? rawJson, ECoreType coreType)
+    {
+        var result = new HashSet<TransportEndpoint>();
+        if (coreType is not (ECoreType.Xray or ECoreType.sing_box))
+        {
+            return result;
+        }
+        var root = JsonUtils.ParseJson(rawJson);
+        if (root is not JsonObject || root["outbounds"] is not JsonArray outbounds)
+        {
+            return result;
+        }
+        foreach (var outbound in outbounds.OfType<JsonObject>())
+        {
+            if (coreType == ECoreType.sing_box)
+            {
+                var type = Text(outbound["type"]);
+                if (type is "socks" or "http" or "shadowsocks" or "vmess" or "vless" or "trojan"
+                    or "hysteria" or "hysteria2" or "tuic" or "ssh" or "shadowtls" or "anytls")
+                {
+                    if (string.IsNullOrEmpty(Text(outbound["detour"])))
+                    {
+                        Add(outbound["server"], outbound["server_port"]);
+                    }
+                }
+                continue;
+            }
+
+            var stream = outbound["streamSettings"] as JsonObject;
+            var sockopt = stream?["sockopt"] as JsonObject;
+            var proxy = outbound["proxySettings"] as JsonObject;
+            if (!string.IsNullOrEmpty(Text(proxy?["tag"])))
+            {
+                continue;
+            }
+            var protocol = Text(outbound["protocol"]);
+            var settings = outbound["settings"] as JsonObject;
+            if (protocol is not ("vmess" or "vless" or "trojan" or "shadowsocks" or "socks" or "http"))
+            {
+                continue;
+            }
+            if (IsDirectSocket(sockopt))
+            {
+                var servers = settings?[protocol is "vmess" or "vless" ? "vnext" : "servers"] as JsonArray;
+                if (servers != null)
+                {
+                    foreach (var server in servers.OfType<JsonObject>())
+                    {
+                        Add(server["address"], server["port"]);
+                    }
+                }
+                else
+                {
+                    Add(settings?["address"], settings?["port"]);
+                }
+            }
+
+            // XHTTP downloadSettings is a separate StreamConfig with its own socket options.
+            // A penetrating parent sockopt deliberately replaces the download dialer options.
+            if (Text(stream?["method"] ?? stream?["network"]) is "xhttp" or "splithttp")
+            {
+                var xhttp = (stream?["xhttpSettings"] ?? stream?["splithttpSettings"]) as JsonObject;
+                var extra = xhttp?["extra"] as JsonObject;
+                var download = (extra?["downloadSettings"] ?? xhttp?["downloadSettings"]) as JsonObject;
+                var downloadSockopt = download?["sockopt"] as JsonObject;
+                if (sockopt?["penetrate"] is JsonValue penetrate && penetrate.TryGetValue<bool>(out var enabled) && enabled)
+                {
+                    downloadSockopt = sockopt;
+                }
+                if (download != null && IsDirectSocket(downloadSockopt))
+                {
+                    Add(download["address"], download["port"]);
+                }
+            }
+        }
+        return result;
+
+        // SRV/TXT overrides choose a different address/port at runtime; the configured
+        // tuple is not a socket destination and must not become a bypass rule.
+        static bool IsDirectSocket(JsonObject? options) =>
+            string.IsNullOrEmpty(Text(options?["dialerProxy"]))
+            && Text(options?["addressPortStrategy"]) is null or "" or "none";
+
+        static string? Text(JsonNode? value) => value is JsonValue scalar && scalar.TryGetValue<string>(out var text) ? text : null;
+
+        void Add(JsonNode? hostNode, JsonNode? portNode)
+        {
+            var host = Text(hostNode)?.Trim();
+            if (string.IsNullOrEmpty(host) || portNode is not JsonValue portValue)
+            {
+                return;
+            }
+            if (!portValue.TryGetValue<int>(out var port) && !int.TryParse(Text(portNode), out port))
+            {
+                return;
+            }
+            if (port is <= 0 or > 65535)
+            {
+                return;
+            }
+            if (System.Net.IPAddress.TryParse(host.Trim('[', ']'), out var ip))
+            {
+                host = ip.ToString();
+            }
+            else if (Uri.CheckHostName(host) == UriHostNameType.Dns)
+            {
+                host = host.TrimEnd('.').ToLowerInvariant();
+            }
+            else
+            {
+                return;
+            }
+            result.Add(new TransportEndpoint(host, port));
+        }
+    }
+
+    /// <summary>
     /// Сливает локальные правила в custom JSON. Json == null — признак
     /// «фолбэк на дословное копирование».
     /// </summary>
@@ -226,8 +347,8 @@ public static class CustomConfigComposer
         const string frontTag = "v2rayn-front-in";
         const string ownTag = "v2rayn-own-in";
         var port = context.SharedRoutingPort!.Value;
-        var frontPort = context.Node.PreSocksPort is > 0 and <= 65535
-            ? context.Node.PreSocksPort.Value : context.AppConfig.Inbound.First().LocalPort;
+        var frontPort = context.ManagedIngressPort ?? (context.Node.PreSocksPort is > 0 and <= 65535
+            ? context.Node.PreSocksPort.Value : context.AppConfig.Inbound.First().LocalPort);
         if (frontPort == port)
         {
             throw new InvalidOperationException("Front and own routing listeners require distinct ports.");

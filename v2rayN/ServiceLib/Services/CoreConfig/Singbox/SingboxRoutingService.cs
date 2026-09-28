@@ -64,6 +64,8 @@ public partial class CoreConfigSingboxService
                     });
                 }
 
+                GenTransportProtectionRules();
+
                 var lstDirectExe = BuildRoutingDirectExe();
                 if (lstDirectExe.Count > 0)
                 {
@@ -111,6 +113,10 @@ public partial class CoreConfigSingboxService
                     });
                 }
             }
+            else
+            {
+                GenTransportProtectionRules();
+            }
 
             if (_config.Inbound.First().SniffingEnabled)
             {
@@ -154,6 +160,13 @@ public partial class CoreConfigSingboxService
                         tls_record_fragment = true,
                     });
                 }
+            }
+
+            // SNI/HTTP sniffing can recover a domain when no DNS reverse-map entry exists.
+            // The first pass above protects mapped domains before camouflage SNI can replace them.
+            if (_config.Inbound.First().SniffingEnabled)
+            {
+                GenTransportProtectionRules(domainsOnly: true);
             }
 
             var hostsDomains = new List<string>();
@@ -288,6 +301,25 @@ public partial class CoreConfigSingboxService
         catch (Exception ex)
         {
             Logging.SaveLog(_tag, ex);
+        }
+    }
+
+    private void GenTransportProtectionRules(bool domainsOnly = false)
+    {
+        foreach (var endpoint in context.ProtectTransportEndpoints)
+        {
+            var isIp = Utils.IsIpAddress(endpoint.Address);
+            if (domainsOnly && isIp)
+            {
+                continue;
+            }
+            _coreConfig.route.rules.Add(new()
+            {
+                ip_cidr = isIp ? [ToSingleAddressPrefix(endpoint.Address)] : null,
+                domain = isIp ? null : [endpoint.Address],
+                port = [endpoint.Port],
+                outbound = Global.DirectTag,
+            });
         }
     }
 
