@@ -2130,12 +2130,22 @@ public static class ConfigHandler
             }
         }
 
-        //Keep the last traffic statistics
+        // Keep profile-local rule overrides and the last traffic statistics.
         if (lstOriSub != null)
         {
             var lstSub = await AppManager.Instance.ProfileItems(subid);
+            var originalCustomProfiles = lstOriSub.Where(t => t.IsSub && t.ConfigType == EConfigType.Custom).ToList();
             foreach (var item in lstSub)
             {
+                if (item.IsSub && item.ConfigType == EConfigType.Custom)
+                {
+                    var original = FindMatchedProfileItem(originalCustomProfiles.Where(t => t.CoreType == item.CoreType), item);
+                    if (original?.CustomRuleState.IsNotEmpty() == true)
+                    {
+                        item.CustomRuleState = original.CustomRuleState;
+                        await SQLiteHelper.Instance.UpdateAsync(item);
+                    }
+                }
                 var existItem = FindMatchedProfileItem(lstOriSub, item);
                 if (existItem != null)
                 {

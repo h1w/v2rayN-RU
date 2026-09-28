@@ -302,6 +302,9 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
             {
                 return;
             }
+            // Edit a snapshot with the current checkbox state; cancellation must not mutate the rule.
+            item = JsonUtils.DeepCopy(item);
+            item.Enabled = SelectedSource.Enabled;
         }
         var routingRuleDetailsViewModel = new RoutingRuleDetailsViewModel(item);
         if (await AppManager.Instance.WindowDialog.ShowDialogAsync(routingRuleDetailsViewModel) == true)
@@ -320,6 +323,12 @@ public class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
                 if (index >= 0)
                 {
                     _rules[index] = edited;
+                    // RefreshRulesItems copies inline state back, so update the row before rebuilding it.
+                    var model = RulesItems.FirstOrDefault(t => !t.IsReadonly && t.Id == edited.Id);
+                    if (model != null)
+                    {
+                        model.Enabled = edited.Enabled;
+                    }
                 }
             }
             RefreshRulesItems();
