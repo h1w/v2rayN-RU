@@ -13,6 +13,34 @@ namespace ServiceLib.Tests.CoreConfig.Singbox;
 public class CoreConfigSingboxServiceTests
 {
     [Fact]
+    public void TunForwarder_WithoutLocalRouting_ShouldGenerateSocksEgressAndClashApi()
+    {
+        var config = CoreConfigTestFactory.CreateConfig(ECoreType.sing_box);
+        config.TunModeItem.EnableTun = true;
+        config.TunModeItem.EnableLegacyProtect = true;
+        CoreConfigTestFactory.BindAppManagerConfig(config);
+        var node = CoreConfigTestFactory.CreateSocksNode(ECoreType.sing_box);
+        node.Port = 10808;
+        var context = CoreConfigTestFactory.CreateContext(config, node, ECoreType.sing_box) with
+        {
+            RoutingItem = null,
+            IsTunEnabled = true,
+            ProtectCoreTypeList = [ECoreType.Xray, ECoreType.sing_box],
+        };
+
+        var result = new CoreConfigSingboxService(context).GenerateClientConfigContent();
+
+        result.Success.Should().BeTrue($"ret msg: {result.Msg}");
+        var generated = JsonUtils.Deserialize<SingboxConfig>(result.Data!.ToString())!;
+        generated.inbounds.Should().Contain(i => i.type == "tun");
+        generated.route.final.Should().Be(Global.ProxyTag);
+        generated.outbounds.Should().Contain(o => o.tag == Global.ProxyTag
+            && o.type == "socks" && o.server == "127.0.0.1" && o.server_port == 10808);
+        generated.experimental!.clash_api!.external_controller.Should()
+            .Be($"127.0.0.1:{AppManager.Instance.StatePort2}");
+    }
+
+    [Fact]
     public void IPIfNonMatch_ShouldKeepNamedTargetsAcrossBothPassesAndRepeatedGeneration()
     {
         var config = CoreConfigTestFactory.CreateConfig(ECoreType.sing_box);

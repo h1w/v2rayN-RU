@@ -61,7 +61,7 @@ public partial class CoreConfigSingboxService
         List<Ruleset4Sbox> customRulesets = [];
 
         var routing = context.RoutingItem;
-        if (routing.CustomRulesetPath4Singbox.IsNotEmpty())
+        if (routing != null && routing.CustomRulesetPath4Singbox.IsNotEmpty())
         {
             var result = EmbedUtils.LoadResource(routing.CustomRulesetPath4Singbox);
             if (result.IsNotEmpty())
